@@ -572,6 +572,115 @@ def stock_info():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def insert_data_ohlc(data):
+    # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_ohlc (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        open NUMERIC(15, 2),
+        high NUMERIC(15, 2),
+        low NUMERIC(15, 2),
+        close NUMERIC(15, 2),
+        volume BIGINT,
+        foreign_buy NUMERIC(20, 2),
+        foreign_sell NUMERIC(20, 2),
+        foreign_flow NUMERIC(20, 2),
+        CONSTRAINT pk_stock_ohlc PRIMARY KEY (symbol, tanggal)
+    );
+    """
+    
+    insert_query = """
+    INSERT INTO idxsaham.stock_ohlc (
+        symbol, tanggal, open, high, low, close, volume, 
+        foreign_buy, foreign_sell, foreign_flow
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(open)s, %(high)s, %(low)s, %(close)s, %(volume)s,
+        %(foreignbuy)s, %(foreignsell)s, %(foreignflow)s
+    )
+    ON CONFLICT (symbol, tanggal)
+    DO UPDATE SET
+        open = EXCLUDED.open,
+        high = EXCLUDED.high,
+        low = EXCLUDED.low,
+        close = EXCLUDED.close,
+        volume = EXCLUDED.volume,
+        foreign_buy = EXCLUDED.foreign_buy,
+        foreign_sell = EXCLUDED.foreign_sell,
+        foreign_flow = EXCLUDED.foreign_flow;
+    """
+    
+    conn = get_connection()
+    cur  = conn.cursor()
+    
+    # Otomatis pastikan tabel ada (dan memiliki kolom lengkap) sebelum insert
+    cur.execute(create_table_query) 
+    
+    # Insert batch
+    execute_batch(cur, insert_query, data)
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# ============================================================
+# ENDPOINT OHLC (CHARTBIT API)
+# ============================================================
+@app.route("/ohlc", methods=["GET"])
+def get_ohlc():
+    symbol = request.args.get("symbol", "BBRI").upper()
+    # Format YYYY-MM-DD. Ingat: 'from' harus tanggal yang LEBIH BARU
+    f = request.args.get("from", "2026-07-02") 
+    t = request.args.get("to", "2025-07-02")
+    
+    try:
+        token = get_token()
+        headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+        
+        # Endpoint Chartbit yang baru kita temukan
+        url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
+        
+        resp = requests.get(
+            url,
+            headers=headers,
+            params={"from": f, "to": t, "limit": 0}
+        )
+        
+        if resp.status_code != 200:
+            return jsonify({"error": f"Gagal fetch OHLC: {resp.text}"}), resp.status_code
+            
+        json_data = resp.json()
+        chart_data = json_data.get("data", {}).get("chartbit", [])
+        
+        if not chart_data:
+            return jsonify({"error": "Tidak ada data OHLC (array chartbit kosong)"}), 404
+            
+        records = []
+        for item in chart_data:
+            records.append({
+                "symbol": symbol,
+                "tanggal": item.get("date"),
+                "open": normalize_number(item.get("open")),
+                "high": normalize_number(item.get("high")),
+                "low": normalize_number(item.get("low")),
+                "close": normalize_number(item.get("close")),
+                "volume": normalize_number(item.get("volume")),
+                "foreignbuy": normalize_number(item.get("foreignbuy")),
+                "foreignsell": normalize_number(item.get("foreignsell")),
+                "foreignflow": normalize_number(item.get("foreignflow"))
+            })
+            
+        # Simpan ke Database
+        insert_data_ohlc(records)
+        
+        return jsonify({
+            "message": f"Berhasil menyimpan {len(records)} hari data OHLC & Foreign Flow untuk {symbol}",
+            "symbol": symbol,
+            "total_data": len(records)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
