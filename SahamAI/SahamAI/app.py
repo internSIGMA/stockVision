@@ -7,11 +7,17 @@ from flask import Flask, request, jsonify
 from datetime import datetime, timezone
 import socket
 import re
+import os
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from .env file (searching upwards if necessary)
+load_dotenv(find_dotenv())
+
 app = Flask(__name__)
 
-USERNAME  = "yunus07999"
-PASSWORD  = "@123456Terus"
-PLAYER_ID = "6f3ec8a8-6c1b-411c-bc5f-30b4f1a6c105"
+USERNAME  = os.getenv("STOCKBIT_USERNAME")
+PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
+PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
 
 LOGIN_HEADERS = {
     "Content-Type": "application/json",
@@ -32,11 +38,11 @@ FETCH_HEADERS_BASE = {
 # CONFIG DATABASE
 # =========================
 DB_CONFIG = {
-    "host":     "localhost",
-    "database": "idxsaham",
-    "user":     "postgres",
-    "password": "@Lfinsyah1",
-    "port":     5432,
+    "host":     os.getenv("DB_HOST"),
+    "database": os.getenv("DB_NAME"),
+    "user":     os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "port":     int(os.getenv("DB_PORT", 5432)),
 }
 
 # =========================

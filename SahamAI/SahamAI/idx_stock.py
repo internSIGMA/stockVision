@@ -7,23 +7,28 @@ import psycopg2
 from psycopg2.extras import execute_batch
 import time
 from datetime import date
+import os
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from .env file (searching upwards if necessary)
+load_dotenv(find_dotenv())
 
 # ============================================================
 # KONFIGURASI
 # ============================================================
-USERNAME  = "yunus07999"
-PASSWORD  = "@123456Terus"
-PLAYER_ID = "6f3ec8a8-6c1b-411c-bc5f-30b4f1a6c105"
+USERNAME  = os.getenv("STOCKBIT_USERNAME")
+PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
+PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
 
 # =========================
 # CONFIG DATABASE
 # =========================
 DB_CONFIG = {
-    "host": "localhost",
-    "database": "postgres",
-    "user": "postgres",
-    "password": "Sigma#2026",
-    "port": 5432
+    "host": os.getenv("DB_HOST", "localhost"),
+    "database": os.getenv("DB_NAME", "postgres"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD"),
+    "port": int(os.getenv("DB_PORT", 5432))
 }
 
 LOGIN_HEADERS = {
