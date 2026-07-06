@@ -9,6 +9,8 @@ import socket
 import re
 import os
 from dotenv import load_dotenv, find_dotenv
+import yfinance as yf
+import pandas as pd
 
 # Load environment variables from .env file (searching upwards if necessary)
 load_dotenv(find_dotenv())
@@ -319,6 +321,8 @@ def fetch_majorholder(token, date_start, date_end, pages):
     }
     records = []
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(1.5)  # Delay 1.5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/insider/company/majorholder",
             headers=headers,
@@ -374,6 +378,8 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
     buy_records, sell_records = [], []
 
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(5)  # Delay 5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/order-trade/broker/activity",
             headers=headers,
@@ -509,8 +515,13 @@ def force_login():
 
 @app.route("/majorholder", methods=["GET"])
 def majorholder():
-    date_start = request.args.get("date_start", "2026-03-11")
-    date_end   = request.args.get("date_end",   "2026-04-11")
+    from datetime import date, timedelta
+    yesterday = date.today() - timedelta(days=1)
+    default_end = yesterday.strftime("%Y-%m-%d")
+    default_start = (yesterday - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    date_start = request.args.get("date_start", default_start)
+    date_end   = request.args.get("date_end",   default_end)
     pages      = int(request.args.get("pages", 5))
     try:
         token   = get_token()
@@ -530,9 +541,12 @@ def majorholder():
 
 @app.route("/broker-activity", methods=["GET"])
 def broker_activity():
+    from datetime import date, timedelta
+    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     broker_code      = request.args.get("broker_code", "XL")
-    date_from        = request.args.get("from",              "2026-04-10")
-    date_to          = request.args.get("to",                "2026-04-10")
+    date_from        = request.args.get("from",              yesterday_str)
+    date_to          = request.args.get("to",                yesterday_str)
     pages            = int(request.args.get("pages", 1))
     transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
     market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
@@ -635,16 +649,21 @@ def insert_data_ohlc(data):
 # ============================================================
 @app.route("/ohlc", methods=["GET"])
 def get_ohlc():
+    from datetime import date, timedelta
+    yesterday = date.today() - timedelta(days=1)
+    default_from = yesterday.strftime("%Y-%m-%d")
+    default_to = (yesterday - timedelta(days=365)).strftime("%Y-%m-%d")
+    
     symbol = request.args.get("symbol", "BBRI").upper()
     # Format YYYY-MM-DD. Ingat: 'from' harus tanggal yang LEBIH BARU
-    f = request.args.get("from", "2026-07-02") 
-    t = request.args.get("to", "2025-07-02")
+    f = request.args.get("from", default_from) 
+    t = request.args.get("to", default_to)
     
     try:
         token = get_token()
         headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
         
-        # Endpoint Chartbit yang baru kita temukan
+        # Endpoint Chartbit
         url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
         
         resp = requests.get(
@@ -676,7 +695,6 @@ def get_ohlc():
                 "foreignsell": normalize_number(item.get("foreignsell")),
                 "foreignflow": normalize_number(item.get("foreignflow"))
             })
-            
         # Simpan ke Database
         insert_data_ohlc(records)
         
