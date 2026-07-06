@@ -16,6 +16,9 @@ load_dotenv(find_dotenv())
 app = Flask(__name__)
 CORS(app)
 
+from data_routes import data_bp
+app.register_blueprint(data_bp)
+
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
 PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
 PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
