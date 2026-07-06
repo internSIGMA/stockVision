@@ -7,11 +7,19 @@ from flask import Flask, request, jsonify
 from datetime import datetime, timezone
 import socket
 import re
+import os
+from dotenv import load_dotenv, find_dotenv
+import yfinance as yf
+import pandas as pd
+
+# Load environment variables from .env file (searching upwards if necessary)
+load_dotenv(find_dotenv())
+
 app = Flask(__name__)
 
-USERNAME  = "yunus07999"
-PASSWORD  = "@123456Terus"
-PLAYER_ID = "6f3ec8a8-6c1b-411c-bc5f-30b4f1a6c105"
+USERNAME  = os.getenv("STOCKBIT_USERNAME")
+PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
+PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
 
 LOGIN_HEADERS = {
     "Content-Type": "application/json",
@@ -32,11 +40,11 @@ FETCH_HEADERS_BASE = {
 # CONFIG DATABASE
 # =========================
 DB_CONFIG = {
-    "host":     "localhost",
-    "database": "idxsaham",
-    "user":     "postgres",
-    "password": "@Lfinsyah1",
-    "port":     5432,
+    "host":     os.getenv("DB_HOST"),
+    "database": os.getenv("DB_NAME"),
+    "user":     os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "port":     int(os.getenv("DB_PORT", 5432)),
 }
 
 # =========================
@@ -126,7 +134,7 @@ def insert_data_insider(data):
         %(perubahan)s, %(perubahanpersen)s,
         %(harga)s, %(sumber)s, %(kewarganegaraan)s, %(broker)s, %(badge)s
     )
-    ON CONFLICT (idtrx, nama, saham, tanggal, aksi, perubahan, broker)
+    ON CONFLICT (idtrx)
     DO NOTHING;
     """
     conn = get_connection()
@@ -313,6 +321,8 @@ def fetch_majorholder(token, date_start, date_end, pages):
     }
     records = []
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(1.5)  # Delay 1.5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/insider/company/majorholder",
             headers=headers,
@@ -368,6 +378,8 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
     buy_records, sell_records = [], []
 
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(5)  # Delay 5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/order-trade/broker/activity",
             headers=headers,
@@ -503,8 +515,13 @@ def force_login():
 
 @app.route("/majorholder", methods=["GET"])
 def majorholder():
-    date_start = request.args.get("date_start", "2026-03-11")
-    date_end   = request.args.get("date_end",   "2026-04-11")
+    from datetime import date, timedelta
+    yesterday = date.today() - timedelta(days=1)
+    default_end = yesterday.strftime("%Y-%m-%d")
+    default_start = (yesterday - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    date_start = request.args.get("date_start", default_start)
+    date_end   = request.args.get("date_end",   default_end)
     pages      = int(request.args.get("pages", 5))
     try:
         token   = get_token()
@@ -524,9 +541,12 @@ def majorholder():
 
 @app.route("/broker-activity", methods=["GET"])
 def broker_activity():
+    from datetime import date, timedelta
+    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     broker_code      = request.args.get("broker_code", "XL")
-    date_from        = request.args.get("from",              "2026-04-10")
-    date_to          = request.args.get("to",                "2026-04-10")
+    date_from        = request.args.get("from",              yesterday_str)
+    date_to          = request.args.get("to",                yesterday_str)
     pages            = int(request.args.get("pages", 1))
     transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
     market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
@@ -587,6 +607,119 @@ def stock_info():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def insert_data_ohlc(data):
+    # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_ohlc (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        open NUMERIC(15, 2),
+        high NUMERIC(15, 2),
+        low NUMERIC(15, 2),
+        close NUMERIC(15, 2),
+        volume BIGINT,
+        foreign_buy NUMERIC(20, 2),
+        foreign_sell NUMERIC(20, 2),
+        foreign_flow NUMERIC(20, 2),
+        CONSTRAINT pk_stock_ohlc PRIMARY KEY (symbol, tanggal)
+    );
+    """
+    
+    insert_query = """
+    INSERT INTO idxsaham.stock_ohlc (
+        symbol, tanggal, open, high, low, close, volume, 
+        foreign_buy, foreign_sell, foreign_flow
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(open)s, %(high)s, %(low)s, %(close)s, %(volume)s,
+        %(foreignbuy)s, %(foreignsell)s, %(foreignflow)s
+    )
+    ON CONFLICT (symbol, tanggal)
+    DO UPDATE SET
+        open = EXCLUDED.open,
+        high = EXCLUDED.high,
+        low = EXCLUDED.low,
+        close = EXCLUDED.close,
+        volume = EXCLUDED.volume,
+        foreign_buy = EXCLUDED.foreign_buy,
+        foreign_sell = EXCLUDED.foreign_sell,
+        foreign_flow = EXCLUDED.foreign_flow;
+    """
+    
+    conn = get_connection()
+    cur  = conn.cursor()
+    
+    # Otomatis pastikan tabel ada (dan memiliki kolom lengkap) sebelum insert
+    cur.execute(create_table_query) 
+    
+    # Insert batch
+    execute_batch(cur, insert_query, data)
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# ============================================================
+# ENDPOINT OHLC (CHARTBIT API)
+# ============================================================
+@app.route("/ohlc", methods=["GET"])
+def get_ohlc():
+    from datetime import date, timedelta
+    yesterday = date.today() - timedelta(days=1)
+    default_from = yesterday.strftime("%Y-%m-%d")
+    default_to = (yesterday - timedelta(days=365)).strftime("%Y-%m-%d")
+    
+    symbol = request.args.get("symbol", "BBRI").upper()
+    # Format YYYY-MM-DD. Ingat: 'from' harus tanggal yang LEBIH BARU
+    f = request.args.get("from", default_from) 
+    t = request.args.get("to", default_to)
+    
+    try:
+        token = get_token()
+        headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+        
+        # Endpoint Chartbit
+        url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
+        
+        resp = requests.get(
+            url,
+            headers=headers,
+            params={"from": f, "to": t, "limit": 0}
+        )
+        
+        if resp.status_code != 200:
+            return jsonify({"error": f"Gagal fetch OHLC: {resp.text}"}), resp.status_code
+            
+        json_data = resp.json()
+        chart_data = json_data.get("data", {}).get("chartbit", [])
+        
+        if not chart_data:
+            return jsonify({"error": "Tidak ada data OHLC (array chartbit kosong)"}), 404
+            
+        records = []
+        for item in chart_data:
+            records.append({
+                "symbol": symbol,
+                "tanggal": item.get("date"),
+                "open": normalize_number(item.get("open")),
+                "high": normalize_number(item.get("high")),
+                "low": normalize_number(item.get("low")),
+                "close": normalize_number(item.get("close")),
+                "volume": normalize_number(item.get("volume")),
+                "foreignbuy": normalize_number(item.get("foreignbuy")),
+                "foreignsell": normalize_number(item.get("foreignsell")),
+                "foreignflow": normalize_number(item.get("foreignflow"))
+            })
+        # Simpan ke Database
+        insert_data_ohlc(records)
+        
+        return jsonify({
+            "message": f"Berhasil menyimpan {len(records)} hari data OHLC & Foreign Flow untuk {symbol}",
+            "symbol": symbol,
+            "total_data": len(records)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
