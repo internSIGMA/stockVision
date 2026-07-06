@@ -555,20 +555,35 @@ def broker_activity():
 
 @app.route("/stock-info", methods=["GET"])
 def stock_info():
-    symbol = request.args.get("symbol", "").upper()
-    if not symbol:
-        return jsonify({"error": "Parameter 'symbol' wajib diisi, contoh: ?symbol=TLKM"}), 400
+
+    symbols = [
+        "BBCA",
+        "BBNI",
+        "BBRI",
+        "BMRI",
+        "BJBR"
+    ]
+
     try:
         token = get_token()
-        raw   = fetch_stock_info(token, symbol)
-        data  = parse_stock_info(raw)
-        insert_data_stock_info(data)
+
+        total = 0
+
+        for symbol in symbols:
+
+            raw = fetch_stock_info(token, symbol)
+
+            data = parse_stock_info(raw)
+
+            insert_data_stock_info(data)
+
+            total += 1
+
         return jsonify({
-            "message": f"Data stock info {symbol} berhasil disimpan ke DB",
-            "symbol":  symbol,
-            "tanggal": data.get("tanggal"),
-            "harga":   data.get("harga"),
+            "message": f"{total} saham berhasil disimpan",
+            "symbols": symbols
         })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
