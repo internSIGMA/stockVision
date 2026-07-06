@@ -132,7 +132,7 @@ def insert_data_insider(data):
         %(perubahan)s, %(perubahanpersen)s,
         %(harga)s, %(sumber)s, %(kewarganegaraan)s, %(broker)s, %(badge)s
     )
-    ON CONFLICT (idtrx, nama, saham, tanggal, aksi, perubahan, broker)
+    ON CONFLICT (idtrx)
     DO NOTHING;
     """
     conn = get_connection()
