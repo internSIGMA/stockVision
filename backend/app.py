@@ -4,6 +4,7 @@ import requests
 import psycopg2
 from psycopg2.extras import execute_batch
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from datetime import datetime, timezone
 import socket
 import os
@@ -13,6 +14,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 app = Flask(__name__)
+CORS(app)
 
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
 PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
@@ -90,6 +92,24 @@ def get_last_trading_day(target_date):
         if curr.weekday() < 5:
             return curr.strftime("%Y-%m-%d")
         curr -= timedelta(days=1)
+
+
+# ============================================================
+# LOG CRAWL JOB STATUS
+# ============================================================
+def log_crawl_job(job_type, target, tanggal_target, status, records_count=0, error_message=None):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
+            VALUES (%s, %s, %s, %s, %s, %s);
+        """, (job_type, target, tanggal_target, status, records_count, error_message))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Error logging crawl job status to DB:", e)
 
 
 # =========================
@@ -252,41 +272,55 @@ def normalize_number(val):
     return val
 
 def _do_login():
-    resp = requests.post(
-        "https://exodus.stockbit.com/login/v6/username",
-        headers=LOGIN_HEADERS,
-        json={
-            "user":               USERNAME,
-            "password":           PASSWORD,
-            "recaptcha_version":  "RECAPTCHA_VERSION_3",
-            "player_id":          PLAYER_ID,
-        },
-    )
-    if resp.status_code != 200:
-        raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
-    token_data    = resp.json()["data"]["login"]["token_data"]
-    access_token  = token_data["access"]["token"]
-    refresh_token = token_data["refresh"]["token"]
-    expires_at    = datetime.fromisoformat(
-        token_data["access"]["expired_at"].replace("Z", "+00:00")
-    ).timestamp()
-    return access_token, refresh_token, expires_at
+    try:
+        resp = requests.post(
+            "https://exodus.stockbit.com/login/v6/username",
+            headers=LOGIN_HEADERS,
+            json={
+                "user":               USERNAME,
+                "password":           PASSWORD,
+                "recaptcha_version":  "RECAPTCHA_VERSION_3",
+                "player_id":          PLAYER_ID,
+            },
+        )
+        if resp.status_code != 200:
+            log_crawl_job("AUTH_LOGIN", USERNAME, None, "FAILED", 0, f"Login gagal ({resp.status_code}): {resp.text}")
+            raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
+        token_data    = resp.json()["data"]["login"]["token_data"]
+        access_token  = token_data["access"]["token"]
+        refresh_token = token_data["refresh"]["token"]
+        expires_at    = datetime.fromisoformat(
+            token_data["access"]["expired_at"].replace("Z", "+00:00")
+        ).timestamp()
+        
+        log_crawl_job("AUTH_LOGIN", USERNAME, None, "SUCCESS", 1)
+        return access_token, refresh_token, expires_at
+    except Exception as e:
+        log_crawl_job("AUTH_LOGIN", USERNAME, None, "FAILED", 0, str(e))
+        raise e
 
 
 def _do_refresh(refresh_token):
-    resp = requests.post(
-        "https://exodus.stockbit.com/login/v6/token/refresh",
-        headers={**LOGIN_HEADERS, "Authorization": f"Bearer {refresh_token}"},
-    )
-    if resp.status_code != 200:
+    try:
+        resp = requests.post(
+            "https://exodus.stockbit.com/login/v6/token/refresh",
+            headers={**LOGIN_HEADERS, "Authorization": f"Bearer {refresh_token}"},
+        )
+        if resp.status_code != 200:
+            log_crawl_job("AUTH_REFRESH", USERNAME, None, "FAILED", 0, f"Refresh gagal ({resp.status_code}): {resp.text}")
+            return None, None, 0
+        token_data        = resp.json()["data"]["login"]["token_data"]
+        access_token      = token_data["access"]["token"]
+        new_refresh_token = token_data["refresh"]["token"]
+        expires_at        = datetime.fromisoformat(
+            token_data["access"]["expired_at"].replace("Z", "+00:00")
+        ).timestamp()
+        
+        log_crawl_job("AUTH_REFRESH", USERNAME, None, "SUCCESS", 1)
+        return access_token, new_refresh_token, expires_at
+    except Exception as e:
+        log_crawl_job("AUTH_REFRESH", USERNAME, None, "FAILED", 0, str(e))
         return None, None, 0
-    token_data        = resp.json()["data"]["login"]["token_data"]
-    access_token      = token_data["access"]["token"]
-    new_refresh_token = token_data["refresh"]["token"]
-    expires_at        = datetime.fromisoformat(
-        token_data["access"]["expired_at"].replace("Z", "+00:00")
-    ).timestamp()
-    return access_token, new_refresh_token, expires_at
 
 
 def get_token():
@@ -533,12 +567,37 @@ def majorholder():
         date_start = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
         
     pages      = int(request.args.get("pages", 5))
+    
+    # Check if data already exists locally to avoid duplicate crawls
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM idxsaham.insider_activity
+            WHERE tanggal >= %s AND tanggal <= %s
+        """, (date_start, date_end))
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        if count > 0:
+            log_crawl_job("MAJORHOLDER", "FEED", date_end, "SKIP", count)
+            return jsonify({
+                "message":       f"Data majorholder untuk rentang {date_start} s.d {date_end} sudah ada di DB (skip crawl)",
+                "date_start":    date_start,
+                "date_end":      date_end,
+                "total_records": count,
+            })
+    except Exception as e:
+        print("Error checking local insider_activity:", e)
+        
     try:
         token   = get_token()
         records = fetch_majorholder(token, date_start, date_end, pages)
         if not records:
+            log_crawl_job("MAJORHOLDER", "FEED", date_end, "FAILED", 0, "Tidak ada data ditemukan")
             return jsonify({"error": "Tidak ada data ditemukan"}), 404
         insert_data_insider(records)
+        log_crawl_job("MAJORHOLDER", "FEED", date_end, "SUCCESS", len(records))
         return jsonify({
             "message":       f"{len(records)} data berhasil disimpan ke DB",
             "date_start":    date_start,
@@ -546,6 +605,7 @@ def majorholder():
             "total_records": len(records),
         })
     except Exception as e:
+        log_crawl_job("MAJORHOLDER", "FEED", date_end, "FAILED", 0, str(e))
         return jsonify({"error": str(e)}), 500
 
 
@@ -572,6 +632,31 @@ def broker_activity():
     transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
     market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
     investor_type    = request.args.get("investor_type",    "INVESTOR_TYPE_ALL")
+    
+    # Check if data already exists locally to avoid duplicate crawls
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM idxsaham.broker_activity
+            WHERE kodebroker = %s AND tanggal >= %s AND tanggal <= %s
+        """, (broker_code, date_from, date_to))
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        if count > 0:
+            log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "SKIP", count)
+            return jsonify({
+                "message":      f"Data broker activity untuk {broker_code} tanggal {date_from} s.d {date_to} sudah ada di DB (skip crawl)",
+                "broker_code":  broker_code,
+                "date_from":    date_from,
+                "date_to":      date_to,
+                "total_buy":    count,
+                "total_sell":   0,
+            })
+    except Exception as e:
+        print("Error checking local broker_activity:", e)
+        
     try:
         token = get_token()
         buy_records, sell_records = fetch_broker_activity(
@@ -579,9 +664,11 @@ def broker_activity():
             transaction_type, market_board, investor_type,
         )
         if not buy_records and not sell_records:
+            log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "FAILED", 0, "Tidak ada data ditemukan")
             return jsonify({"error": "Tidak ada data ditemukan"}), 404
         all_records = buy_records + sell_records
         insert_data_brokers(all_records)
+        log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "SUCCESS", len(all_records))
         return jsonify({
             "message":      f"{len(all_records)} data berhasil disimpan ke DB",
             "broker_code":  broker_code,
@@ -591,6 +678,7 @@ def broker_activity():
             "total_sell":   len(sell_records),
         })
     except Exception as e:
+        log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "FAILED", 0, str(e))
         return jsonify({"error": str(e)}), 500
 
 
@@ -598,12 +686,41 @@ def broker_activity():
 def stock_info():
     symbol = request.args.get("symbol", "").upper()
     if not symbol:
-        return jsonify({"error": "Parameter 'symbol' wajib diisi, contoh: ?symbol=TLKM"}), 400
+        return jsonify({"error": "Parameter 'symbol' wajib diisi, contoh: ?symbol=BBCA"}), 400
+    
+    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
+    if symbol not in allowed_symbols:
+        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Emiten yang didukung hanya: {', '.join(allowed_symbols)}"}), 400
+        
+    # Check if data already exists locally to avoid duplicate crawls
+    try:
+        from datetime import date
+        last_trading = get_last_trading_day(date.today().strftime("%Y-%m-%d"))
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM idxsaham.stock_info
+            WHERE symbol = %s AND tanggal = %s
+        """, (symbol, last_trading))
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        if count > 0:
+            log_crawl_job("STOCK_INFO", symbol, last_trading, "SKIP", 1)
+            return jsonify({
+                "message": f"Data stock info {symbol} tanggal {last_trading} sudah ada di DB (skip crawl)",
+                "symbol":  symbol,
+                "tanggal": last_trading,
+            })
+    except Exception as e:
+        print("Error checking local stock_info:", e)
+        
     try:
         token = get_token()
         raw   = fetch_stock_info(token, symbol)
         data  = parse_stock_info(raw)
         insert_data_stock_info(data)
+        log_crawl_job("STOCK_INFO", symbol, data.get("tanggal") or last_trading, "SUCCESS", 1)
         return jsonify({
             "message": f"Data stock info {symbol} berhasil disimpan ke DB",
             "symbol":  symbol,
@@ -611,6 +728,7 @@ def stock_info():
             "harga":   data.get("harga"),
         })
     except Exception as e:
+        log_crawl_job("STOCK_INFO", symbol, last_trading, "FAILED", 0, str(e))
         return jsonify({"error": str(e)}), 500
 
 def insert_data_ohlc(data):
@@ -674,6 +792,9 @@ def get_ohlc():
     yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
     
     symbol = request.args.get("symbol", "BBRI").upper()
+    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
+    if symbol not in allowed_symbols:
+        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Emiten yang didukung hanya: {', '.join(allowed_symbols)}"}), 400
     
     f = request.args.get("from")
     if f:
@@ -687,7 +808,28 @@ def get_ohlc():
     else:
         from_dt = datetime.strptime(f, "%Y-%m-%d").date()
         t = (from_dt - timedelta(days=365)).strftime("%Y-%m-%d")
-    
+        
+    # Check if data already exists locally to avoid duplicate crawls
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM idxsaham.stock_ohlc
+            WHERE symbol = %s AND tanggal = %s
+        """, (symbol, f))
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        if count > 0:
+            log_crawl_job("OHLC", symbol, f, "SKIP", count)
+            return jsonify({
+                "message": f"Data OHLC & Foreign Flow untuk {symbol} tanggal {f} sudah ada di DB (skip crawl)",
+                "symbol": symbol,
+                "total_data": count
+            })
+    except Exception as e:
+        print("Error checking local stock_ohlc:", e)
+        
     try:
         token = get_token()
         headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
@@ -702,30 +844,35 @@ def get_ohlc():
         )
         
         if resp.status_code != 200:
+            log_crawl_job("OHLC", symbol, f, "FAILED", 0, f"Gagal fetch OHLC: {resp.text}")
             return jsonify({"error": f"Gagal fetch OHLC: {resp.text}"}), resp.status_code
             
         json_data = resp.json()
         chart_data = json_data.get("data", {}).get("chartbit", [])
         
         if not chart_data:
+            log_crawl_job("OHLC", symbol, f, "FAILED", 0, "Tidak ada data OHLC (array chartbit kosong)")
             return jsonify({"error": "Tidak ada data OHLC (array chartbit kosong)"}), 404
             
         records = []
         for item in chart_data:
-            records.append({
-                "symbol": symbol,
-                "tanggal": item.get("date"),
-                "open": normalize_number(item.get("open")),
-                "high": normalize_number(item.get("high")),
-                "low": normalize_number(item.get("low")),
-                "close": normalize_number(item.get("close")),
-                "volume": normalize_number(item.get("volume")),
-                "foreignbuy": normalize_number(item.get("foreignbuy")),
-                "foreignsell": normalize_number(item.get("foreignsell")),
-                "foreignflow": normalize_number(item.get("foreignflow"))
-            })
+            item_date = item.get("date")
+            if item_date and (t <= item_date <= f):
+                records.append({
+                    "symbol": symbol,
+                    "tanggal": item_date,
+                    "open": normalize_number(item.get("open")),
+                    "high": normalize_number(item.get("high")),
+                    "low": normalize_number(item.get("low")),
+                    "close": normalize_number(item.get("close")),
+                    "volume": normalize_number(item.get("volume")),
+                    "foreignbuy": normalize_number(item.get("foreignbuy")),
+                    "foreignsell": normalize_number(item.get("foreignsell")),
+                    "foreignflow": normalize_number(item.get("foreignflow"))
+                })
         # Simpan ke Database
         insert_data_ohlc(records)
+        log_crawl_job("OHLC", symbol, f, "SUCCESS", len(records))
         
         return jsonify({
             "message": f"Berhasil menyimpan {len(records)} hari data OHLC & Foreign Flow untuk {symbol}",
@@ -733,7 +880,49 @@ def get_ohlc():
             "total_data": len(records)
         })
     except Exception as e:
+        log_crawl_job("OHLC", symbol, f, "FAILED", 0, str(e))
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
+# ENDPOINT CRAWL STATUS (MONITORING JOB)
+# ============================================================
+@app.route("/crawl-status", methods=["GET"])
+def crawl_status():
+    limit = int(request.args.get("limit", 50))
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, job_type, target, tanggal_target, status, records_count, error_message, created_at
+            FROM idxsaham.crawl_logs
+            ORDER BY id DESC
+            LIMIT %s;
+        """, (limit,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        logs = []
+        from datetime import timedelta
+        for r in rows:
+            # PostgreSQL default timestamp is in UTC, convert to local Jakarta/WIB (UTC+7)
+            dt_utc = r[7].replace(tzinfo=timezone.utc)
+            dt_wib = dt_utc.astimezone(timezone(timedelta(hours=7)))
+            logs.append({
+                "id": r[0],
+                "job_type": r[1],
+                "target": r[2],
+                "tanggal_target": str(r[3]) if r[3] else None,
+                "status": r[4],
+                "records_count": r[5],
+                "error_message": r[6],
+                "created_at": dt_wib.strftime("%Y-%m-%d %H:%M:%S")
+            })
+        return jsonify(logs)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)

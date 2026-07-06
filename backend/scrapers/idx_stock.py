@@ -48,6 +48,24 @@ FETCH_HEADERS_BASE = {
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
+
+# ============================================================
+# LOG CRAWL JOB STATUS
+# ============================================================
+def log_crawl_job(job_type, target, tanggal_target, status, records_count=0, error_message=None):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
+            VALUES (%s, %s, %s, %s, %s, %s);
+        """, (job_type, target, tanggal_target, status, records_count, error_message))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Error logging crawl job status to DB:", e)
+
 # =========================
 # GET BROKER LIST FROM DB
 # =========================
@@ -126,7 +144,7 @@ def insert_data_brokers(data):
     )
     VALUES (%(kodesaham)s, %(kodebroker)s, %(tipebroker)s, %(tanggal)s, %(nilairp)s, 
         %(lot)s, %(avgprice)s, %(frekuensi)s, %(aksi)s)
-    ON CONFLICT (tanggal, kodesaham,kodebroker)
+    ON CONFLICT (tanggal, kodesaham, kodebroker, aksi)
     DO NOTHING;
     """
 
@@ -149,19 +167,26 @@ def insert_data_brokers(data):
 # LOGIN
 # ============================================================
 def login():
-    resp = requests.post(
-        "https://exodus.stockbit.com/login/v6/username",
-        headers=LOGIN_HEADERS,
-        json={
-            "user": USERNAME,
-            "password": PASSWORD,
-            "recaptcha_version": "RECAPTCHA_VERSION_3",
-            "player_id": PLAYER_ID,
-        },
-    )
-    if resp.status_code != 200:
-        raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
-    return resp.json()["data"]["login"]["token_data"]["access"]["token"]
+    try:
+        resp = requests.post(
+            "https://exodus.stockbit.com/login/v6/username",
+            headers=LOGIN_HEADERS,
+            json={
+                "user": USERNAME,
+                "password": PASSWORD,
+                "recaptcha_version": "RECAPTCHA_VERSION_3",
+                "player_id": PLAYER_ID,
+            },
+        )
+        if resp.status_code != 200:
+            log_crawl_job("CLI_AUTH_LOGIN", USERNAME, None, "FAILED", 0, f"Login gagal ({resp.status_code}): {resp.text}")
+            raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
+        token = resp.json()["data"]["login"]["token_data"]["access"]["token"]
+        log_crawl_job("CLI_AUTH_LOGIN", USERNAME, None, "SUCCESS", 1)
+        return token
+    except Exception as e:
+        log_crawl_job("CLI_AUTH_LOGIN", USERNAME, None, "FAILED", 0, str(e))
+        raise e
 
 
 # ============================================================
@@ -249,14 +274,36 @@ if __name__ == "__main__":
             market_board     = "MARKET_TYPE_REGULER"
             investor_type    = "INVESTOR_TYPE_ALL"
 
-            buy_records, sell_records = fetch_broker_activity(
-                    token, broker_code, date_from, date_to, pages,
-                    transaction_type, market_board, investor_type,
-                )
-            insert_data_brokers(buy_records)
-            insert_data_brokers(sell_records)
-            print(f"\n✅ {num}. Data broker summary berhasil disimpan!  {date_from}", [broker_code])
-            num = num+1
-
+            try:
+                # Check if data already exists locally to avoid duplicate crawls
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT COUNT(*) FROM idxsaham.broker_activity
+                    WHERE kodebroker = %s AND tanggal >= %s AND tanggal <= %s
+                """, (broker_code, date_from, date_to))
+                count = cur.fetchone()[0]
+                cur.close()
+                conn.close()
+                if count > 0:
+                    log_crawl_job("CLI_BROKER_CRAWL", broker_code, date_from, "SKIP", count)
+                    print(f"\n[SKIP] {num}. Data broker summary sudah ada di DB  {date_from}", [broker_code])
+                    num += 1
+                    continue
+                
+                buy_records, sell_records = fetch_broker_activity(
+                        token, broker_code, date_from, date_to, pages,
+                        transaction_type, market_board, investor_type,
+                    )
+                insert_data_brokers(buy_records)
+                insert_data_brokers(sell_records)
+                total_inserted = len(buy_records) + len(sell_records)
+                log_crawl_job("CLI_BROKER_CRAWL", broker_code, date_from, "SUCCESS", total_inserted)
+                print(f"\n[SUCCESS] {num}. Data broker summary berhasil disimpan!  {date_from}", [broker_code])
+            except Exception as e:
+                log_crawl_job("CLI_BROKER_CRAWL", broker_code, date_from, "FAILED", 0, str(e))
+                print(f"\n[FAILED] {num}. Gagal menyimpan data broker summary! {date_from}", [broker_code], e)
+                
+            num += 1
             # delay biar ga kena rate limit
             time.sleep(1)
