@@ -21,7 +21,6 @@ INSERT INTO idxsaham.trading_calendar (trading_date, is_trading_day)
 SELECT d::date,
        CASE 
            WHEN EXTRACT(DOW FROM d) IN (0,6) THEN FALSE
-           WHEN d IN (SELECT holiday_date FROM idxsaham.holidays) THEN FALSE
            ELSE TRUE
        END
 FROM generate_series(

@@ -6,7 +6,6 @@ from psycopg2.extras import execute_batch
 from flask import Flask, request, jsonify
 from datetime import datetime, timezone
 import socket
-import re
 import os
 from dotenv import load_dotenv, find_dotenv
 
@@ -54,39 +53,43 @@ def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
 
-# =========================
-# GET BROKER LIST FROM DB
-# =========================
-def get_brokers():
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("""
-        SELECT b.kode, namaperusahaan
-        FROM idxsaham.broker b
-        ORDER BY b.nilai DESC;
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [{"broker_code": r[0], "broker_name": r[1]} for r in rows]
-
-
-# =========================
-# GET WORKDAYS FROM DB
-# =========================
-def get_workdays():
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("""
-        SELECT trading_date FROM idxsaham.trading_calendar
-        WHERE trading_date = current_date
-          AND is_trading_day = true
-        ORDER BY trading_date;
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [{"work": str(r[0])} for r in rows]
+# ============================================================
+# GET LAST TRADING DAY (FALLBACK TO FRIDAY IF WEEKEND/HOLIDAY)
+# ============================================================
+def get_last_trading_day(target_date):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT trading_date FROM idxsaham.trading_calendar
+            WHERE trading_date <= %s AND is_trading_day = true
+            ORDER BY trading_date DESC LIMIT 1;
+        """, (target_date,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            from datetime import date
+            if isinstance(row[0], date):
+                return row[0].strftime("%Y-%m-%d")
+            return str(row[0])
+    except Exception as e:
+        print("Error getting trading day from DB, falling back to python:", e)
+    
+    from datetime import datetime, timedelta
+    try:
+        if isinstance(target_date, str):
+            curr = datetime.strptime(target_date, "%Y-%m-%d").date()
+        else:
+            curr = target_date
+    except Exception:
+        from datetime import date
+        curr = date.today()
+        
+    while True:
+        if curr.weekday() < 5:
+            return curr.strftime("%Y-%m-%d")
+        curr -= timedelta(days=1)
 
 
 # =========================
@@ -132,7 +135,7 @@ def insert_data_insider(data):
         %(perubahan)s, %(perubahanpersen)s,
         %(harga)s, %(sumber)s, %(kewarganegaraan)s, %(broker)s, %(badge)s
     )
-    ON CONFLICT (idtrx, nama, saham, tanggal, aksi, perubahan, broker)
+    ON CONFLICT (idtrx)
     DO NOTHING;
     """
     conn = get_connection()
@@ -319,6 +322,8 @@ def fetch_majorholder(token, date_start, date_end, pages):
     }
     records = []
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(1.5)  # Delay 1.5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/insider/company/majorholder",
             headers=headers,
@@ -374,6 +379,8 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
     buy_records, sell_records = [], []
 
     for page in range(1, pages + 1):
+        if page > 1:
+            time.sleep(5)  # Delay 5 detik agar tidak memicu rate-limit/ban
         resp = requests.get(
             "https://exodus.stockbit.com/order-trade/broker/activity",
             headers=headers,
@@ -509,8 +516,22 @@ def force_login():
 
 @app.route("/majorholder", methods=["GET"])
 def majorholder():
-    date_start = request.args.get("date_start", "2026-03-11")
-    date_end   = request.args.get("date_end",   "2026-04-11")
+    from datetime import date, timedelta, datetime
+    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    date_end = request.args.get("date_end")
+    if date_end:
+        date_end = get_last_trading_day(date_end)
+    else:
+        date_end = get_last_trading_day(yesterday_str)
+        
+    date_start = request.args.get("date_start")
+    if date_start:
+        date_start = get_last_trading_day(date_start)
+    else:
+        end_dt = datetime.strptime(date_end, "%Y-%m-%d").date()
+        date_start = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
+        
     pages      = int(request.args.get("pages", 5))
     try:
         token   = get_token()
@@ -530,9 +551,23 @@ def majorholder():
 
 @app.route("/broker-activity", methods=["GET"])
 def broker_activity():
+    from datetime import date, timedelta
+    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     broker_code      = request.args.get("broker_code", "XL")
-    date_from        = request.args.get("from",              "2026-04-10")
-    date_to          = request.args.get("to",                "2026-04-10")
+    
+    date_from        = request.args.get("from")
+    if date_from:
+        date_from = get_last_trading_day(date_from)
+    else:
+        date_from = get_last_trading_day(yesterday_str)
+        
+    date_to          = request.args.get("to")
+    if date_to:
+        date_to = get_last_trading_day(date_to)
+    else:
+        date_to = get_last_trading_day(yesterday_str)
+        
     pages            = int(request.args.get("pages", 1))
     transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
     market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
@@ -635,16 +670,29 @@ def insert_data_ohlc(data):
 # ============================================================
 @app.route("/ohlc", methods=["GET"])
 def get_ohlc():
+    from datetime import date, timedelta, datetime
+    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+    
     symbol = request.args.get("symbol", "BBRI").upper()
-    # Format YYYY-MM-DD. Ingat: 'from' harus tanggal yang LEBIH BARU
-    f = request.args.get("from", "2026-07-02") 
-    t = request.args.get("to", "2025-07-02")
+    
+    f = request.args.get("from")
+    if f:
+        f = get_last_trading_day(f)
+    else:
+        f = get_last_trading_day(yesterday_str)
+        
+    t = request.args.get("to")
+    if t:
+        t = get_last_trading_day(t)
+    else:
+        from_dt = datetime.strptime(f, "%Y-%m-%d").date()
+        t = (from_dt - timedelta(days=365)).strftime("%Y-%m-%d")
     
     try:
         token = get_token()
         headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
         
-        # Endpoint Chartbit yang baru kita temukan
+        # Endpoint Chartbit
         url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
         
         resp = requests.get(
@@ -676,7 +724,6 @@ def get_ohlc():
                 "foreignsell": normalize_number(item.get("foreignsell")),
                 "foreignflow": normalize_number(item.get("foreignflow"))
             })
-            
         # Simpan ke Database
         insert_data_ohlc(records)
         

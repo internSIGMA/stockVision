@@ -21,15 +21,24 @@ stockVision/
 ├── .gitignore               # Daftar file/folder yang dikecualikan dari Git (env, venv, cache)
 ├── README.md                # Dokumentasi utama proyek (file ini)
 ├── SOP_GITHUB.md            # Panduan Standar Operasional Prosedur (SOP) Git & GitHub
-└── SahamAI/
-    └── SahamAI/
-        ├── app.py           # Endpoint API utama Flask & background worker scheduler
-        ├── database.sql     # Skema DDL Database PostgreSQL (idxsaham)
-        ├── bid_offer.py     # Scraper Bid/Offer saham dari RTI
-        ├── idx_stock.py     # Script pengolahan & export data IDX ke Excel
-        ├── stock.py         # Script Selenium untuk bypass login cookie Stockbit secara semi-manual
-        ├── trading_date.py  # Script generator kalender hari trading bursa ke database
-        └── helo.py          # Script testing sederhana
+├── frontend/                # === APLIKASI FRONTEND (VUE / VITE) ===
+│   ├── src/                 # Kode sumber Vue (views, components, stores)
+│   ├── public/              # Aset statis frontend
+│   ├── package.json         # Dependencies Node.js
+│   ├── vite.config.js       # Konfigurasi build Vite
+│   └── index.html           # Entrypoint HTML
+└── backend/                 # === APLIKASI BACKEND (PYTHON / FLASK) ===
+    ├── app.py               # Endpoint API utama Flask & worker
+    ├── db/                  # Modul database PostgreSQL
+    │   ├── database.sql     # Skema DDL Database
+    │   └── trading_date.py  # Script generator kalender trading bursa
+    ├── scrapers/            # Script scraper & data gathering
+    │   ├── bid_offer.py     # Scraper Bid/Offer saham dari RTI
+    │   ├── idx_stock.py     # Script pengolahan & export data IDX ke Excel
+    │   └── stock.py         # Script Selenium untuk bypass login cookie Stockbit
+    └── utils/               # Helper & logik bantuan
+        ├── helo.py          # Script testing sederhana
+        └── url              # Daftar URL API referensi
 ```
 
 ---
@@ -104,24 +113,37 @@ DB_CONFIG = {
 
 ## 🏃 Menjalankan Aplikasi
 
-### Menjalankan Server Flask (API)
-Aplikasi Flask utama dapat dijalankan dengan command:
-```bash
-python SahamAI/SahamAI/app.py
-```
-Secara default, API server akan berjalan di `http://127.0.0.1:5000/`.
+### 💻 1. Menjalankan Server Flask (Backend)
+Aktifkan virtual environment dan jalankan file `app.py` di dalam folder `backend`:
 
-### Mengisi Kalender Trading
-Untuk membuat kalender hari bursa untuk tahun berjalan:
-```bash
-python SahamAI/SahamAI/trading_date.py
-```
+*   **Windows (PowerShell):**
+    ```powershell
+    .\venv\Scripts\python backend/app.py
+    ```
+*   **macOS / Linux:**
+    ```bash
+    ./venv/bin/python backend/app.py
+    ```
+Secara default, API server akan berjalan di `http://127.0.0.1:8080/`.
 
-### Mengekstrak Data IDX ke Excel
-Untuk memproses dan mengekspor ringkasan transaksi ke Excel:
+### 🖥️ 2. Menjalankan Vue/Vite (Frontend)
+Jalankan dev server dari dalam folder `frontend`:
 ```bash
-python SahamAI/SahamAI/idx_stock.py
+cd frontend
+npm run dev
 ```
+Secara default, frontend akan berjalan di `http://localhost:5173/`.
+
+### 🗄️ 3. Menjalankan Scripts Pendukung (Database / Scrapers)
+Jalankan script pendukung menggunakan interpreter virtual environment:
+*   **Mengisi Kalender Trading:**
+    ```bash
+    .\venv\Scripts\python backend/db/trading_date.py
+    ```
+*   **Mengekstrak Data IDX ke Excel:**
+    ```bash
+    .\venv\Scripts\python backend/scrapers/idx_stock.py
+    ```
 
 ---
 
