@@ -1,8 +1,4 @@
 import requests
-import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 import psycopg2
 from psycopg2.extras import execute_batch
 import time
@@ -89,11 +85,11 @@ def get_workdays():
     cur = conn.cursor()
 
     query = """
-    select trading_date  from idxsaham.trading_calendar
-    where  trading_date = current_date-1
+    select trading_date from idxsaham.trading_calendar
+    where  trading_date <= current_date-1
         and is_trading_day = true
-        -- and trading_date > to_date('20260407','yyyymmdd')
-    order by trading_date ;
+    order by trading_date desc
+    limit 1;
     """
 
     cur.execute(query)
@@ -148,47 +144,6 @@ def insert_data_brokers(data):
     cur.close()
     conn.close()
 
-    # =========================
-# INSERT / UPSERT DATA INSIDER ACTIVITY
-# =========================
-def insert_data_insider(data):
-    query = """
-    INSERT INTO idxsaham.insider_activity (
-        idtrx,
-        nama ,
-        saham ,
-        tanggal ,
-        aksi ,
-        sebelumnya ,
-        sebelumnyapersen ,
-        sekarang ,
-        sekarangpersen ,
-        perubahan ,
-        perubahanpersen ,
-        harga ,
-        sumber ,
-        kewarganegaraan ,
-        broker ,
-        badge
-    )
-    VALUES (%(idtrx)s, %(nama)s, %(saham)s, %(tanggal)s, %(aksi)s, %(sebelumnya)s, %(sebelumnyapersen)s, %(sekarang)s, %(sekarangpersen)s,
-        %(perubahan)s, %(perubahanpersen)s, %(harga)s, %(sumber)s, %(kewarganegaraan)s, %(broker)s, %(badge)s)
-    ON CONFLICT DO NOTHING;
-    """
-
-    # print(query)
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    # set schema aktif
-    #cur.execute("SET search_path TO idxsaham;")
-
-    execute_batch(cur, query, data)
-
-    conn.commit()
-    cur.close()
-    conn.close()
 
 # ============================================================
 # LOGIN
@@ -269,75 +224,6 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
 
     return buy_records, sell_records
 
-# ============================================================
-# FETCH MAJORHOLDER
-# ============================================================
-def fetch_majorholder(token, date_start, date_end, pages):
-    BASE_URL = "https://exodus.stockbit.com/insider/company/majorholder"
-    PARAMS_BASE = {
-        "date_start": date_start,
-        "date_end": date_end,
-        "limit": pages,
-        "action_type": "ACTION_TYPE_UNSPECIFIED",
-        "source_type": "SOURCE_TYPE_UNSPECIFIED",
-    }
-    HEADERS = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Origin": "https://stockbit.com",
-        "Referer": "https://stockbit.com/",
-        "User-Agent": "Mozilla/5.0",
-    }
-
-    records = []
-
-    for page in range(1, 20):
-        params = {**PARAMS_BASE, "page": page}
-        response = requests.get(BASE_URL, headers=HEADERS, params=params)
-
-        if response.status_code != 200:
-            print(f"[Page {page}] Error {response.status_code}: {response.text}")
-            break
-
-        data = response.json()
-        movements = data.get("data", {}).get("movement", [])
-
-        if not movements:
-            print(f"[Page {page}] Tidak ada data, berhenti.")
-            break
-
-        print(f"[Page {page}] Berhasil mengambil {len(movements)} data")
-
-        for item in movements:
-            records.append({
-                "idtrx": item.get("id"),
-                "nama": item.get("name"),
-                "saham": item.get("symbol"),
-                "tanggal": item.get("date"),
-                "aksi": item.get("action_type", "").replace("ACTION_TYPE_", ""),
-                "sebelumnya": item.get("previous", {}).get("value"),
-                "sebelumnyapersen": item.get("previous", {}).get("percentage"),
-                "sekarang": item.get("current", {}).get("value"),
-                "sekarangpersen": item.get("current", {}).get("percentage"),
-                "perubahan": item.get("changes", {}).get("value"),
-                "perubahanpersen": item.get("changes", {}).get("percentage"),
-                "harga": item.get("price_formatted"),
-                "sumber": item.get("data_source", {}).get("label"),
-                "kewarganegaraan": item.get("nationality", "").replace("NATIONALITY_TYPE_", ""),
-                "broker": item.get("broker_detail", {}).get("code"),
-                "badge": ", ".join(
-                    [b.replace("SHAREHOLDER_BADGE_", "") for b in item.get("badges", [])]
-                ),
-            })
-
-            for x in records:
-                print(x)
-
-        if not data.get("data", {}).get("is_more", False):
-            break
-
-    return records
 
 # =========================
 # MAIN EXECUTION
@@ -356,9 +242,6 @@ if __name__ == "__main__":
         date_to          = today
         pages            = 10
 
-    #    records = fetch_majorholder(token, date_from, date_to, pages)
-    #    insert_data_insider(records)
-    #    print(f"\n✅ Data insider berhasil disimpan!", {date_from})
               
         for broker in brokers:
             broker_code      = broker["broker_code"]
