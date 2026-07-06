@@ -1,0 +1,3327 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "StockVision - SahamAI",
+    "languages": [
+      "css",
+      "html",
+      "javascript",
+      "json",
+      "markdown",
+      "python",
+      "sql",
+      "vue"
+    ],
+    "frameworks": [
+      "ApexCharts",
+      "Flask",
+      "Pinia",
+      "PostgreSQL",
+      "Vite",
+      "Vue",
+      "Vue Router"
+    ],
+    "description": "StockVision (SahamAI) is a Flask (Python) backend service with a PostgreSQL database that scrapes, processes, and serves broker-activity analysis data for the Indonesia Stock Exchange (IDX), integrating trading, broker, insider-transaction, and bid/offer data from Stockbit and RTI. The repository also includes a companion Vue 3 + Vite frontend (\"SahamScope\") for visualizing this data.",
+    "analyzedAt": "2026-07-03T07:30:48.353Z",
+    "gitCommitHash": "027c4ec7ca883c14b6e04eee80346d8bd2649740"
+  },
+  "nodes": [
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Root-level onboarding guide for the StockVision (SahamAI) project, covering the tech stack, project structure, local PostgreSQL/Flask setup, required environment variables, and how to run the Flask API, seed the trading calendar, and export IDX data to Excel.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "setup-guide",
+        "onboarding"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:SahamAI/SahamAI/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "SahamAI/SahamAI/README.md",
+      "summary": "Frontend README for the SahamScope Vue 3 + Vite app, describing how to run the dev server, planned features, folder structure, and future backend integration plans.",
+      "tags": [
+        "documentation",
+        "frontend",
+        "vue",
+        "setup-guide"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/app.py",
+      "type": "file",
+      "name": "app.py",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "summary": "Flask backend server for SahamAI/StockVision that authenticates against Stockbit, exposes REST endpoints for broker activity, major-holder (insider) transactions, stock info, and OHLC price data, and persists results into a PostgreSQL database.",
+      "tags": [
+        "entry-point",
+        "api-handler",
+        "backend",
+        "database",
+        "flask"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Mixes Flask route handlers with direct psycopg2 SQL execution and includes an inline CREATE TABLE for stock_ohlc inside insert_data_ohlc, putting ad hoc schema management into application code rather than database.sql."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/bid_offer.py",
+      "type": "file",
+      "name": "bid_offer.py",
+      "filePath": "SahamAI/SahamAI/bid_offer.py",
+      "summary": "Standalone scraper that fetches a stock's bid/offer order-book table from RTI (rti.co.id) using requests and BeautifulSoup and prints the parsed price/lot pairs.",
+      "tags": [
+        "web-scraping",
+        "utility",
+        "standalone-script"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:SahamAI/SahamAI/database.sql:trading_calendar",
+      "type": "table",
+      "name": "idxsaham.trading_calendar",
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "summary": "Defines the idxsaham.trading_calendar table storing one row per calendar date with a boolean flag for whether it is an IDX trading day.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "calendar"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:SahamAI/SahamAI/database.sql:broker",
+      "type": "table",
+      "name": "idxsaham.broker",
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "summary": "Defines the idxsaham.broker master table storing broker codes, company names, and a ranking value used to order broker listings.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "master-data"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:SahamAI/SahamAI/database.sql:broker_activity",
+      "type": "table",
+      "name": "idxsaham.broker_activity",
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "summary": "Defines the idxsaham.broker_activity table recording daily buy/sell transaction volumes and values per stock and broker, with a uniqueness constraint per date/stock/broker/action and supporting indexes.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "transactions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:SahamAI/SahamAI/database.sql:insider_activity",
+      "type": "table",
+      "name": "idxsaham.insider_activity",
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "summary": "Defines the idxsaham.insider_activity table recording major-holder/insider ownership change transactions, including before/after percentages, source, nationality, and broker details.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "transactions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:SahamAI/SahamAI/database.sql:stock_info",
+      "type": "table",
+      "name": "idxsaham.stock_info",
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "summary": "Defines the idxsaham.stock_info table storing a daily snapshot of per-symbol stock metadata: pricing, sector, order book, market status, corporate actions, and trading restrictions.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "market-data"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/helo.py",
+      "type": "file",
+      "name": "helo.py",
+      "filePath": "SahamAI/SahamAI/helo.py",
+      "summary": "Trivial one-line smoke-test script that prints 'Hello World', likely left over from initial environment setup.",
+      "tags": [
+        "test",
+        "placeholder",
+        "trivial"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/idx_stock.py",
+      "type": "file",
+      "name": "idx_stock.py",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "summary": "Standalone data-extraction script that logs into Stockbit, fetches broker activity and major-holder data across a date range, writes it to a formatted Excel workbook via openpyxl, and can upsert the same data into PostgreSQL.",
+      "tags": [
+        "data-pipeline",
+        "web-scraping",
+        "database",
+        "standalone-script"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Duplicates several functions (get_connection, get_brokers, get_workdays, insert_data_brokers, insert_data_insider) that also appear in app.py, suggesting the Excel-export pipeline and the Flask API evolved from a shared original script."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "SahamAI/SahamAI/index.html",
+      "summary": "Vite entry HTML for the SahamScope Vue 3 frontend; mounts the app into #app and loads src/main.js as an ES module.",
+      "tags": [
+        "entry-point",
+        "frontend",
+        "vue",
+        "markup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:SahamAI/SahamAI/package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "SahamAI/SahamAI/package.json",
+      "summary": "npm manifest for the SahamScope frontend, declaring Vue 3, Vue Router, Pinia, and ApexCharts dependencies plus Vite dev/build/preview scripts.",
+      "tags": [
+        "configuration",
+        "frontend",
+        "vue",
+        "build-system"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/stock.py",
+      "type": "file",
+      "name": "stock.py",
+      "filePath": "SahamAI/SahamAI/stock.py",
+      "summary": "One-off utility script using Selenium to open a Chrome session against Stockbit, wait for manual login, and print the session cookies as a header string for reuse in other scraping requests.",
+      "tags": [
+        "web-scraping",
+        "utility",
+        "authentication",
+        "standalone-script"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/trading_date.py",
+      "type": "file",
+      "name": "trading_date.py",
+      "filePath": "SahamAI/SahamAI/trading_date.py",
+      "summary": "One-off script that generates the 2026 trading calendar by inserting a row per calendar day into idxsaham.trading_calendar, marking weekends and configured holidays as non-trading days.",
+      "tags": [
+        "database",
+        "seed-data",
+        "standalone-script"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/url",
+      "type": "file",
+      "name": "url",
+      "filePath": "SahamAI/SahamAI/url",
+      "summary": "Plain-text scratch file listing example API request URLs (login, stock-info, majorholder, broker-activity) for manually testing the app.py Flask endpoints.",
+      "tags": [
+        "notes",
+        "api-reference",
+        "scratch-file"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/vite.config.js",
+      "type": "file",
+      "name": "vite.config.js",
+      "filePath": "SahamAI/SahamAI/vite.config.js",
+      "summary": "Vite build configuration for the SahamScope frontend, enabling the Vue plugin, an '@' alias to src/, and a dev server on port 5173.",
+      "tags": [
+        "configuration",
+        "build-system",
+        "vite",
+        "frontend"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:get_connection",
+      "type": "function",
+      "name": "get_connection",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        51,
+        54
+      ],
+      "summary": "Opens and returns a new psycopg2 PostgreSQL connection using DB_CONFIG, logging the resolved DB host for debugging.",
+      "tags": [
+        "database",
+        "utility",
+        "connection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:get_brokers",
+      "type": "function",
+      "name": "get_brokers",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        60,
+        71
+      ],
+      "summary": "Queries idxsaham.broker for all broker codes and names ordered by ranking value, returning them as a list of dicts.",
+      "tags": [
+        "database",
+        "query",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:get_workdays",
+      "type": "function",
+      "name": "get_workdays",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        77,
+        89
+      ],
+      "summary": "Queries idxsaham.trading_calendar for whether the current date is a trading day, used to gate scheduled jobs to trading days only.",
+      "tags": [
+        "database",
+        "query",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:insert_data_brokers",
+      "type": "function",
+      "name": "insert_data_brokers",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        95,
+        113
+      ],
+      "summary": "Batch-upserts broker activity records into idxsaham.broker_activity, ignoring duplicates on conflict.",
+      "tags": [
+        "database",
+        "data-model",
+        "batch-insert"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:insert_data_insider",
+      "type": "function",
+      "name": "insert_data_insider",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        119,
+        143
+      ],
+      "summary": "Batch-upserts insider/major-holder transaction records into idxsaham.insider_activity, ignoring duplicates on conflict.",
+      "tags": [
+        "database",
+        "data-model",
+        "batch-insert"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:insert_data_stock_info",
+      "type": "function",
+      "name": "insert_data_stock_info",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        149,
+        214
+      ],
+      "summary": "Upserts a daily stock_info snapshot row into idxsaham.stock_info, updating all fields on conflict for the same symbol and date.",
+      "tags": [
+        "database",
+        "data-model",
+        "upsert"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:normalize_number",
+      "type": "function",
+      "name": "normalize_number",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        227,
+        249
+      ],
+      "summary": "Coerces a value (locale-formatted string, float, or None) into a clean int or float, stripping thousands separators and percent signs.",
+      "tags": [
+        "utility",
+        "data-parsing",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:_do_login",
+      "type": "function",
+      "name": "_do_login",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        251,
+        270
+      ],
+      "summary": "Authenticates against the Stockbit login API with configured credentials and returns an access token plus its expiry timestamp.",
+      "tags": [
+        "authentication",
+        "api-client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:_do_refresh",
+      "type": "function",
+      "name": "_do_refresh",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        273,
+        286
+      ],
+      "summary": "Refreshes an expired Stockbit access token using a refresh token and returns the new token and expiry.",
+      "tags": [
+        "authentication",
+        "api-client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:get_token",
+      "type": "function",
+      "name": "get_token",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        289,
+        305
+      ],
+      "summary": "Provides a cached, auto-refreshing Stockbit access token, refreshing or re-logging in when the cached token is near expiry.",
+      "tags": [
+        "authentication",
+        "caching",
+        "api-client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:fetch_majorholder",
+      "type": "function",
+      "name": "fetch_majorholder",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        311,
+        356
+      ],
+      "summary": "Paginates the Stockbit major-holder API for a date range and normalizes each holder change record into a flat dict ready for database insertion.",
+      "tags": [
+        "api-client",
+        "data-parsing",
+        "pagination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:fetch_broker_activity",
+      "type": "function",
+      "name": "fetch_broker_activity",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        362,
+        410
+      ],
+      "summary": "Paginates the Stockbit broker-activity API for a broker/date range/transaction-type combination and splits the results into buy and sell record lists.",
+      "tags": [
+        "api-client",
+        "data-parsing",
+        "pagination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:fetch_stock_info",
+      "type": "function",
+      "name": "fetch_stock_info",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        416,
+        424
+      ],
+      "summary": "Calls the Stockbit stock-info API for a given symbol and returns the raw JSON payload.",
+      "tags": [
+        "api-client",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:parse_stock_info",
+      "type": "function",
+      "name": "parse_stock_info",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        427,
+        469
+      ],
+      "summary": "Flattens the nested Stockbit stock-info JSON response into a single normalized dict covering pricing, order book, market status, corporate actions, and trading restrictions.",
+      "tags": [
+        "data-parsing",
+        "normalization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:health",
+      "type": "function",
+      "name": "health",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        476,
+        490
+      ],
+      "summary": "Flask health-check endpoint reporting whether a cached Stockbit token exists and its remaining time-to-live.",
+      "tags": [
+        "api-handler",
+        "monitoring",
+        "flask-route"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:force_login",
+      "type": "function",
+      "name": "force_login",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        494,
+        507
+      ],
+      "summary": "Flask endpoint that forces a fresh Stockbit login, bypassing any cached token, and reports the new token's expiry.",
+      "tags": [
+        "api-handler",
+        "authentication",
+        "flask-route"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:majorholder",
+      "type": "function",
+      "name": "majorholder",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        511,
+        528
+      ],
+      "summary": "Flask endpoint that fetches major-holder/insider transactions for a date range, persists them via insert_data_insider, and returns a summary of rows saved.",
+      "tags": [
+        "api-handler",
+        "flask-route",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:broker_activity",
+      "type": "function",
+      "name": "broker_activity",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        532,
+        559
+      ],
+      "summary": "Flask endpoint that fetches broker buy/sell activity for a broker and date range, persists the combined records via insert_data_brokers, and returns counts of buy/sell rows saved.",
+      "tags": [
+        "api-handler",
+        "flask-route",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:stock_info",
+      "type": "function",
+      "name": "stock_info",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        563,
+        579
+      ],
+      "summary": "Flask endpoint that fetches and parses stock info for a symbol, persists it via insert_data_stock_info, and returns the parsed record.",
+      "tags": [
+        "api-handler",
+        "flask-route",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:insert_data_ohlc",
+      "type": "function",
+      "name": "insert_data_ohlc",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        581,
+        631
+      ],
+      "summary": "Ensures the idxsaham.stock_ohlc table exists (creating it inline if missing) and batch-upserts daily OHLC price and foreign-flow records into it.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "batch-insert"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/app.py:get_ohlc",
+      "type": "function",
+      "name": "get_ohlc",
+      "filePath": "SahamAI/SahamAI/app.py",
+      "lineRange": [
+        637,
+        689
+      ],
+      "summary": "Flask endpoint that fetches historical OHLC candle data for a symbol from Stockbit's ChartBit API, normalizes it, persists it via insert_data_ohlc, and returns the saved records.",
+      "tags": [
+        "api-handler",
+        "flask-route",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:get_connection",
+      "type": "function",
+      "name": "get_connection",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        52,
+        53
+      ],
+      "summary": "Opens and returns a new psycopg2 PostgreSQL connection using this script's DB_CONFIG.",
+      "tags": [
+        "database",
+        "utility",
+        "connection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:get_brokers",
+      "type": "function",
+      "name": "get_brokers",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        58,
+        82
+      ],
+      "summary": "Queries idxsaham.broker for broker codes and names ordered by ranking value and returns them as a list of dicts (parallel to app.py's get_brokers).",
+      "tags": [
+        "database",
+        "query",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:get_workdays",
+      "type": "function",
+      "name": "get_workdays",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        87,
+        112
+      ],
+      "summary": "Queries idxsaham.trading_calendar for the prior day's trading status, used to determine which date to pull activity data for.",
+      "tags": [
+        "database",
+        "query",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:insert_data_brokers",
+      "type": "function",
+      "name": "insert_data_brokers",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        118,
+        151
+      ],
+      "summary": "Batch-upserts broker activity records into idxsaham.broker_activity, ignoring duplicates on conflict.",
+      "tags": [
+        "database",
+        "data-model",
+        "batch-insert"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:insert_data_insider",
+      "type": "function",
+      "name": "insert_data_insider",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        154,
+        191
+      ],
+      "summary": "Batch-upserts insider/major-holder transaction records into idxsaham.insider_activity, ignoring duplicates on conflict.",
+      "tags": [
+        "database",
+        "data-model",
+        "batch-insert"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:login",
+      "type": "function",
+      "name": "login",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        196,
+        209
+      ],
+      "summary": "Authenticates against the Stockbit login API and returns the parsed JSON containing the access/refresh token pair.",
+      "tags": [
+        "authentication",
+        "api-client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:fetch_broker_activity",
+      "type": "function",
+      "name": "fetch_broker_activity",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        215,
+        270
+      ],
+      "summary": "Paginates the Stockbit broker-activity API for a broker/date range and splits results into buy and sell record lists for later export.",
+      "tags": [
+        "api-client",
+        "data-parsing",
+        "pagination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/idx_stock.py:fetch_majorholder",
+      "type": "function",
+      "name": "fetch_majorholder",
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "lineRange": [
+        275,
+        340
+      ],
+      "summary": "Paginates the Stockbit major-holder API for a date range, printing progress, and normalizes each record into a flat dict for the Excel export and database insert.",
+      "tags": [
+        "api-client",
+        "data-parsing",
+        "pagination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/bid_offer.py:get_bid_offer",
+      "type": "function",
+      "name": "get_bid_offer",
+      "filePath": "SahamAI/SahamAI/bid_offer.py",
+      "lineRange": [
+        4,
+        39
+      ],
+      "summary": "Scrapes an RTI stock page for its bid and offer order-book tables and returns parsed price/lot pairs for each side.",
+      "tags": [
+        "web-scraping",
+        "data-parsing"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/stock.py:get_cookie",
+      "type": "function",
+      "name": "get_cookie",
+      "filePath": "SahamAI/SahamAI/stock.py",
+      "lineRange": [
+        5,
+        16
+      ],
+      "summary": "Launches a visible Chrome browser via Selenium against Stockbit, waits for manual login, then extracts and returns the session cookies as a semicolon-joined header string.",
+      "tags": [
+        "web-scraping",
+        "authentication",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/App.vue",
+      "type": "file",
+      "name": "App.vue",
+      "filePath": "SahamAI/SahamAI/src/App.vue",
+      "summary": "Root Vue component that only mounts the router outlet, delegating all page rendering to route-matched views.",
+      "tags": [
+        "root-component",
+        "routing",
+        "vue",
+        "minimal"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/assets/main.css",
+      "type": "file",
+      "name": "main.css",
+      "filePath": "SahamAI/SahamAI/src/assets/main.css",
+      "summary": "Global dark-theme stylesheet defining CSS custom properties (brand colors, surfaces, status colors) plus shared utility classes for cards, pills, data tables, and buttons used across every view.",
+      "tags": [
+        "styling",
+        "theme",
+        "design-tokens",
+        "global-styles"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses CSS custom properties as a lightweight design-token system so every chart, badge, and table shares one consistent navy dark theme."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "type": "file",
+      "name": "AreaChart.vue",
+      "filePath": "SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "summary": "Reusable ApexCharts area/line chart wrapper that turns a generic series prop into fully styled chart options (gradient fill, datetime axis, tooltip).",
+      "tags": [
+        "component",
+        "chart",
+        "data-visualization",
+        "reusable",
+        "apexcharts"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "type": "file",
+      "name": "BarChart.vue",
+      "filePath": "SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "summary": "Reusable ApexCharts bar chart wrapper supporting horizontal/vertical orientation and per-bar coloring, used for broker net-lot and volume charts.",
+      "tags": [
+        "component",
+        "chart",
+        "data-visualization",
+        "reusable",
+        "apexcharts"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "type": "file",
+      "name": "CandleChart.vue",
+      "filePath": "SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "summary": "Reusable ApexCharts candlestick chart wrapper that renders OHLC price data with optional line overlays (e.g. moving averages).",
+      "tags": [
+        "component",
+        "chart",
+        "data-visualization",
+        "financial-chart",
+        "apexcharts"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "type": "file",
+      "name": "chartTheme.js",
+      "filePath": "SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "summary": "Shared ApexCharts theming module exporting brand colors, base chart config, and axis/grid style helpers so all chart components render as one visual system.",
+      "tags": [
+        "utility",
+        "theme",
+        "chart-config",
+        "shared-constants"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Centralizing chart styling here avoids repeating dark-theme color/axis config in every chart component."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/components/ui/StatCard.vue",
+      "type": "file",
+      "name": "StatCard.vue",
+      "filePath": "SahamAI/SahamAI/src/components/ui/StatCard.vue",
+      "summary": "Presentational stat-tile component displaying a labeled metric with an optional icon, up/down change pill, and sub-label.",
+      "tags": [
+        "component",
+        "ui",
+        "presentational",
+        "reusable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "file",
+      "name": "market.js",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "summary": "Deterministic mock market-data engine that seeds a PRNG from each ticker code to generate realistic OHLC prices, quotes, order books, broker summaries, insider activity, technical indicators (SMA/RSI), and price forecasts for the demo IDX dataset.",
+      "tags": [
+        "data-generation",
+        "mock-data",
+        "financial-data",
+        "utility",
+        "seeded-random"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses a mulberry32 PRNG seeded from the ticker string so the same emiten code always produces the same 'random' data across renders and reloads."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/layout/AppLayout.vue",
+      "type": "file",
+      "name": "AppLayout.vue",
+      "filePath": "SahamAI/SahamAI/src/layout/AppLayout.vue",
+      "summary": "Authenticated app shell that renders the top navigation bar above a router-view outlet for all protected pages.",
+      "tags": [
+        "layout",
+        "component",
+        "routing",
+        "shell"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "type": "file",
+      "name": "AppTopbar.vue",
+      "filePath": "SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "summary": "Application header with brand logo, global ticker selector bound to the market store, a notification icon, and a user profile dropdown with logout.",
+      "tags": [
+        "component",
+        "navigation",
+        "header",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/main.js",
+      "type": "file",
+      "name": "main.js",
+      "filePath": "SahamAI/SahamAI/src/main.js",
+      "summary": "Vue application bootstrap that creates the app instance and registers Pinia, Vue Router, and the vue3-apexcharts plugin before mounting to #app.",
+      "tags": [
+        "entry-point",
+        "bootstrap",
+        "configuration",
+        "plugin-registration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/router/index.js",
+      "type": "file",
+      "name": "index.js",
+      "filePath": "SahamAI/SahamAI/src/router/index.js",
+      "summary": "Vue Router configuration defining the login and lazy-loaded dashboard routes, with a global navigation guard that redirects based on authentication state.",
+      "tags": [
+        "routing",
+        "configuration",
+        "auth-guard",
+        "lazy-loading"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/services/authService.js",
+      "type": "file",
+      "name": "authService.js",
+      "filePath": "SahamAI/SahamAI/src/services/authService.js",
+      "summary": "Mock authentication service that simulates a real backend -- async latency, credential validation, per-email lockout after repeated failures, and randomized network errors -- via a login function and custom AuthError class.",
+      "tags": [
+        "service",
+        "authentication",
+        "mock-data",
+        "error-handling"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Simulating latency, lockout, and random network failures lets the UI exercise every login error path without a real backend."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "type": "file",
+      "name": "auth.js",
+      "filePath": "SahamAI/SahamAI/src/stores/auth.js",
+      "summary": "Pinia store holding the authenticated user and token, persisting session state to localStorage, and exposing login/logout actions that call the mock auth service.",
+      "tags": [
+        "store",
+        "state-management",
+        "authentication",
+        "persistence"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Written as a Pinia 'setup store' (composition API) rather than the options API."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "file",
+      "name": "market.js",
+      "filePath": "SahamAI/SahamAI/src/stores/market.js",
+      "summary": "Pinia store tracking the currently selected ticker and the crawler watchlist (persisted to localStorage), with CRUD actions and favorite/quote lookups derived from the auth store's user.",
+      "tags": [
+        "store",
+        "state-management",
+        "watchlist",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "file",
+      "name": "format.js",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "summary": "Formatting helpers for Indonesian Rupiah currency (full and abbreviated), localized numbers, percentages, and relative 'time ago' strings, used throughout the dashboard views.",
+      "tags": [
+        "utility",
+        "formatting",
+        "i18n",
+        "helpers"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "type": "file",
+      "name": "BrokerSummaryView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "summary": "Broker Summary page showing net buy/sell totals and a ranked bar chart of net lots per broker, plus top-buyer and top-seller tables.",
+      "tags": [
+        "view",
+        "page",
+        "broker-analysis",
+        "data-visualization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "type": "file",
+      "name": "CrawlingView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "summary": "Crawler job monitoring page listing per-source scraping jobs with live-simulated progress bars, status pills, and retry/run-all controls, refreshed on a 1.5s interval.",
+      "tags": [
+        "view",
+        "monitoring",
+        "real-time",
+        "dashboard"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Progress is faked client-side with setInterval, standing in for a real crawler status API."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "type": "file",
+      "name": "DashboardView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/DashboardView.vue",
+      "summary": "Main single-page trading terminal: ticker header, order book/done-trades panel, and a tab bar that swaps in the Broker Summary, Prices, Technical, Forecasting, Insider, Crawling, and Watchlist views without full navigation.",
+      "tags": [
+        "view",
+        "dashboard",
+        "tab-navigation",
+        "trading-terminal"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses a viewMap lookup object to render the active tab's component dynamically, keeping the whole app on a single route."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "type": "file",
+      "name": "ForecastingView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "summary": "Forecasting page projecting future prices with a selectable horizon (10/20/40 days), rendering historical price plus a forecast line and confidence band.",
+      "tags": [
+        "view",
+        "forecasting",
+        "data-visualization",
+        "page"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+      "type": "file",
+      "name": "InsiderView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/InsiderView.vue",
+      "summary": "Insider & backdoor activity page listing director/commissioner transactions with buy/sell/all filtering, net-flow totals, and a distribution warning banner.",
+      "tags": [
+        "view",
+        "insider-trading",
+        "page",
+        "filtering"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "type": "file",
+      "name": "LoginView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/LoginView.vue",
+      "summary": "Login page with a validated email/password form, demo-account quick-fill, and an embedded live area-chart preview of a favorite ticker beside the form.",
+      "tags": [
+        "view",
+        "authentication",
+        "form-validation",
+        "page"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "type": "file",
+      "name": "PricesView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/PricesView.vue",
+      "summary": "Daily price page showing an OHLCV candlestick chart with optional MA20/MA50 overlays, a volume bar chart, and period high/low/volume/change stats.",
+      "tags": [
+        "view",
+        "price-data",
+        "data-visualization",
+        "page"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "type": "file",
+      "name": "TechnicalView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "summary": "Technical analysis page organized into four analytics layers -- descriptive, diagnostic, predictive, and prescriptive -- combining RSI, moving averages, and the forecast model into a buy/hold/sell recommendation.",
+      "tags": [
+        "view",
+        "technical-analysis",
+        "analytics",
+        "page"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Structures the whole page around the classic BI analytics maturity model (descriptive -> diagnostic -> predictive -> prescriptive), with one tab per layer."
+    },
+    {
+      "id": "file:SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "type": "file",
+      "name": "WatchlistView.vue",
+      "filePath": "SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "summary": "CRUD page for managing which emiten the crawler scrapes -- add/edit/remove tickers, toggle enabled state, and configure per-source (broker/price/insider) crawl settings and interval via a modal form.",
+      "tags": [
+        "view",
+        "crud",
+        "watchlist",
+        "form-validation"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/components/charts/chartTheme.js:axisStyle",
+      "type": "function",
+      "name": "axisStyle",
+      "filePath": "SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "lineRange": [
+        21,
+        27
+      ],
+      "summary": "Returns the shared ApexCharts axis style object (label color/size, hidden borders/ticks) reused by every chart component.",
+      "tags": [
+        "utility",
+        "chart-config"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/components/charts/AreaChart.vue:options",
+      "type": "function",
+      "name": "options",
+      "filePath": "SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "lineRange": [
+        15,
+        46
+      ],
+      "summary": "Computed ApexCharts options builder that turns chart props (series, type, datetime, formatter) into gradient-fill area or line chart configuration.",
+      "tags": [
+        "chart-config",
+        "computed-property",
+        "apexcharts"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/components/charts/BarChart.vue:options",
+      "type": "function",
+      "name": "options",
+      "filePath": "SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "lineRange": [
+        15,
+        38
+      ],
+      "summary": "Computed ApexCharts options builder configuring bar orientation, distributed coloring, and category axis for the bar chart component.",
+      "tags": [
+        "chart-config",
+        "computed-property",
+        "apexcharts"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/components/charts/CandleChart.vue:series",
+      "type": "function",
+      "name": "series",
+      "filePath": "SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "lineRange": [
+        11,
+        23
+      ],
+      "summary": "Computed series builder that maps OHLC data into ApexCharts candlestick format and appends any line overlays (e.g. moving averages).",
+      "tags": [
+        "chart-config",
+        "computed-property",
+        "data-transformation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/components/charts/CandleChart.vue:options",
+      "type": "function",
+      "name": "options",
+      "filePath": "SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "lineRange": [
+        25,
+        48
+      ],
+      "summary": "Computed ApexCharts options builder configuring candlestick colors, wick styling, and overlay stroke widths.",
+      "tags": [
+        "chart-config",
+        "computed-property",
+        "apexcharts"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:getEmiten",
+      "type": "function",
+      "name": "getEmiten",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        59,
+        61
+      ],
+      "summary": "Looks up an emiten's static metadata (name, sector) by ticker code from the seed list.",
+      "tags": [
+        "utility",
+        "lookup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:generateOHLC",
+      "type": "function",
+      "name": "generateOHLC",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        64,
+        98
+      ],
+      "summary": "Generates a deterministic daily OHLCV candle series for a ticker over N days using a code-seeded PRNG, skipping weekends.",
+      "tags": [
+        "data-generation",
+        "seeded-random",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:latestQuote",
+      "type": "function",
+      "name": "latestQuote",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        100,
+        115
+      ],
+      "summary": "Derives the latest price, change, and change percent for a ticker from its generated OHLC series.",
+      "tags": [
+        "data-generation",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:marketOverview",
+      "type": "function",
+      "name": "marketOverview",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        118,
+        148
+      ],
+      "summary": "Builds a market-wide overview -- top gainers/losers and average change by sector -- across all seeded emitens.",
+      "tags": [
+        "data-aggregation",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:tickSize",
+      "type": "function",
+      "name": "tickSize",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        151,
+        157
+      ],
+      "summary": "Returns the IDX-appropriate minimum price tick size for a given price level.",
+      "tags": [
+        "utility",
+        "financial-data"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:terminalStats",
+      "type": "function",
+      "name": "terminalStats",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        159,
+        181
+      ],
+      "summary": "Generates trading-terminal statistics (frequency, value, bid ratio, OHLC) for the order terminal panel.",
+      "tags": [
+        "data-generation",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:orderBook",
+      "type": "function",
+      "name": "orderBook",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        183,
+        198
+      ],
+      "summary": "Generates a simulated bid/offer order book with lot sizes and totals around the current tick-rounded price.",
+      "tags": [
+        "data-generation",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:doneTrades",
+      "type": "function",
+      "name": "doneTrades",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        200,
+        218
+      ],
+      "summary": "Generates a simulated list of recent executed trades (done summary) with timestamps, lots, and prices.",
+      "tags": [
+        "data-generation",
+        "financial-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:brokerSummary",
+      "type": "function",
+      "name": "brokerSummary",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        232,
+        253
+      ],
+      "summary": "Generates simulated per-broker buy/sell activity for a ticker and ranks the top net buyers and sellers.",
+      "tags": [
+        "data-generation",
+        "broker-analysis"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:insiderActivity",
+      "type": "function",
+      "name": "insiderActivity",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        264,
+        287
+      ],
+      "summary": "Generates a simulated history of insider (director/commissioner) buy/sell transactions for a ticker, sorted by date.",
+      "tags": [
+        "data-generation",
+        "insider-trading"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:sma",
+      "type": "function",
+      "name": "sma",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        290,
+        302
+      ],
+      "summary": "Computes a simple moving average over an OHLC series for a given period.",
+      "tags": [
+        "technical-indicator",
+        "algorithm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:rsi",
+      "type": "function",
+      "name": "rsi",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        304,
+        331
+      ],
+      "summary": "Computes the Relative Strength Index (14-period default) from an OHLC close-price series.",
+      "tags": [
+        "technical-indicator",
+        "algorithm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:forecast",
+      "type": "function",
+      "name": "forecast",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        334,
+        372
+      ],
+      "summary": "Produces a linear-regression price forecast with an upper/lower confidence band over a configurable horizon, using historical OHLC data.",
+      "tags": [
+        "forecasting",
+        "algorithm",
+        "linear-regression"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/data/market.js:seedCrawlJobs",
+      "type": "function",
+      "name": "seedCrawlJobs",
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "lineRange": [
+        377,
+        401
+      ],
+      "summary": "Generates simulated crawler job records (status, progress, duration, record counts) for every emiten/source combination used by the Crawling Monitor page.",
+      "tags": [
+        "data-generation",
+        "mock-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/stores/auth.js:useAuthStore",
+      "type": "function",
+      "name": "useAuthStore",
+      "filePath": "SahamAI/SahamAI/src/stores/auth.js",
+      "lineRange": [
+        16,
+        47
+      ],
+      "summary": "Pinia composable store exposing authenticated user/token/loading state plus a login action (calls the mock auth service and persists to localStorage) and a logout action.",
+      "tags": [
+        "store",
+        "composable",
+        "authentication",
+        "state-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/stores/market.js:useMarketStore",
+      "type": "function",
+      "name": "useMarketStore",
+      "filePath": "SahamAI/SahamAI/src/stores/market.js",
+      "lineRange": [
+        25,
+        84
+      ],
+      "summary": "Pinia composable store exposing the selected ticker, watchlist, and favorites, with CRUD actions (add/update/remove/toggle) that persist the watchlist to localStorage.",
+      "tags": [
+        "store",
+        "composable",
+        "state-management",
+        "watchlist"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/services/authService.js:login",
+      "type": "function",
+      "name": "login",
+      "filePath": "SahamAI/SahamAI/src/services/authService.js",
+      "lineRange": [
+        48,
+        87
+      ],
+      "summary": "Simulates an async login request: injects latency and random network failures, enforces a 5-attempt lockout per email, validates credentials, and returns a mock JWT-like token with the sanitized user object.",
+      "tags": [
+        "authentication",
+        "async",
+        "error-handling"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:SahamAI/SahamAI/src/services/authService.js:AuthError",
+      "type": "class",
+      "name": "AuthError",
+      "filePath": "SahamAI/SahamAI/src/services/authService.js",
+      "lineRange": [
+        40,
+        46
+      ],
+      "summary": "Custom Error subclass carrying a machine-readable code (e.g. NETWORK, LOCKED, INVALID_CREDENTIALS) so callers can branch on failure type.",
+      "tags": [
+        "error-handling",
+        "custom-error",
+        "authentication"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/utils/format.js:rupiah",
+      "type": "function",
+      "name": "rupiah",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "lineRange": [
+        3,
+        10
+      ],
+      "summary": "Formats a number as Indonesian Rupiah currency using Intl.NumberFormat.",
+      "tags": [
+        "formatting",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/utils/format.js:rupiahShort",
+      "type": "function",
+      "name": "rupiahShort",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "lineRange": [
+        13,
+        22
+      ],
+      "summary": "Formats a number as an abbreviated Rupiah value using T/M/Jt/Rb suffixes for large magnitudes.",
+      "tags": [
+        "formatting",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/utils/format.js:number",
+      "type": "function",
+      "name": "number",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "lineRange": [
+        24,
+        27
+      ],
+      "summary": "Formats a number with Indonesian locale thousands separators.",
+      "tags": [
+        "formatting",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/utils/format.js:pct",
+      "type": "function",
+      "name": "pct",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "lineRange": [
+        29,
+        33
+      ],
+      "summary": "Formats a number as a signed percentage string with two decimal places.",
+      "tags": [
+        "formatting",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/utils/format.js:timeAgo",
+      "type": "function",
+      "name": "timeAgo",
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "lineRange": [
+        35,
+        43
+      ],
+      "summary": "Converts an ISO timestamp into a relative 'time ago' string (seconds/minutes/hours).",
+      "tags": [
+        "formatting",
+        "utility",
+        "date"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:descriptive",
+      "type": "function",
+      "name": "descriptive",
+      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "lineRange": [
+        32,
+        47
+      ],
+      "summary": "Computed descriptive-analytics summary (return, annualized volatility, trend direction, high/low/avg volume) for the current ticker's OHLC window.",
+      "tags": [
+        "analytics",
+        "computed-property",
+        "business-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:diagnostic",
+      "type": "function",
+      "name": "diagnostic",
+      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "lineRange": [
+        50,
+        68
+      ],
+      "summary": "Computed diagnostic-analytics signals explaining recent price action from RSI level, MA20/MA50 cross, and volume trend.",
+      "tags": [
+        "analytics",
+        "computed-property",
+        "business-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:prescriptive",
+      "type": "function",
+      "name": "prescriptive",
+      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "lineRange": [
+        92,
+        124
+      ],
+      "summary": "Computed prescriptive recommendation (BUY/HOLD/SELL with entry/target/stop and confidence score) derived by scoring trend, forecast, and RSI signals.",
+      "tags": [
+        "analytics",
+        "computed-property",
+        "business-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/views/WatchlistView.vue:save",
+      "type": "function",
+      "name": "save",
+      "filePath": "SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "lineRange": [
+        36,
+        56
+      ],
+      "summary": "Validates the watchlist form (ticker code format, required fields, at least one data source) and calls the market store's add/update action, surfacing any error inline.",
+      "tags": [
+        "validation",
+        "crud",
+        "form-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:SahamAI/SahamAI/src/views/LoginView.vue:handleSubmit",
+      "type": "function",
+      "name": "handleSubmit",
+      "filePath": "SahamAI/SahamAI/src/views/LoginView.vue",
+      "lineRange": [
+        37,
+        48
+      ],
+      "summary": "Form submit handler that validates the login form, calls the auth store's login action, optionally applies the user's default ticker, and redirects on success or surfaces an AuthError message on failure.",
+      "tags": [
+        "authentication",
+        "form-validation",
+        "event-handler"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_connection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_brokers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_workdays",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_brokers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_insider",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_stock_info",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:normalize_number",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:_do_login",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:_do_refresh",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_token",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_majorholder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_broker_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_stock_info",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:parse_stock_info",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:health",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:force_login",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:majorholder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:broker_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:stock_info",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_ohlc",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_ohlc",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_connection",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_brokers",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_workdays",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_brokers",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_insider",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_stock_info",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:normalize_number",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:_do_login",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:_do_refresh",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_token",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_majorholder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_broker_activity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:fetch_stock_info",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:parse_stock_info",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:health",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:force_login",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:majorholder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:broker_activity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:stock_info",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:insert_data_ohlc",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "function:SahamAI/SahamAI/app.py:get_ohlc",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_connection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_brokers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_workdays",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:insert_data_brokers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:insert_data_insider",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:login",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:fetch_broker_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:fetch_majorholder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_connection",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_brokers",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:get_workdays",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:insert_data_brokers",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:insert_data_insider",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:login",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:fetch_broker_activity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "function:SahamAI/SahamAI/idx_stock.py:fetch_majorholder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/bid_offer.py",
+      "target": "function:SahamAI/SahamAI/bid_offer.py:get_bid_offer",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/bid_offer.py",
+      "target": "function:SahamAI/SahamAI/bid_offer.py:get_bid_offer",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/stock.py",
+      "target": "function:SahamAI/SahamAI/stock.py:get_cookie",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/stock.py",
+      "target": "function:SahamAI/SahamAI/stock.py:get_cookie",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "table:SahamAI/SahamAI/database.sql:broker",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "table:SahamAI/SahamAI/database.sql:trading_calendar",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "table:SahamAI/SahamAI/database.sql:broker_activity",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "table:SahamAI/SahamAI/database.sql:insider_activity",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/app.py",
+      "target": "table:SahamAI/SahamAI/database.sql:stock_info",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "table:SahamAI/SahamAI/database.sql:broker",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "table:SahamAI/SahamAI/database.sql:trading_calendar",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "table:SahamAI/SahamAI/database.sql:broker_activity",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/idx_stock.py",
+      "target": "table:SahamAI/SahamAI/database.sql:insider_activity",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/trading_date.py",
+      "target": "table:SahamAI/SahamAI/database.sql:trading_calendar",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:SahamAI/SahamAI/app.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:SahamAI/SahamAI/idx_stock.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:SahamAI/SahamAI/trading_date.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:SahamAI/SahamAI/README.md",
+      "target": "config:SahamAI/SahamAI/package.json",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:SahamAI/SahamAI/README.md",
+      "target": "file:SahamAI/SahamAI/index.html",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:SahamAI/SahamAI/package.json",
+      "target": "file:SahamAI/SahamAI/vite.config.js",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:SahamAI/SahamAI/package.json",
+      "target": "file:SahamAI/SahamAI/index.html",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/vite.config.js",
+      "target": "file:SahamAI/SahamAI/index.html",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:SahamAI/SahamAI/README.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:SahamAI/SahamAI/url",
+      "target": "file:SahamAI/SahamAI/app.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/layout/AppLayout.vue",
+      "target": "file:SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/main.js",
+      "target": "file:SahamAI/SahamAI/src/App.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/main.js",
+      "target": "file:SahamAI/SahamAI/src/assets/main.css",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/main.js",
+      "target": "file:SahamAI/SahamAI/src/router/index.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/router/index.js",
+      "target": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "target": "file:SahamAI/SahamAI/src/services/authService.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/market.js",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/market.js",
+      "target": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "target": "file:SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/services/authService.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/PricesView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "file:SahamAI/SahamAI/src/data/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "file:SahamAI/SahamAI/src/utils/format.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "target": "file:SahamAI/SahamAI/src/stores/market.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "target": "function:SahamAI/SahamAI/src/components/charts/chartTheme.js:axisStyle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "target": "function:SahamAI/SahamAI/src/components/charts/AreaChart.vue:options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "target": "function:SahamAI/SahamAI/src/components/charts/BarChart.vue:options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "target": "function:SahamAI/SahamAI/src/components/charts/CandleChart.vue:series",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "target": "function:SahamAI/SahamAI/src/components/charts/CandleChart.vue:options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:getEmiten",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:generateOHLC",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:latestQuote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:marketOverview",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:tickSize",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:terminalStats",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:orderBook",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:doneTrades",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:brokerSummary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:insiderActivity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:sma",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:rsi",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:forecast",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:seedCrawlJobs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "target": "function:SahamAI/SahamAI/src/stores/auth.js:useAuthStore",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/market.js",
+      "target": "function:SahamAI/SahamAI/src/stores/market.js:useMarketStore",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/services/authService.js",
+      "target": "function:SahamAI/SahamAI/src/services/authService.js:login",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/services/authService.js",
+      "target": "class:SahamAI/SahamAI/src/services/authService.js:AuthError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:rupiah",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:rupiahShort",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:number",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:pct",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:timeAgo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:descriptive",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:diagnostic",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "target": "function:SahamAI/SahamAI/src/views/TechnicalView.vue:prescriptive",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "target": "function:SahamAI/SahamAI/src/views/WatchlistView.vue:save",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "target": "function:SahamAI/SahamAI/src/views/LoginView.vue:handleSubmit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "target": "function:SahamAI/SahamAI/src/components/charts/chartTheme.js:axisStyle",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:getEmiten",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:generateOHLC",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:latestQuote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:marketOverview",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:tickSize",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:terminalStats",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:orderBook",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:doneTrades",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:brokerSummary",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:insiderActivity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:sma",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:rsi",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:forecast",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/data/market.js",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:seedCrawlJobs",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/auth.js",
+      "target": "function:SahamAI/SahamAI/src/stores/auth.js:useAuthStore",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/stores/market.js",
+      "target": "function:SahamAI/SahamAI/src/stores/market.js:useMarketStore",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/services/authService.js",
+      "target": "function:SahamAI/SahamAI/src/services/authService.js:login",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/services/authService.js",
+      "target": "class:SahamAI/SahamAI/src/services/authService.js:AuthError",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:rupiah",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:rupiahShort",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:number",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:pct",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/utils/format.js",
+      "target": "function:SahamAI/SahamAI/src/utils/format.js:timeAgo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/router/index.js",
+      "target": "file:SahamAI/SahamAI/src/views/LoginView.vue",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/router/index.js",
+      "target": "file:SahamAI/SahamAI/src/layout/AppLayout.vue",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:SahamAI/SahamAI/src/router/index.js",
+      "target": "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:SahamAI/SahamAI/src/stores/auth.js:useAuthStore",
+      "target": "function:SahamAI/SahamAI/src/services/authService.js:login",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:SahamAI/SahamAI/src/stores/market.js:useMarketStore",
+      "target": "function:SahamAI/SahamAI/src/data/market.js:latestQuote",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:SahamAI/SahamAI/src/views/LoginView.vue:handleSubmit",
+      "target": "function:SahamAI/SahamAI/src/stores/auth.js:useAuthStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:SahamAI/SahamAI/src/views/WatchlistView.vue:save",
+      "target": "function:SahamAI/SahamAI/src/stores/market.js:useMarketStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:api",
+      "name": "Backend API Layer",
+      "description": "The Flask entry point (app.py) that authenticates against Stockbit and exposes REST endpoints for broker activity, insider/major-holder transactions, stock info, and OHLC price data, alongside the scratch notes file listing example requests used to exercise those endpoints.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/app.py",
+        "file:SahamAI/SahamAI/url"
+      ]
+    },
+    {
+      "id": "layer:data",
+      "name": "Backend Data Layer",
+      "description": "The PostgreSQL idxsaham schema definitions (trading calendar, broker master data, broker activity, insider activity, and daily stock-info snapshots) that the Flask API and pipeline scripts read from and write to.",
+      "nodeIds": [
+        "table:SahamAI/SahamAI/database.sql:trading_calendar",
+        "table:SahamAI/SahamAI/database.sql:broker",
+        "table:SahamAI/SahamAI/database.sql:broker_activity",
+        "table:SahamAI/SahamAI/database.sql:insider_activity",
+        "table:SahamAI/SahamAI/database.sql:stock_info"
+      ]
+    },
+    {
+      "id": "layer:data-pipeline",
+      "name": "Data Pipeline & Scraping Scripts",
+      "description": "Standalone Python scripts that run outside the live Flask app to scrape Stockbit/RTI and seed or export IDX data: the Excel-export broker/insider pipeline, the RTI bid/offer scraper, the Selenium cookie-capture utility, the trading-calendar seeder, and a leftover smoke-test script.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/bid_offer.py",
+        "file:SahamAI/SahamAI/idx_stock.py",
+        "file:SahamAI/SahamAI/stock.py",
+        "file:SahamAI/SahamAI/trading_date.py",
+        "file:SahamAI/SahamAI/helo.py"
+      ]
+    },
+    {
+      "id": "layer:ui",
+      "name": "Frontend UI Layer",
+      "description": "The SahamScope Vue 3 presentation layer: the nine dashboard page-views (broker summary, prices, technical, forecasting, insider, watchlist, crawling, login, and the tabbed trading-terminal dashboard), the authenticated app shell and topbar, the reusable ApexCharts chart components with shared theming, and the global dark-theme stylesheet.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+        "file:SahamAI/SahamAI/src/components/charts/BarChart.vue",
+        "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+        "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+        "file:SahamAI/SahamAI/src/components/ui/StatCard.vue",
+        "file:SahamAI/SahamAI/src/layout/AppLayout.vue",
+        "file:SahamAI/SahamAI/src/layout/AppTopbar.vue",
+        "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+        "file:SahamAI/SahamAI/src/views/CrawlingView.vue",
+        "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+        "file:SahamAI/SahamAI/src/views/ForecastingView.vue",
+        "file:SahamAI/SahamAI/src/views/InsiderView.vue",
+        "file:SahamAI/SahamAI/src/views/LoginView.vue",
+        "file:SahamAI/SahamAI/src/views/PricesView.vue",
+        "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+        "file:SahamAI/SahamAI/src/views/WatchlistView.vue",
+        "file:SahamAI/SahamAI/src/assets/main.css"
+      ]
+    },
+    {
+      "id": "layer:service",
+      "name": "Frontend State & Service Layer",
+      "description": "Pinia stores for auth and market/watchlist state, the mock authentication service, and the deterministic mock market-data engine that currently generates all OHLC, broker, insider, and forecast data in place of a real call to the Flask backend.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/stores/auth.js",
+        "file:SahamAI/SahamAI/src/stores/market.js",
+        "file:SahamAI/SahamAI/src/services/authService.js",
+        "file:SahamAI/SahamAI/src/data/market.js"
+      ]
+    },
+    {
+      "id": "layer:config",
+      "name": "Frontend Bootstrap & Build Config",
+      "description": "The Vue application bootstrap (main.js, root App.vue) and Vue Router configuration, plus the Vite entry HTML, Vite build config, and npm package manifest that wire up the SahamScope frontend's build toolchain.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/main.js",
+        "file:SahamAI/SahamAI/src/router/index.js",
+        "file:SahamAI/SahamAI/src/App.vue",
+        "file:SahamAI/SahamAI/index.html",
+        "file:SahamAI/SahamAI/vite.config.js",
+        "config:SahamAI/SahamAI/package.json"
+      ]
+    },
+    {
+      "id": "layer:utility",
+      "name": "Frontend Utility Layer",
+      "description": "Shared formatting helpers for Indonesian Rupiah currency, localized numbers, percentages, and relative timestamps, used throughout the SahamScope dashboard views.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/utils/format.js"
+      ]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "Documentation",
+      "description": "Project-level onboarding docs: the root README covering the full StockVision stack (Flask, PostgreSQL, setup) and the SahamScope frontend README describing the Vue app's dev workflow and structure.",
+      "nodeIds": [
+        "document:README.md",
+        "document:SahamAI/SahamAI/README.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Project Overview",
+      "description": "Start with the root README to understand what StockVision (SahamAI) actually is: a Flask/PostgreSQL backend that scrapes and serves Indonesia Stock Exchange (IDX) broker-activity data, paired with a separate Vue 3 frontend called SahamScope. It documents the tech stack, environment setup, and how to run the API, seed the trading calendar, and export data to Excel. Keep in mind as you go: this repository is really two projects sharing one folder, and this tour visits both halves in turn.",
+      "nodeIds": [
+        "document:README.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Backend Entry Point: the Flask API",
+      "description": "app.py is the backend's entry point, scoring highest among code files in the structural analysis. It authenticates against Stockbit, exposes REST endpoints for broker activity, insider/major-holder transactions, stock info, and OHLC price data, and writes results into PostgreSQL. Nearly every backend concept in this tour -- the schema, the scraping scripts -- exists to feed or be fed by this single file.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/app.py"
+      ],
+      "languageLesson": "Flask route handlers double as both HTTP controllers and scraping/persistence logic here -- there's no separate service layer, so each @app.route function both talks to Stockbit and writes to Postgres inline."
+    },
+    {
+      "order": 3,
+      "title": "Backend Data Layer: the PostgreSQL Schema",
+      "description": "The idxsaham schema is where app.py's data lands. broker holds master broker codes and rankings; broker_activity records daily buy/sell volumes per stock and broker; insider_activity tracks major-holder ownership changes; stock_info snapshots per-symbol pricing and market status daily; and trading_calendar flags which dates are valid IDX trading days. The topology script grouped these five tables with app.py into the single most tightly-connected cluster in the whole graph (13 edges) -- confirming this schema is the backend's true center of gravity.",
+      "nodeIds": [
+        "table:SahamAI/SahamAI/database.sql:trading_calendar",
+        "table:SahamAI/SahamAI/database.sql:broker",
+        "table:SahamAI/SahamAI/database.sql:broker_activity",
+        "table:SahamAI/SahamAI/database.sql:insider_activity",
+        "table:SahamAI/SahamAI/database.sql:stock_info"
+      ],
+      "languageLesson": "Uniqueness constraints (e.g. one row per date/stock/broker/action on broker_activity) plus supporting indexes let repeated scraper runs upsert safely without creating duplicate rows -- a common pattern for idempotent data pipelines."
+    },
+    {
+      "order": 4,
+      "title": "Data Pipeline & Scraping Scripts",
+      "description": "Outside the live Flask app, a set of standalone scripts handle offline data ingestion into the schema from Step 3. idx_stock.py logs into Stockbit, pulls broker activity and major-holder data across a date range, and either exports it to a formatted Excel workbook or upserts it into PostgreSQL. trading_date.py is the one-off seeder that populates trading_calendar with a year of dates, marking weekends and holidays as non-trading days. bid_offer.py scrapes RTI's live bid/offer order book with requests and BeautifulSoup, while stock.py uses Selenium to capture a logged-in Stockbit session's cookies for reuse by the other scrapers.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/idx_stock.py",
+        "file:SahamAI/SahamAI/trading_date.py",
+        "file:SahamAI/SahamAI/bid_offer.py",
+        "file:SahamAI/SahamAI/stock.py"
+      ],
+      "languageLesson": "The scripts mix two scraping strategies: requests + BeautifulSoup for static/simple HTML (bid_offer.py), and Selenium browser automation for pages that require a real login session (stock.py, idx_stock.py) -- choose the lighter tool unless the target actually needs a rendered browser."
+    },
+    {
+      "order": 5,
+      "title": "Frontend Overview: the SahamScope README",
+      "description": "This is the pivot point of the tour. The SahamScope frontend README documents a completely separate Vue 3 + Vite application with its own dev workflow, folder structure, and roadmap. Its 'future backend integration plans' section is the tell: as you'll see over the next several steps, SahamScope does not currently call any of the Flask endpoints from Step 2 -- it runs entirely on a self-contained mock data generator. Treat everything from here on as the frontend's independent world, not a continuation of the backend's data flow.",
+      "nodeIds": [
+        "document:SahamAI/SahamAI/README.md"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Frontend Entry Point: Vue Bootstrap",
+      "description": "main.js is the frontend's equivalent of app.py from Step 2: it creates the Vue application instance and registers Pinia (state), Vue Router (navigation), and the vue3-apexcharts plugin before mounting into App.vue. App.vue itself is intentionally minimal -- just a router outlet -- delegating all real rendering to whichever route is active.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/main.js",
+        "file:SahamAI/SahamAI/src/App.vue"
+      ],
+      "languageLesson": "Vue 3's createApp().use(plugin) chain composes cross-cutting concerns (state, routing, charting) onto the app instance before a single .mount() call -- each .use() call is a plugin registration, not a side effect."
+    },
+    {
+      "order": 7,
+      "title": "Frontend Build Tooling",
+      "description": "These three files wire up the toolchain that actually produces the app bootstrapped in Step 6. index.html is the Vite entry point that loads main.js as an ES module; vite.config.js enables the Vue plugin, defines an '@' alias to src/, and sets the dev server to port 5173; package.json declares the Vue 3, Vue Router, Pinia, and ApexCharts dependencies plus the dev/build/preview scripts. The topology script flagged this trio (plus the Step 5 README) as the second most tightly-coupled cluster in the project.",
+      "nodeIds": [
+        "config:SahamAI/SahamAI/package.json",
+        "file:SahamAI/SahamAI/vite.config.js",
+        "file:SahamAI/SahamAI/index.html"
+      ],
+      "languageLesson": "The '@' path alias (mapped to src/) is a common Vite convention that lets imports read as '@/stores/auth' instead of fragile relative paths like '../../stores/auth'."
+    },
+    {
+      "order": 8,
+      "title": "App Shell & Navigation",
+      "description": "router/index.js defines the login route and lazy-loaded dashboard routes, guarded by a global navigation check that redirects based on authentication state -- it depends directly on AppLayout.vue and DashboardView.vue. AppLayout.vue is the authenticated shell: it renders AppTopbar.vue above a router-view outlet for every protected page. AppTopbar is the first place you see the Pinia stores in action, binding a global ticker selector to the market store and a user/logout dropdown to the auth store.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/router/index.js",
+        "file:SahamAI/SahamAI/src/layout/AppLayout.vue",
+        "file:SahamAI/SahamAI/src/layout/AppTopbar.vue"
+      ],
+      "languageLesson": "Vue Router's global beforeEach navigation guard is the standard way to gate routes on auth state, and dynamic import() in the route table enables lazy-loading so the dashboard's code isn't downloaded until it's actually visited."
+    },
+    {
+      "order": 9,
+      "title": "Authentication State & Mock Service",
+      "description": "Building on the AppTopbar wiring from Step 8, stores/auth.js is the Pinia store holding the current user and token, persisting session state to localStorage and exposing login/logout actions. It delegates to services/authService.js, which simulates a real backend -- artificial latency, credential validation, per-email lockout after repeated failures, and randomized network errors -- via a custom AuthError class. Notice there is no HTTP call to app.py anywhere here: authentication, like the rest of the frontend, is entirely mocked.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/stores/auth.js",
+        "file:SahamAI/SahamAI/src/services/authService.js"
+      ]
+    },
+    {
+      "order": 10,
+      "title": "The Mock Market Data Engine",
+      "description": "This is the single most important pair of files in the frontend. data/market.js is a deterministic mock market-data engine: it seeds a PRNG from each ticker code to generate realistic OHLC prices, quotes, order books, broker summaries, insider activity, SMA/RSI indicators, and price forecasts. stores/market.js wraps it in a Pinia store tracking the selected ticker and watchlist. Both tied for the highest fan-in in the entire codebase (9 incoming references each) -- meaning nearly every view you'll see next depends on this pair instead of on the Flask endpoints from Step 2. This is the clearest evidence that the backend and frontend, while conceptually meant to connect, do not yet talk to each other.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/data/market.js",
+        "file:SahamAI/SahamAI/src/stores/market.js"
+      ],
+      "languageLesson": "Seeding a pseudo-random number generator from a stable key (the ticker code) makes 'random' mock data deterministic and reproducible per-ticker -- the same symbol always generates the same fake price history across reloads."
+    },
+    {
+      "order": 11,
+      "title": "Trading Terminal Dashboard & Chart System",
+      "description": "DashboardView.vue is the frontend's busiest file by far -- 11 outgoing dependencies, the highest fan-out in the project. It's a single-page trading terminal with a ticker header, order book panel, and a tab bar that swaps between seven feature views without full page navigation. Its candlestick and other charts share chartTheme.js, a theming module exporting brand colors and axis/grid config so every ApexCharts wrapper (like CandleChart.vue) renders as one consistent visual system.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/views/DashboardView.vue",
+        "file:SahamAI/SahamAI/src/components/charts/chartTheme.js",
+        "file:SahamAI/SahamAI/src/components/charts/CandleChart.vue"
+      ],
+      "languageLesson": "Swapping child view components based on active-tab state (rather than routing to new URLs) keeps the trading terminal feeling instantaneous, while a shared theming module avoids duplicating chart styling across every chart wrapper."
+    },
+    {
+      "order": 12,
+      "title": "Feature Analysis Views",
+      "description": "These are four of the seven tabs hosted by DashboardView.vue from Step 11, and each one pulls its data straight from the mock engine in Step 10 rather than from the backend. BrokerSummaryView ranks net buy/sell lots per broker; PricesView renders an OHLCV candlestick chart with moving-average overlays; TechnicalView layers descriptive, diagnostic, predictive, and prescriptive analytics into a buy/hold/sell recommendation; InsiderView lists director/commissioner transactions with net-flow totals and a distribution warning.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+        "file:SahamAI/SahamAI/src/views/PricesView.vue",
+        "file:SahamAI/SahamAI/src/views/TechnicalView.vue",
+        "file:SahamAI/SahamAI/src/views/InsiderView.vue"
+      ]
+    },
+    {
+      "order": 13,
+      "title": "Shared Formatting & the Login Flow",
+      "description": "utils/format.js closes the loop on shared frontend infrastructure: Indonesian Rupiah currency formatting, localized numbers, percentages, and relative timestamps, reused across nearly every view you've seen (fan-in of 8, the third-highest in the project). LoginView.vue is where a session actually begins -- a validated email/password form wired to the authService and auth store from Step 9, complete with a live chart preview -- and it's the screen the router guard from Step 8 redirects unauthenticated users to. From here, a user flows into the dashboard from Step 11, entirely within the mocked frontend world this tour has traced from Step 5 onward.",
+      "nodeIds": [
+        "file:SahamAI/SahamAI/src/utils/format.js",
+        "file:SahamAI/SahamAI/src/views/LoginView.vue"
+      ]
+    }
+  ]
+}

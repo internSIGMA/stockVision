@@ -1,0 +1,1224 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "027c4ec7ca883c14b6e04eee80346d8bd2649740",
+  "generatedAt": "2026-07-03T07:32:06.076Z",
+  "files": {
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "17b4de30123db3d8f83a57636ba33b43ffc64efcc6a1f9839fe2b90a25a28650",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 130,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/README.md": {
+      "filePath": "SahamAI/SahamAI/README.md",
+      "contentHash": "f1e590b774a8be5fe7088c076e5fd4ffee526096ef4aaa72040f60822e73888d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 59,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/app.py": {
+      "filePath": "SahamAI/SahamAI/app.py",
+      "contentHash": "879d3f5317c5b90a27787282111c21c3c706431c132a0f658a15aed4ec246870",
+      "functions": [
+        {
+          "name": "get_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_brokers",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "get_workdays",
+          "params": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "insert_data_brokers",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "insert_data_insider",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "insert_data_stock_info",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 66
+        },
+        {
+          "name": "normalize_number",
+          "params": [
+            "val"
+          ],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "_do_login",
+          "params": [],
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_do_refresh",
+          "params": [
+            "refresh_token"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "get_token",
+          "params": [],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "fetch_majorholder",
+          "params": [
+            "token",
+            "date_start",
+            "date_end",
+            "pages"
+          ],
+          "exported": true,
+          "lineCount": 46
+        },
+        {
+          "name": "fetch_broker_activity",
+          "params": [
+            "token",
+            "broker_code",
+            "date_from",
+            "date_to",
+            "pages",
+            "transaction_type",
+            "market_board",
+            "investor_type"
+          ],
+          "exported": true,
+          "lineCount": 49
+        },
+        {
+          "name": "fetch_stock_info",
+          "params": [
+            "token",
+            "symbol"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "parse_stock_info",
+          "params": [
+            "d"
+          ],
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "health",
+          "params": [],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "force_login",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "majorholder",
+          "params": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "broker_activity",
+          "params": [],
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "stock_info",
+          "params": [],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "insert_data_ohlc",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 51
+        },
+        {
+          "name": "get_ohlc",
+          "params": [],
+          "exported": true,
+          "lineCount": 53
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "psycopg2.extras",
+          "specifiers": [
+            "execute_batch"
+          ]
+        },
+        {
+          "source": "flask",
+          "specifiers": [
+            "Flask",
+            "request",
+            "jsonify"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "socket",
+          "specifiers": [
+            "socket"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        }
+      ],
+      "exports": [
+        "get_connection",
+        "get_brokers",
+        "get_workdays",
+        "insert_data_brokers",
+        "insert_data_insider",
+        "insert_data_stock_info",
+        "normalize_number",
+        "_do_login",
+        "_do_refresh",
+        "get_token",
+        "fetch_majorholder",
+        "fetch_broker_activity",
+        "fetch_stock_info",
+        "parse_stock_info",
+        "health",
+        "force_login",
+        "majorholder",
+        "broker_activity",
+        "stock_info",
+        "insert_data_ohlc",
+        "get_ohlc"
+      ],
+      "totalLines": 692,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/bid_offer.py": {
+      "filePath": "SahamAI/SahamAI/bid_offer.py",
+      "contentHash": "46806f240845025ff6d37c90554f15832c70164a5125baf752efc5381ff334f3",
+      "functions": [
+        {
+          "name": "get_bid_offer",
+          "params": [
+            "stock_code"
+          ],
+          "exported": true,
+          "lineCount": 36
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "bs4",
+          "specifiers": [
+            "BeautifulSoup"
+          ]
+        }
+      ],
+      "exports": [
+        "get_bid_offer"
+      ],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/database.sql": {
+      "filePath": "SahamAI/SahamAI/database.sql",
+      "contentHash": "36c0a57f67230c78af2f8bd559456440c3a42def65e36296d52c9c17a7b11cd9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 126,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/helo.py": {
+      "filePath": "SahamAI/SahamAI/helo.py",
+      "contentHash": "2c3ab060616bb88452c1807728fb8c397efa1319adda8d541c8b41ee90c40e43",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 3,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/idx_stock.py": {
+      "filePath": "SahamAI/SahamAI/idx_stock.py",
+      "contentHash": "a2968bf05c3d83a0c8672e0ed848f1519780645357c851682f5ba017f1a9b3f0",
+      "functions": [
+        {
+          "name": "get_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "get_brokers",
+          "params": [],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "get_workdays",
+          "params": [],
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "insert_data_brokers",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "insert_data_insider",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 38
+        },
+        {
+          "name": "login",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "fetch_broker_activity",
+          "params": [
+            "token",
+            "broker_code",
+            "date_from",
+            "date_to",
+            "pages",
+            "transaction_type",
+            "market_board",
+            "investor_type"
+          ],
+          "exported": true,
+          "lineCount": 56
+        },
+        {
+          "name": "fetch_majorholder",
+          "params": [
+            "token",
+            "date_start",
+            "date_end",
+            "pages"
+          ],
+          "exported": true,
+          "lineCount": 66
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "openpyxl",
+          "specifiers": [
+            "load_workbook"
+          ]
+        },
+        {
+          "source": "openpyxl.styles",
+          "specifiers": [
+            "Font",
+            "PatternFill",
+            "Alignment",
+            "Border",
+            "Side"
+          ]
+        },
+        {
+          "source": "openpyxl.utils",
+          "specifiers": [
+            "get_column_letter"
+          ]
+        },
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "psycopg2.extras",
+          "specifiers": [
+            "execute_batch"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "date"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        }
+      ],
+      "exports": [
+        "get_connection",
+        "get_brokers",
+        "get_workdays",
+        "insert_data_brokers",
+        "insert_data_insider",
+        "login",
+        "fetch_broker_activity",
+        "fetch_majorholder"
+      ],
+      "totalLines": 380,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/index.html": {
+      "filePath": "SahamAI/SahamAI/index.html",
+      "contentHash": "632dacc6b98b68d2b8c6b29e913a6d3bb92713294380b3aae0ae637c93499a19",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/package.json": {
+      "filePath": "SahamAI/SahamAI/package.json",
+      "contentHash": "09dc4f2c169943846a7be1030042abf2d3c68740f3bf7da967a6e938faa04aae",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/App.vue": {
+      "filePath": "SahamAI/SahamAI/src/App.vue",
+      "contentHash": "e6679d20977b65a41bc04dd929712df2f66b0afbfb77c8f4102322eff654a863",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/assets/main.css": {
+      "filePath": "SahamAI/SahamAI/src/assets/main.css",
+      "contentHash": "c5b44d24dbd394ecf5d4fbcc89debfcb5169768a11cb79e7eced29173e8d5d6d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 238,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/components/charts/AreaChart.vue": {
+      "filePath": "SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+      "contentHash": "331f41cb1cb3099c5f0b9d92f46a869dd9e5dc19c571c5ba891805db723e7895",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 52,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/components/charts/BarChart.vue": {
+      "filePath": "SahamAI/SahamAI/src/components/charts/BarChart.vue",
+      "contentHash": "ea80d8b37ae30385e5baabacda744986cc3a5c04b05ce27760f52d4b58bc5663",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/components/charts/CandleChart.vue": {
+      "filePath": "SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+      "contentHash": "f17e378f604db9db515eb9c3c02e200e2e9bf75ff48836620963af5c46631afc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/components/charts/chartTheme.js": {
+      "filePath": "SahamAI/SahamAI/src/components/charts/chartTheme.js",
+      "contentHash": "7ed8c897473945ac6dafefea9ad88d1c6f6bfcd6632e3e94f4cafb7aca7ab8f9",
+      "functions": [
+        {
+          "name": "axisStyle",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "COLORS",
+        "baseChart",
+        "axisStyle",
+        "gridStyle"
+      ],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/components/ui/StatCard.vue": {
+      "filePath": "SahamAI/SahamAI/src/components/ui/StatCard.vue",
+      "contentHash": "1a2d528a82e28d1c6e5ef6e8027f119ab142cdbc68e2f010c39b70248e44bc4e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 83,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/data/market.js": {
+      "filePath": "SahamAI/SahamAI/src/data/market.js",
+      "contentHash": "1dc4f4124c1e8fc513f05584d5c904781f4462b66a48f4305f14649a96124698",
+      "functions": [
+        {
+          "name": "mulberry32",
+          "params": [
+            "seed"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "seedFromString",
+          "params": [
+            "str"
+          ],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "getEmiten",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "generateOHLC",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "latestQuote",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "marketOverview",
+          "params": [],
+          "exported": true,
+          "lineCount": 31
+        },
+        {
+          "name": "tickSize",
+          "params": [
+            "price"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "terminalStats",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "orderBook",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "doneTrades",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "brokerSummary",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "insiderActivity",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "sma",
+          "params": [
+            "series",
+            "period"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "rsi",
+          "params": [
+            "series"
+          ],
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "forecast",
+          "params": [
+            "code"
+          ],
+          "exported": true,
+          "lineCount": 39
+        },
+        {
+          "name": "seedCrawlJobs",
+          "params": [],
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "emitens",
+        "FOCUS_CODES",
+        "getEmiten",
+        "generateOHLC",
+        "latestQuote",
+        "marketOverview",
+        "tickSize",
+        "terminalStats",
+        "orderBook",
+        "doneTrades",
+        "brokerSummary",
+        "insiderActivity",
+        "sma",
+        "rsi",
+        "forecast",
+        "crawlSources",
+        "seedCrawlJobs"
+      ],
+      "totalLines": 402,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/layout/AppLayout.vue": {
+      "filePath": "SahamAI/SahamAI/src/layout/AppLayout.vue",
+      "contentHash": "e7119e6ba5844a7d3417274faefddfc3accc38e8a55515f068df382b4d50db70",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/layout/AppTopbar.vue": {
+      "filePath": "SahamAI/SahamAI/src/layout/AppTopbar.vue",
+      "contentHash": "4e8fb46f3003cd42ad8f1910f7b215be8418142b541a4b17d3cb1a35bd03a57a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 232,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/main.js": {
+      "filePath": "SahamAI/SahamAI/src/main.js",
+      "contentHash": "08ae2fef3224532ab560421dfcaee54ddabe1a790c46f91df5340ccaaacebb7f",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vue",
+          "specifiers": [
+            "createApp"
+          ]
+        },
+        {
+          "source": "pinia",
+          "specifiers": [
+            "createPinia"
+          ]
+        },
+        {
+          "source": "vue3-apexcharts",
+          "specifiers": [
+            "VueApexCharts"
+          ]
+        },
+        {
+          "source": "./App.vue",
+          "specifiers": [
+            "App"
+          ]
+        },
+        {
+          "source": "./router",
+          "specifiers": [
+            "router"
+          ]
+        },
+        {
+          "source": "./assets/main.css",
+          "specifiers": []
+        }
+      ],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/router/index.js": {
+      "filePath": "SahamAI/SahamAI/src/router/index.js",
+      "contentHash": "a9e5d0e1f0c34b36f4c0b4604c86309d9e5222a1dc56058a262b2c78072d61c5",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vue-router",
+          "specifiers": [
+            "createRouter",
+            "createWebHistory"
+          ]
+        },
+        {
+          "source": "@/stores/auth",
+          "specifiers": [
+            "useAuthStore"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 39,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/services/authService.js": {
+      "filePath": "SahamAI/SahamAI/src/services/authService.js",
+      "contentHash": "3b44c70f3d042809fd2f82fddc1f0795f091d3c621171bbc2c4c612e8b5e21bc",
+      "functions": [
+        {
+          "name": "delay",
+          "params": [
+            "ms"
+          ],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "login",
+          "params": [],
+          "exported": true,
+          "lineCount": 40
+        }
+      ],
+      "classes": [
+        {
+          "name": "AuthError",
+          "methods": [
+            "constructor"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "imports": [],
+      "exports": [
+        "AuthError",
+        "login"
+      ],
+      "totalLines": 88,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/stores/auth.js": {
+      "filePath": "SahamAI/SahamAI/src/stores/auth.js",
+      "contentHash": "9c6b5908b11c564576383126b866d368aef0d2333e4afcac661d152ecd117cb3",
+      "functions": [
+        {
+          "name": "loadPersisted",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pinia",
+          "specifiers": [
+            "defineStore"
+          ]
+        },
+        {
+          "source": "vue",
+          "specifiers": [
+            "ref",
+            "computed"
+          ]
+        },
+        {
+          "source": "@/services/authService",
+          "specifiers": [
+            "loginRequest"
+          ]
+        }
+      ],
+      "exports": [
+        "useAuthStore"
+      ],
+      "totalLines": 48,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/stores/market.js": {
+      "filePath": "SahamAI/SahamAI/src/stores/market.js",
+      "contentHash": "7c2737a0e400443770e8fbe0234910da216b6ee66fa7a6359bd7c3831f4dc55a",
+      "functions": [
+        {
+          "name": "loadWatchlist",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "pinia",
+          "specifiers": [
+            "defineStore"
+          ]
+        },
+        {
+          "source": "vue",
+          "specifiers": [
+            "ref",
+            "computed"
+          ]
+        },
+        {
+          "source": "@/data/market",
+          "specifiers": [
+            "emitens",
+            "latestQuote",
+            "FOCUS_CODES"
+          ]
+        },
+        {
+          "source": "@/stores/auth",
+          "specifiers": [
+            "useAuthStore"
+          ]
+        }
+      ],
+      "exports": [
+        "useMarketStore"
+      ],
+      "totalLines": 85,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/utils/format.js": {
+      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+      "contentHash": "5564f076455ce57b13070e7cd904e2f10ed05fa053554cc6536b75dc32043916",
+      "functions": [
+        {
+          "name": "rupiah",
+          "params": [
+            "n"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "rupiahShort",
+          "params": [
+            "n"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "number",
+          "params": [
+            "n"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "pct",
+          "params": [
+            "n"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "timeAgo",
+          "params": [
+            "iso"
+          ],
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "rupiah",
+        "rupiahShort",
+        "number",
+        "pct",
+        "timeAgo"
+      ],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/src/views/BrokerSummaryView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+      "contentHash": "a6727e0f0b0c3886d51f44f80a141b957cd481712bc37f4238308969affe527d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 145,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/CrawlingView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/CrawlingView.vue",
+      "contentHash": "531ad30fed1aae124404f92705cc7f800c7db5efa377b35b05e110910f46cade",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 195,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/DashboardView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/DashboardView.vue",
+      "contentHash": "02baeb69ce4751e7931aeff9e90a12eec2242c15cbc401ddb0e3c4626865eb72",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 591,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/ForecastingView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/ForecastingView.vue",
+      "contentHash": "c9b808f446fefb0441018b58214321cc2a558ed5c7e058180ac1b99187ecadf7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 117,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/InsiderView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/InsiderView.vue",
+      "contentHash": "34e2adb838c7eeb4534ed2a32e5278619e4ab80a9245ca529e815fecc16b4569",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 148,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/LoginView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/LoginView.vue",
+      "contentHash": "a3b06d103d6afca33786362b39ea0efb65dc22c95b29a6a391f135b4b6b26b12",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 533,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/PricesView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/PricesView.vue",
+      "contentHash": "cd64b07d1073e234c03a40d2beef3897ee1875d22994195ce3b75bca95f75d88",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 158,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/TechnicalView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+      "contentHash": "cdd4b337a3f89a9a8a192d79043fede223925d98262b0da85bc39746a1149a60",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 356,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/src/views/WatchlistView.vue": {
+      "filePath": "SahamAI/SahamAI/src/views/WatchlistView.vue",
+      "contentHash": "b1eab012981479a9cdfadc7f7f0d1b7fdf87a801c86607497fcb4acbdabb4839",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 349,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/stock.py": {
+      "filePath": "SahamAI/SahamAI/stock.py",
+      "contentHash": "7c14129dea9106b4b47bcfe86a1584c47459160f4e0fb7cdb3a033a9b258ed6f",
+      "functions": [
+        {
+          "name": "get_cookie",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "selenium",
+          "specifiers": [
+            "webdriver"
+          ]
+        },
+        {
+          "source": "selenium.webdriver.chrome.service",
+          "specifiers": [
+            "Service"
+          ]
+        },
+        {
+          "source": "webdriver_manager.chrome",
+          "specifiers": [
+            "ChromeDriverManager"
+          ]
+        }
+      ],
+      "exports": [
+        "get_cookie"
+      ],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/trading_date.py": {
+      "filePath": "SahamAI/SahamAI/trading_date.py",
+      "contentHash": "2f062857c17325c4654346b369ed61418d44c465d3e6872d3af0864ec3fe958e",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": true
+    },
+    "SahamAI/SahamAI/url": {
+      "filePath": "SahamAI/SahamAI/url",
+      "contentHash": "351d895309658308b3254a7699bd51c20cb6924cfacbb088715bfb0ba6aa646a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": false
+    },
+    "SahamAI/SahamAI/vite.config.js": {
+      "filePath": "SahamAI/SahamAI/vite.config.js",
+      "contentHash": "67f7f4faee90e697a49913767864ac34e3b6dea968060bc76b2bf015b8d1b31b",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vite",
+          "specifiers": [
+            "defineConfig"
+          ]
+        },
+        {
+          "source": "@vitejs/plugin-vue",
+          "specifiers": [
+            "vue"
+          ]
+        },
+        {
+          "source": "node:url",
+          "specifiers": [
+            "fileURLToPath",
+            "URL"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": true
+    }
+  }
+}
