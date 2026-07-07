@@ -31,10 +31,26 @@ FROM generate_series(
 ON CONFLICT DO NOTHING;
 """
 
-cur.execute(query)
-conn.commit()
+try:
+    cur.execute(query)
+    # Log to crawl_logs
+    cur.execute("""
+        INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
+        VALUES ('DB_CALENDAR_INIT', '2026', NULL, 'SUCCESS', 365, NULL);
+    """)
+    conn.commit()
+    print("✅ Kalender berhasil dibuat!")
+except Exception as e:
+    conn.rollback()
+    try:
+        cur.execute("""
+            INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
+            VALUES ('DB_CALENDAR_INIT', '2026', NULL, 'FAILED', 0, %s);
+        """, (str(e),))
+        conn.commit()
+    except:
+        pass
+    print("❌ Gagal membuat kalender:", e)
 
 cur.close()
 conn.close()
-
-print("✅ Kalender berhasil dibuat!")
