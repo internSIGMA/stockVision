@@ -22,6 +22,11 @@ app.register_blueprint(data_bp)
 from user import user_bp
 app.register_blueprint(user_bp)
 
+from scheduler import (
+    start_scheduler, stop_scheduler, pause_scheduler,
+    resume_scheduler, trigger_now, get_scheduler_status
+)
+
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
 PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
 PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
@@ -891,6 +896,44 @@ def get_ohlc():
 
 
 # ============================================================
+# SCHEDULER ENDPOINTS
+# ============================================================
+@app.route("/scheduler/status", methods=["GET"])
+def scheduler_status():
+    return jsonify(get_scheduler_status())
+
+
+@app.route("/scheduler/start", methods=["POST"])
+def scheduler_start():
+    result = start_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/stop", methods=["POST"])
+def scheduler_stop():
+    result = stop_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/pause", methods=["POST"])
+def scheduler_pause():
+    result = pause_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/resume", methods=["POST"])
+def scheduler_resume():
+    result = resume_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/trigger", methods=["POST"])
+def scheduler_trigger():
+    result = trigger_now()
+    return jsonify(result)
+
+
+# ============================================================
 # ENDPOINT CRAWL STATUS (MONITORING JOB)
 # ============================================================
 @app.route("/crawl-status", methods=["GET"])
@@ -931,4 +974,8 @@ def crawl_status():
 
 
 if __name__ == "__main__":
+    # Auto-start scheduler saat app boot
+    print("\n[App] Starting auto-crawl scheduler...")
+    start_scheduler()
+    print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
     app.run(host="0.0.0.0", port=8080, debug=True)
