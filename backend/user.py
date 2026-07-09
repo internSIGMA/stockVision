@@ -1,6 +1,6 @@
 import os
 import psycopg2
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -39,6 +39,42 @@ def _ensure_users_table():
         """
     )
     conn.commit()
+
+    # Check if table is empty
+    cur.execute("SELECT COUNT(*) FROM idxsaham.users;")
+    count = cur.fetchone()[0]
+    if count == 0:
+        # Seed default users
+        users_to_seed = [
+            {
+                "email": "fariz@sahamscope.id",
+                "username": "fariz",
+                "password": generate_password_hash("password123"),
+                "name": "Fariz",
+                "role": "Trader — Perbankan",
+                "default_ticker": "BBCA",
+                "favorites": ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA", "ADRO", "INDF", "SMGR"]
+            },
+            {
+                "email": "dewi@sahamscope.id",
+                "username": "dewi",
+                "password": generate_password_hash("password123"),
+                "name": "Dewi",
+                "role": "Trader — Properti & Energi",
+                "default_ticker": "BBNI",
+                "favorites": ["BBNI", "BJBR", "ASII", "GOTO", "SMRA", "ASRI", "CTRA", "INCO", "MAPI"]
+            }
+        ]
+        for u in users_to_seed:
+            cur.execute(
+                """
+                INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker, favorites)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
+                """,
+                (u["email"], u["username"], u["password"], u["name"], u["role"], u["default_ticker"], u["favorites"])
+            )
+        conn.commit()
+
     cur.close()
     conn.close()
 
@@ -362,3 +398,8 @@ def login_user_route():
     if not user:
         return jsonify({"error": "invalid credentials"}), 401
     return jsonify(user)
+
+
+@user_bp.route("/test-ui")
+def test_ui():
+    return render_template("test_ui.html")

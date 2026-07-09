@@ -1,0 +1,941 @@
+{% raw %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stockVision - Backend Verification & Testing UI</title>
+    <!-- Inter Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 CDN (Global Build) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- ApexCharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Tailwind Custom Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#090d16',
+                        cardBg: '#131926',
+                        glassBg: 'rgba(19, 25, 38, 0.6)',
+                        brandTeal: '#0ea5e9', // premium blue-teal sky
+                        brandEmerald: '#10b981',
+                        borderLight: 'rgba(255, 255, 255, 0.06)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #090d16 0%, #0d1527 100%);
+            min-height: 100vh;
+            color: #f1f5f9;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div id="app" class="p-4 md:p-8 max-w-7xl mx-auto" v-cloak>
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-borderLight pb-6">
+            <div>
+                <div class="flex items-center gap-2">
+                    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse"><path d="M3 17l5-6 4 3 4-6 5 4" /></svg>
+                    <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-emerald-400">
+                        stockVision Terminal
+                    </h1>
+                </div>
+                <p class="text-slate-400 text-sm mt-1">Backend Interactive Integration and Testing Sandbox</p>
+            </div>
+            
+            <!-- User Status Header -->
+            <div v-if="currentUser" class="flex items-center gap-4 bg-cardBg/80 border border-borderLight p-3 rounded-2xl shadow-xl backdrop-blur-md">
+                <img :src="currentUser.avatar || 'https://i.pravatar.cc/100?img=1'" alt="avatar" class="w-10 h-10 rounded-full border border-sky-400/50" />
+                <div class="text-left">
+                    <div class="text-sm font-semibold text-sky-300">{{ currentUser.name }}</div>
+                    <div class="text-xs text-slate-400">{{ currentUser.role }}</div>
+                </div>
+                <button @click="logout" class="ml-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 rounded-xl transition duration-200">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Toast Notifications -->
+        <div v-if="toast" :class="`fixed bottom-6 right-6 z-50 px-6 py-3 rounded-2xl border flex items-center gap-3 shadow-2xl transition-all duration-300 ${toast.type === 'error' ? 'bg-red-950/90 text-red-200 border-red-500/50' : 'bg-emerald-950/90 text-emerald-200 border-emerald-500/50'}`">
+            <span v-if="toast.type === 'error'">🚨</span>
+            <span v-else>✅</span>
+            <span class="text-sm font-medium">{{ toast.message }}</span>
+        </div>
+
+        <!-- 1. LOGIN SCREEN -->
+        <main v-if="!currentUser" class="max-w-md mx-auto my-12 animate-fade-in">
+            <div class="bg-cardBg border border-borderLight rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-sky-500/5 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-500/5 rounded-full blur-2xl"></div>
+
+                <h2 class="text-2xl font-bold mb-2 text-slate-100">Welcome back</h2>
+                <p class="text-slate-400 text-sm mb-6">Enter database credentials to verify backend endpoints</p>
+
+                <!-- Preset accounts quick sign in -->
+                <div class="mb-6">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-3">Quick Login (Database Seeded Profiles)</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="fillPreset('fariz@sahamscope.id')" class="bg-slate-900/50 hover:bg-slate-900/90 hover:border-sky-500/50 border border-borderLight px-4 py-3 rounded-2xl text-left transition duration-200 group">
+                            <span class="text-xs font-bold text-sky-400 group-hover:text-sky-300 block">Fariz (Perbankan)</span>
+                            <span class="text-[10px] text-slate-500 block truncate mt-0.5">fariz@sahamscope.id</span>
+                        </button>
+                        <button @click="fillPreset('dewi@sahamscope.id')" class="bg-slate-900/50 hover:bg-slate-900/90 hover:border-emerald-500/50 border border-borderLight px-4 py-3 rounded-2xl text-left transition duration-200 group">
+                            <span class="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 block">Dewi (Properti & Energi)</span>
+                            <span class="text-[10px] text-slate-500 block truncate mt-0.5">dewi@sahamscope.id</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative flex py-3 items-center mb-6">
+                    <div class="flex-grow border-t border-borderLight"></div>
+                    <span class="flex-shrink mx-4 text-xs text-slate-500 uppercase tracking-widest font-semibold">Or manual input</span>
+                    <div class="flex-grow border-t border-borderLight"></div>
+                </div>
+
+                <!-- Form login -->
+                <form @submit.prevent="handleLogin" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                        <input v-model="loginForm.email" type="email" placeholder="example@email.com" class="w-full bg-slate-950/70 border border-borderLight hover:border-slate-700 focus:border-sky-500 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition duration-200" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                        <input v-model="loginForm.password" type="password" placeholder="••••••••" class="w-full bg-slate-950/70 border border-borderLight hover:border-slate-700 focus:border-sky-500 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition duration-200" required />
+                    </div>
+                    
+                    <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm transition duration-300 mt-2 shadow-xl shadow-sky-500/10 flex justify-center items-center gap-2">
+                        <span v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        Sign In
+                    </button>
+                </form>
+            </div>
+        </main>
+
+        <!-- 2. LOGGED IN DASHBOARD -->
+        <main v-else class="space-y-8 animate-fade-in">
+            <!-- Tabs selection -->
+            <div class="flex gap-2 bg-cardBg border border-borderLight p-1.5 rounded-2xl max-w-md">
+                <button @click="activeTab = 'charts'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'charts' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
+                    📊 Chart & Prices
+                </button>
+                <button @click="activeTab = 'favorites'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'favorites' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
+                    ⭐ Favorites Manager
+                </button>
+                <button @click="activeTab = 'logs'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'logs' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
+                    📜 Crawl Logs
+                </button>
+            </div>
+
+            <!-- Tab 1: Charts and Prices -->
+            <div v-show="activeTab === 'charts'" class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Ticker List -->
+                <div class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl h-fit">
+                    <h3 class="text-lg font-bold mb-4 text-slate-100 flex items-center gap-2">
+                        <span>🏛️</span> Focus Emiten
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-6">Select a ticker to load historical OHLC & Foreign Flow data from the DB.</p>
+                    <div class="space-y-2">
+                        <button v-for="ticker in focusTickers" :key="ticker" @click="selectTicker(ticker)" :class="`w-full flex justify-between items-center px-4 py-3.5 rounded-2xl text-left border transition duration-200 ${selectedTicker === ticker ? 'bg-sky-500/10 border-sky-500 text-sky-200 font-semibold' : 'bg-slate-900/40 border-borderLight hover:border-slate-600 text-slate-300'}`">
+                            <span>{{ ticker }}</span>
+                            <span v-if="currentUser.favorites.includes(ticker)" class="text-amber-400 text-sm">★</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chart & Data Table area -->
+                <div class="lg:col-span-3 space-y-8">
+                    <!-- Stock Info Ticker Row -->
+                    <div v-if="stockInfo" class="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+                        <!-- Card 1: Last Price -->
+                        <div class="bg-cardBg border border-borderLight p-4 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Last Price & Change</span>
+                            <div class="flex items-baseline gap-2 mt-1">
+                                <span class="text-xl font-bold text-sky-400 tabular">{{ formatNumber(stockInfo.harga) }}</span>
+                                <span :class="`text-xs font-semibold tabular flex items-center ${stockInfo.perubahan >= 0 ? 'text-emerald-400' : 'text-rose-400'}`">
+                                    {{ stockInfo.perubahan >= 0 ? '▲' : '▼' }}{{ stockInfo.perubahan_persen }}%
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Bid -->
+                        <div class="bg-cardBg border border-borderLight p-4 rounded-2xl shadow-lg flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Best Bid</span>
+                            <div class="flex justify-between items-end mt-1">
+                                <span class="text-base font-bold text-emerald-400 tabular">{{ formatNumber(stockInfo.bid_price) }}</span>
+                                <span class="text-[10px] text-slate-400 tabular font-mono">Vol: {{ formatNumber(stockInfo.bid_volume) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Offer -->
+                        <div class="bg-cardBg border border-borderLight p-4 rounded-2xl shadow-lg flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Best Offer</span>
+                            <div class="flex justify-between items-end mt-1">
+                                <span class="text-base font-bold text-rose-400 tabular">{{ formatNumber(stockInfo.offer_price) }}</span>
+                                <span class="text-[10px] text-slate-400 tabular font-mono">Vol: {{ formatNumber(stockInfo.offer_volume) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Volume & Status -->
+                        <div class="bg-cardBg border border-borderLight p-4 rounded-2xl shadow-lg flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Volume & Market Status</span>
+                            <div class="flex justify-between items-end mt-1">
+                                <span class="text-xs font-bold text-slate-300 tabular">{{ formatNumber(stockInfo.volume) }}</span>
+                                <span class="bg-sky-950/40 border border-sky-500/20 text-sky-300 text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                                    {{ stockInfo.status_pasar || 'CLOSED' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Panel -->
+                    <div class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl relative min-h-[350px]">
+                        <div v-if="fetchingData" class="absolute inset-0 bg-darkBg/60 backdrop-blur-sm rounded-3xl flex flex-col justify-center items-center z-10 gap-3">
+                            <div class="w-8 h-8 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
+                            <span class="text-sm text-slate-400 font-medium">Fetching chart data from database...</span>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-100 flex flex-wrap items-center gap-3">
+                                    <span>Historical Candlestick — {{ selectedTicker }}</span>
+                                    <button @click="triggerCrawl(selectedTicker)" :disabled="crawling" class="bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-300 text-xs px-3 py-1.5 rounded-xl font-semibold transition duration-150 flex items-center gap-1.5 disabled:opacity-50" title="Crawl only the currently selected ticker">
+                                        <span v-if="crawling" class="w-3.5 h-3.5 border-2 border-amber-300/30 border-t-amber-300 rounded-full animate-spin"></span>
+                                        <span v-else>⚡</span>
+                                        {{ crawling ? 'Crawling...' : 'Trigger Crawler' }}
+                                    </button>
+                                    <button @click="crawlAllTickers" :disabled="crawling" class="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-3 py-1.5 rounded-xl font-semibold transition duration-150 flex items-center gap-1.5 disabled:opacity-50" title="Crawl all 5 supported emitens sequentially with a safety delay">
+                                        <span v-if="crawling" class="w-3.5 h-3.5 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
+                                        <span v-else>🚀</span>
+                                        {{ crawling ? 'Crawling All...' : 'Crawl All Emiten' }}
+                                    </button>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Drawn using ApexCharts with data fetched from <strong>/api/data/ohlc</strong></p>
+                            </div>
+                            <span class="bg-sky-950/40 border border-sky-500/30 text-sky-300 px-3 py-1 rounded-full text-xs font-semibold tabular">
+                                {{ ohlcData.length }} trading days
+                            </span>
+                        </div>
+
+                        <!-- Candlestick Chart Mount -->
+                        <div id="candle-chart-mount" class="w-full h-80"></div>
+                        <!-- Foreign Flow Chart Mount -->
+                        <div class="mt-4 border-t border-borderLight pt-4">
+                            <h4 class="text-sm font-semibold text-slate-400 mb-2">Foreign Flow Activity (IDR)</h4>
+                            <div id="volume-chart-mount" class="w-full h-40"></div>
+                        </div>
+                    </div>
+
+                    <!-- Side-by-Side Tables -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Left Table: Insider Transactions -->
+                        <div class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                    <span>👥</span> Insider Transactions
+                                    <span class="text-[10px] font-semibold text-sky-400 bg-sky-950/40 border border-sky-500/20 px-2 py-0.5 rounded uppercase font-mono tracking-wider">{{ insiderScope }}</span>
+                                </h3>
+                                <span class="bg-indigo-950/40 border border-indigo-500/20 text-indigo-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                                    {{ insiderData.length }} recent trades
+                                </span>
+                            </div>
+                            <div class="overflow-x-auto max-h-[300px]">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-borderLight text-slate-400 font-semibold">
+                                            <th class="py-2.5 px-3">Date</th>
+                                            <th class="py-2.5 px-3">Ticker</th>
+                                            <th class="py-2.5 px-3">Insider Name</th>
+                                            <th class="py-2.5 px-3">Action</th>
+                                            <th class="py-2.5 px-3 text-right">Shares Change</th>
+                                            <th class="py-2.5 px-3 text-right">Avg Price</th>
+                                            <th class="py-2.5 px-3 text-right">Holding %</th>
+                                            <th class="py-2.5 px-3">Source</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="row in insiderData" :key="row.id_trx" class="border-b border-borderLight/30 hover:bg-slate-900/20 text-slate-300">
+                                            <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">{{ row.tanggal }}</td>
+                                            <td class="py-2.5 px-3">
+                                                <span class="bg-slate-900 border border-borderLight text-slate-300 font-bold px-2 py-0.5 rounded text-[10px]">{{ row.symbol }}</span>
+                                            </td>
+                                            <td class="py-2.5 px-3 font-semibold text-slate-200 max-w-[120px] truncate" :title="row.nama">{{ row.nama }}</td>
+                                            <td class="py-2.5 px-3">
+                                                <span :class="`px-2 py-0.5 rounded text-[10px] font-bold ${row.aksi.toUpperCase() === 'BUY' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/20' : 'bg-rose-950/40 text-rose-400 border border-rose-500/20'}`">
+                                                    {{ row.aksi }}
+                                                </span>
+                                            </td>
+                                            <td :class="`py-2.5 px-3 text-right font-semibold ${row.perubahan >= 0 ? 'text-emerald-400' : 'text-rose-400'}`">
+                                                {{ row.perubahan >= 0 ? '+' : '' }}{{ formatNumber(row.perubahan) }}
+                                            </td>
+                                            <td class="py-2.5 px-3 text-right font-mono">{{ row.harga || '-' }}</td>
+                                            <td class="py-2.5 px-3 text-right font-semibold text-slate-400 tabular">{{ row.sekarang_persen }}%</td>
+                                            <td class="py-2.5 px-3 text-slate-500 text-[10px]">{{ row.sumber }}</td>
+                                        </tr>
+                                        <tr v-if="insiderData.length === 0">
+                                            <td colspan="8" class="text-center py-8 text-slate-500">No insider transaction data found in database for {{ selectedTicker }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Right Table: Historical OHLC Records -->
+                        <div class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl">
+                            <h3 class="text-lg font-bold mb-4 text-slate-100 flex items-center gap-2">
+                                <span>🗄️</span> Historical OHLC & Flow Records
+                            </h3>
+                            <div class="overflow-x-auto max-h-[300px]">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-borderLight text-slate-400 font-semibold">
+                                            <th class="py-2.5 px-3">Date</th>
+                                            <th class="py-2.5 px-3 text-right">Open</th>
+                                            <th class="py-2.5 px-3 text-right">High</th>
+                                            <th class="py-2.5 px-3 text-right">Low</th>
+                                            <th class="py-2.5 px-3 text-right">Close</th>
+                                            <th class="py-2.5 px-3 text-right">Foreign Buy</th>
+                                            <th class="py-2.5 px-3 text-right">Foreign Sell</th>
+                                            <th class="py-2.5 px-3 text-right">Foreign Net</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="row in ohlcData.slice().reverse().slice(0, 30)" :key="row.tanggal" class="border-b border-borderLight/30 hover:bg-slate-900/20 text-slate-300">
+                                            <td class="py-2.5 px-3 font-mono font-semibold text-[10px] text-slate-400">{{ row.tanggal }}</td>
+                                            <td class="py-2.5 px-3 text-right tabular">{{ formatNumber(row.open) }}</td>
+                                            <td class="py-2.5 px-3 text-right tabular">{{ formatNumber(row.high) }}</td>
+                                            <td class="py-2.5 px-3 text-right tabular">{{ formatNumber(row.low) }}</td>
+                                            <td class="py-2.5 px-3 text-right font-bold text-sky-400 tabular">{{ formatNumber(row.close) }}</td>
+                                            <td class="py-2.5 px-3 text-right text-emerald-400 tabular">{{ formatNumber(row.foreign_buy) }}</td>
+                                            <td class="py-2.5 px-3 text-right text-rose-400 tabular">{{ formatNumber(row.foreign_sell) }}</td>
+                                            <td :class="`py-2.5 px-3 text-right font-semibold tabular ${row.foreign_flow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`">
+                                                {{ row.foreign_flow >= 0 ? '+' : '' }}{{ formatNumber(row.foreign_flow) }}
+                                            </td>
+                                        </tr>
+                                        <tr v-if="ohlcData.length === 0">
+                                            <td colspan="8" class="text-center py-8 text-slate-500">No data found in database for {{ selectedTicker }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Favorites Manager -->
+            <div v-show="activeTab === 'favorites'" class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl max-w-2xl mx-auto">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                        <span>⭐</span> Favorites Manager
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">Add or remove symbols stored in <strong>idxsaham.users.favorites</strong></p>
+                </div>
+
+                <!-- Input to add favorite -->
+                <form @submit.prevent="addFavorite" class="flex gap-3 mb-6">
+                    <input v-model="newFavInput" type="text" placeholder="Enter stock code (e.g. TLKM)" class="flex-grow bg-slate-950 border border-borderLight focus:border-sky-500 rounded-2xl px-4 py-3 text-sm placeholder-slate-600 focus:outline-none transition duration-200 uppercase" required />
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-600 font-bold px-6 rounded-2xl text-sm transition duration-200 flex items-center gap-2">
+                        <span>➕</span> Add Favorite
+                    </button>
+                </form>
+
+                <!-- Favorites List -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">My Saved Favorites (Total: {{ currentUser.favorites.length }})</h4>
+                    <div v-if="currentUser.favorites.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div v-for="fav in currentUser.favorites" :key="fav" class="bg-slate-900/60 border border-borderLight rounded-2xl p-4 flex justify-between items-center group hover:border-sky-500/30 transition duration-200">
+                            <div>
+                                <span class="font-bold text-slate-200 block">{{ fav }}</span>
+                                <span class="text-[10px] text-slate-500">Stock Ticker Symbol</span>
+                            </div>
+                            <button @click="removeFavorite(fav)" class="text-xs font-bold text-red-400/80 hover:text-red-300 hover:bg-red-950/40 px-3 py-1.5 rounded-xl border border-red-500/20 transition duration-150">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-12 border border-dashed border-borderLight rounded-2xl text-slate-500">
+                        No favorites stored in database yet.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Crawl Monitor Logs -->
+            <div v-show="activeTab === 'logs'" class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                            <span>📜</span> Crawl Jobs Logs
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Real-time status of crawler executions fetched from <strong>/crawl-status</strong></p>
+                    </div>
+                    <button @click="fetchLogs" class="bg-slate-900 hover:bg-slate-850 hover:border-slate-600 border border-borderLight px-4 py-2 rounded-2xl text-xs font-semibold text-slate-300 transition duration-200">
+                        🔄 Refresh Logs
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-borderLight text-slate-400 font-semibold">
+                                <th class="py-3 px-4">Job ID</th>
+                                <th class="py-3 px-4">Job Type</th>
+                                <th class="py-3 px-4">Target Ticker</th>
+                                <th class="py-3 px-4">Target Date</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Records Count</th>
+                                <th class="py-3 px-4">Created At</th>
+                                <th class="py-3 px-4">Error Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="log in logs" :key="log.id" class="border-b border-borderLight/30 hover:bg-slate-900/20 text-slate-300">
+                                <td class="py-3 px-4 font-mono text-xs text-slate-500">#{{ log.id }}</td>
+                                <td class="py-3 px-4 font-semibold text-sky-400">{{ log.job_type }}</td>
+                                <td class="py-3 px-4 font-bold">{{ log.target }}</td>
+                                <td class="py-3 px-4 font-mono text-xs text-slate-400">{{ log.tanggal_target || '-' }}</td>
+                                <td class="py-3 px-4">
+                                    <span :class="`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${log.status === 'SUCCESS' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-500/20' : 'bg-rose-950/50 text-rose-400 border border-rose-500/20'}`">
+                                        <span :class="`w-1.5 h-1.5 rounded-full ${log.status === 'SUCCESS' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`"></span>
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-right font-semibold tabular">{{ log.records_count }}</td>
+                                <td class="py-3 px-4 text-xs text-slate-400">{{ log.created_at }}</td>
+                                <td class="py-3 px-4 text-xs text-rose-300 max-w-xs truncate" :title="log.error_message">{{ log.error_message || '-' }}</td>
+                            </tr>
+                            <tr v-if="logs.length === 0">
+                                <td colspan="8" class="text-center py-8 text-slate-500">No crawl logs recorded yet in crawl_logs table.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Application Vue -->
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // State variables
+                const currentUser = ref(null);
+                const loading = ref(false);
+                const activeTab = ref('charts');
+                const toast = ref(null);
+                const focusTickers = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
+                const selectedTicker = ref('BBCA');
+                const ohlcData = ref([]);
+                const fetchingData = ref(false);
+                const newFavInput = ref('');
+                const logs = ref([]);
+                const crawling = ref(false);
+                const stockInfo = ref(null);
+                const insiderData = ref([]);
+                const insiderScope = ref('symbol');
+
+                // Charts Reference
+                let candleChart = null;
+                let volumeChart = null;
+
+                const loginForm = reactive({
+                    email: '',
+                    password: ''
+                });
+
+                // Toast Handler
+                const showToast = (message, type = 'success') => {
+                    toast.value = { message, type };
+                    setTimeout(() => {
+                        toast.value = null;
+                    }, 3500);
+                };
+
+                // Load User session
+                onMounted(() => {
+                    const session = localStorage.getItem('stockVision_test_user');
+                    if (session) {
+                        try {
+                            currentUser.value = JSON.parse(session);
+                            selectTicker(currentUser.value.default_ticker || 'BBCA');
+                            fetchLogs();
+                        } catch (e) {
+                            localStorage.removeItem('stockVision_test_user');
+                        }
+                    }
+                });
+
+                // Fill Preset Details
+                const fillPreset = (email) => {
+                    loginForm.email = email;
+                    loginForm.password = 'password123';
+                    handleLogin();
+                };
+
+                // Login Method
+                const handleLogin = async () => {
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/users/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(loginForm)
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Login failed');
+                        }
+
+                        // Emulate a token addition as backend user API returns the user object directly.
+                        data.token = `test-token-jwt-${btoa(data.email)}-${Date.now()}`;
+                        currentUser.value = data;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(data));
+                        
+                        showToast(`Successfully logged in as ${data.name}!`);
+                        
+                        // Select default ticker and load logs
+                        selectTicker(data.default_ticker || 'BBCA');
+                        fetchLogs();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // Logout Method
+                const logout = () => {
+                    currentUser.value = null;
+                    localStorage.removeItem('stockVision_test_user');
+                    showToast('Logged out successfully');
+                };
+
+                // Fetch Stock Info Snapshot
+                const fetchStockInfo = async (symbol) => {
+                    try {
+                        const response = await fetch(`/api/data/stock-info?symbol=${symbol}`);
+                        if (!response.ok) {
+                            stockInfo.value = null;
+                            return;
+                        }
+                        stockInfo.value = await response.json();
+                    } catch (e) {
+                        console.error('Error fetching stock info:', e);
+                        stockInfo.value = null;
+                    }
+                };
+
+                // Fetch Insider Trade Data
+                const fetchInsider = async (symbol) => {
+                    try {
+                        // First try fetching for the specific symbol
+                        let response = await fetch(`/api/data/majorholder?symbol=${symbol}&limit=30`);
+                        if (response.ok) {
+                            let data = await response.json();
+                            if (data.length > 0) {
+                                insiderData.value = data;
+                                insiderScope.value = symbol;
+                                return;
+                            }
+                        }
+                        
+                        // Fallback to global recent insider trades if empty
+                        response = await fetch(`/api/data/majorholder?limit=30`);
+                        if (response.ok) {
+                            insiderData.value = await response.json();
+                            insiderScope.value = 'Global Activity';
+                        } else {
+                            insiderData.value = [];
+                            insiderScope.value = 'None';
+                        }
+                    } catch (e) {
+                        console.error('Error fetching insider data:', e);
+                        insiderData.value = [];
+                        insiderScope.value = 'None';
+                    }
+                };
+
+                // Select and load Ticker Data
+                const selectTicker = async (symbol) => {
+                    selectedTicker.value = symbol;
+                    fetchingData.value = true;
+                    try {
+                        const response = await fetch(`/api/data/ohlc?symbol=${symbol}`);
+                        if (!response.ok) {
+                            const err = await response.json();
+                            throw new Error(err.error || 'Failed to fetch OHLC');
+                        }
+                        const data = await response.json();
+                        ohlcData.value = data;
+
+                        // Parallel fetch for Stock Info & Insider Data
+                        await Promise.all([
+                            fetchStockInfo(symbol),
+                            fetchInsider(symbol)
+                        ]);
+                        
+                        // Render charts
+                        await nextTick();
+                        renderCharts(data);
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                        ohlcData.value = [];
+                        stockInfo.value = null;
+                        insiderData.value = [];
+                    } finally {
+                        fetchingData.value = false;
+                    }
+                };
+
+                // Trigger Backend Crawler
+                const triggerCrawl = async (symbol) => {
+                    crawling.value = true;
+                    showToast(`Starting crawl for ${symbol} from Stockbit...`, 'success');
+                    try {
+                        // 1. Crawl stock info
+                        await fetch(`/stock-info?symbol=${symbol}`);
+                        
+                        // 2. Crawl insider transactions (global)
+                        await fetch(`/majorholder?pages=2`);
+                        
+                        // 3. Crawl historical OHLC
+                        const response = await fetch(`/ohlc?symbol=${symbol}`);
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to crawl OHLC');
+                        }
+                        
+                        showToast(`Successfully crawled and updated database for ${symbol}!`);
+                        
+                        // 4. Reload all database tables & chart
+                        await selectTicker(symbol);
+                        // 5. Refresh crawl logs
+                        await fetchLogs();
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    } finally {
+                        crawling.value = false;
+                    }
+                };
+
+                // Crawl All Supported Tickers Sequentially
+                const crawlAllTickers = async () => {
+                    crawling.value = true;
+                    showToast('Memulai crawling untuk semua 5 emiten... Mohon tunggu.', 'success');
+                    try {
+                        // 1. Crawl insider transactions (global feed, page 1 and 2)
+                        showToast('Crawling insider transactions (global feed)...');
+                        await fetch(`/majorholder?pages=2`);
+                        
+                        // 2. Loop for each ticker
+                        for (const symbol of focusTickers) {
+                            showToast(`Sedang men-crawl ${symbol}...`, 'success');
+                            
+                            // Crawl stock info
+                            await fetch(`/stock-info?symbol=${symbol}`);
+                            
+                            // Crawl historical OHLC
+                            const response = await fetch(`/ohlc?symbol=${symbol}`);
+                            if (!response.ok) {
+                                const err = await response.json();
+                                console.warn(`Gagal crawling data ${symbol}: ${err.error}`);
+                            }
+                            
+                            // Safety delay of 2 seconds between emitens to avoid rate limit
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                        
+                        showToast('Berhasil menyelesaikan crawling untuk semua emiten!');
+                        
+                        // 3. Reload current selected ticker records & refresh logs
+                        await selectTicker(selectedTicker.value);
+                        await fetchLogs();
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    } finally {
+                        crawling.value = false;
+                    }
+                };
+
+                // Add to Favorites
+                const addFavorite = async () => {
+                    const symbol = newFavInput.value.trim().toUpperCase();
+                    if (!symbol) return;
+                    if (currentUser.value.favorites.includes(symbol)) {
+                        showToast(`${symbol} is already in your favorites`, 'error');
+                        return;
+                    }
+
+                    const updatedFavs = [...currentUser.value.favorites, symbol];
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/favorites`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ favorites: updatedFavs })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to update favorites');
+                        }
+
+                        currentUser.value.favorites = data.favorites;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(currentUser.value));
+                        showToast(`Added ${symbol} to favorites`);
+                        newFavInput.value = '';
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                // Remove from Favorites
+                const removeFavorite = async (symbol) => {
+                    const updatedFavs = currentUser.value.favorites.filter(f => f !== symbol);
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/favorites`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ favorites: updatedFavs })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to update favorites');
+                        }
+
+                        currentUser.value.favorites = data.favorites;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(currentUser.value));
+                        showToast(`Removed ${symbol} from favorites`);
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                // Fetch Crawl status logs
+                const fetchLogs = async () => {
+                    try {
+                        const response = await fetch('/crawl-status?limit=30');
+                        if (!response.ok) throw new Error('Failed to load crawl status logs');
+                        const data = await response.json();
+                        logs.value = data;
+                    } catch (e) {
+                        console.error('Error fetching logs:', e);
+                    }
+                };
+
+                // Render ApexCharts for Candlestick and volume/foreign flow
+                const renderCharts = (data) => {
+                    if (data.length === 0) return;
+
+                    // Formating data for candlestick chart
+                    const candleSeriesData = data.map(item => {
+                        return {
+                            x: new Date(item.tanggal),
+                            y: [item.open, item.high, item.low, item.close]
+                        };
+                    });
+
+                    // Format data for foreign net flow chart
+                    const flowSeriesData = data.map(item => {
+                        return {
+                            x: new Date(item.tanggal),
+                            y: item.foreign_flow
+                        };
+                    });
+
+                    // Option Candlestick Chart
+                    const candleOptions = {
+                        series: [{
+                            data: candleSeriesData
+                        }],
+                        chart: {
+                            type: 'candlestick',
+                            height: 320,
+                            id: 'candlestick-chart',
+                            background: 'transparent',
+                            foreColor: '#94a3b8',
+                            toolbar: {
+                                show: true,
+                                tools: {
+                                    download: false
+                                }
+                            }
+                        },
+                        grid: {
+                            borderColor: 'rgba(255,255,255,0.04)'
+                        },
+                        xaxis: {
+                            type: 'datetime',
+                            axisBorder: {
+                                color: 'rgba(255,255,255,0.06)'
+                            },
+                            axisTicks: {
+                                color: 'rgba(255,255,255,0.06)'
+                            }
+                        },
+                        yaxis: {
+                            tooltip: {
+                                enabled: true
+                            },
+                            labels: {
+                                formatter: function (val) {
+                                    return Math.round(val);
+                                }
+                            }
+                        },
+                        plotOptions: {
+                            candlestick: {
+                                colors: {
+                                    upward: '#10b981',
+                                    downward: '#ef4444'
+                                }
+                            }
+                        },
+                        theme: {
+                            mode: 'dark'
+                        }
+                    };
+
+                    // Option Volume/Flow Chart
+                    const volumeOptions = {
+                        series: [{
+                            name: 'Net Flow (IDR)',
+                            data: flowSeriesData
+                        }],
+                        chart: {
+                            type: 'bar',
+                            height: 160,
+                            background: 'transparent',
+                            foreColor: '#94a3b8',
+                            toolbar: {
+                                show: false
+                            }
+                        },
+                        grid: {
+                            borderColor: 'rgba(255,255,255,0.04)'
+                        },
+                        plotOptions: {
+                            bar: {
+                                colors: {
+                                    ranges: [{
+                                        from: -999999999999,
+                                        to: 0,
+                                        color: '#ef4444'
+                                    }, {
+                                        from: 1,
+                                        to: 999999999999,
+                                        color: '#10b981'
+                                    }]
+                                }
+                            }
+                        },
+                        xaxis: {
+                            type: 'datetime',
+                            axisBorder: {
+                                color: 'rgba(255,255,255,0.06)'
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                formatter: function (val) {
+                                    if (Math.abs(val) >= 1e9) {
+                                        return (val / 1e9).toFixed(1) + 'B';
+                                    }
+                                    if (Math.abs(val) >= 1e6) {
+                                        return (val / 1e6).toFixed(1) + 'M';
+                                    }
+                                    return val;
+                                }
+                            }
+                        },
+                        theme: {
+                            mode: 'dark'
+                        }
+                    };
+
+                    // Destroy old charts if existing
+                    if (candleChart) candleChart.destroy();
+                    if (volumeChart) volumeChart.destroy();
+
+                    // Mount new charts
+                    candleChart = new ApexCharts(document.querySelector("#candle-chart-mount"), candleOptions);
+                    candleChart.render();
+
+                    volumeChart = new ApexCharts(document.querySelector("#volume-chart-mount"), volumeOptions);
+                    volumeChart.render();
+                };
+
+                // Utilities Formatting
+                const formatNumber = (num) => {
+                    if (num === null || num === undefined) return '-';
+                    return new Intl.NumberFormat('id-ID').format(Math.round(num));
+                };
+
+                return {
+                    currentUser,
+                    loginForm,
+                    loading,
+                    activeTab,
+                    toast,
+                    focusTickers,
+                    selectedTicker,
+                    ohlcData,
+                    stockInfo,
+                    insiderData,
+                    insiderScope,
+                    fetchingData,
+                    newFavInput,
+                    logs,
+                    crawling,
+                    triggerCrawl,
+                    crawlAllTickers,
+                    fillPreset,
+                    handleLogin,
+                    logout,
+                    selectTicker,
+                    addFavorite,
+                    removeFavorite,
+                    fetchLogs,
+                    formatNumber
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>{% endraw %}
