@@ -19,6 +19,9 @@ CORS(app)
 from data_routes import data_bp
 app.register_blueprint(data_bp)
 
+from user import user_bp
+app.register_blueprint(user_bp)
+
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
 PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
 PLAYER_ID = os.getenv("STOCKBIT_PLAYER_ID")
@@ -170,7 +173,7 @@ def insert_data_insider(data):
 
 
 # =========================
-# INSERT STOCK INFO
+# INSERT 
 # =========================
 def insert_data_stock_info(data):
     query = """
