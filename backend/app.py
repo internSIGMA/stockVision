@@ -926,6 +926,150 @@ def crawl_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ============================================================
+# FETCH ORDERBOOK (V2)
+# ============================================================
+def fetch_orderbook(token, symbol):
+    headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+    
+    # Menggunakan endpoint v2 yang baru Anda temukan dari DevTools!
+    resp = requests.get(
+        "https://exodus.stockbit.com/company-price-feed/v2/orderbook/template/0",
+        headers=headers,
+        params={"symbol": symbol}  # Mengirimkan kode saham (misal: BBCA)
+    )
+    
+    if resp.status_code != 200:
+        raise Exception(f"Fetch orderbook {symbol} gagal ({resp.status_code}): {resp.text}")
+        
+    return resp.json().get("data", {})
+
+# ============================================================
+# INSERT ORDERBOOK
+# ============================================================
+def insert_data_orderbook(data):
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_orderbook (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        waktu_update TIMESTAMP NOT NULL,
+        tipe VARCHAR(10) NOT NULL,
+        lapis INT NOT NULL,
+        harga NUMERIC(15, 2) NOT NULL,
+        volume_lot BIGINT NOT NULL,
+        CONSTRAINT pk_stock_orderbook PRIMARY KEY (symbol, tanggal, waktu_update, tipe, lapis)
+    );
+    """
+    
+    insert_query = """
+    INSERT INTO idxsaham.stock_orderbook (
+        symbol, tanggal, waktu_update, tipe, lapis, harga, volume_lot
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(waktu_update)s, %(tipe)s, %(lapis)s, %(harga)s, %(volume_lot)s
+    )
+    ON CONFLICT (symbol, tanggal, waktu_update, tipe, lapis)
+    DO NOTHING;
+    """
+    
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(create_table_query) 
+    execute_batch(cur, insert_query, data)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# ============================================================
+# ENDPOINT BATCH ORDERBOOK
+# ============================================================
+@app.route("/orderbook/batch", methods=["GET"])
+def orderbook_batch():
+    target_symbols = ["BBRI", "BBNI", "BBCA", "BMRI", "BJBR"]
+    all_records = []
+    errors = {}
+
+    try:
+        token = get_token()
+        
+        for symbol in target_symbols:
+            try:
+                # Wajib ada jeda agar IP/Akun aman dari blokir
+                time.sleep(1.5) 
+                
+                raw_data = fetch_orderbook(token, symbol)
+                
+                # --- PERBAIKAN DI SINI ---
+                # Langsung ambil dari raw_data, tidak perlu mencari key symbol (BBCA) lagi
+                created_str = raw_data.get("created")
+                
+                if not created_str:
+                    print(f"[DEBUG] {symbol} dilewati karena 'created' tidak ditemukan.")
+                    continue
+                    
+                # Memisahkan tanggal (YYYY-MM-DD) dari waktu lengkapnya
+                tanggal_saja = created_str.split(" ")[0]
+                
+                items = raw_data.get("item", [])
+                if not items:
+                    print(f"[DEBUG] {symbol} dilewati karena 'item' kosong.")
+                    continue
+                    
+                order_info = items[0]
+                bids = order_info.get("bid", [])
+                offers = order_info.get("offer", [])
+                # -------------------------
+                
+                # Memproses data BID (Antrean Beli)
+                for idx, b in enumerate(bids):
+                    price = normalize_number(b.get("price"))
+                    vol_shares = normalize_number(b.get("volume"))
+                    vol_lot = vol_shares // 100 if vol_shares else 0
+                    
+                    all_records.append({
+                        "symbol": symbol,
+                        "tanggal": tanggal_saja,
+                        "waktu_update": created_str,
+                        "tipe": "BID",
+                        "lapis": idx + 1,
+                        "harga": price,
+                        "volume_lot": vol_lot
+                    })
+                    
+                # Memproses data OFFER (Antrean Jual)
+                for idx, o in enumerate(offers):
+                    price = normalize_number(o.get("price"))
+                    vol_shares = normalize_number(o.get("volume"))
+                    vol_lot = vol_shares // 100 if vol_shares else 0
+                    
+                    all_records.append({
+                        "symbol": symbol,
+                        "tanggal": tanggal_saja,
+                        "waktu_update": created_str,
+                        "tipe": "OFFER",
+                        "lapis": idx + 1,
+                        "harga": price,
+                        "volume_lot": vol_lot
+                    })
+                    
+                log_crawl_job("ORDERBOOK", symbol, tanggal_saja, "SUCCESS", len(bids) + len(offers))
+                
+            except Exception as e:
+                errors[symbol] = str(e)
+                log_crawl_job("ORDERBOOK", symbol, None, "FAILED", 0, str(e))
+        
+        # Simpan ke PostgreSQL jika ada data yang berhasil diproses
+        if all_records:
+            insert_data_orderbook(all_records)
+            
+        return jsonify({
+            "message": f"Berhasil menyimpan {len(all_records)} baris data antrean ke database.",
+            "total_records_inserted": len(all_records),
+            "errors": errors if errors else None
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
