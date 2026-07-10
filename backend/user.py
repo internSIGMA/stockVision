@@ -1,4 +1,6 @@
 import os
+import sqlite3
+import json
 import psycopg2
 from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
@@ -33,7 +35,6 @@ def _ensure_users_table():
             name VARCHAR(255),
             role VARCHAR(255),
             default_ticker VARCHAR(20),
-            favorites TEXT[] DEFAULT '{}',
             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -52,8 +53,7 @@ def _ensure_users_table():
                 "password": generate_password_hash("password123"),
                 "name": "Fariz",
                 "role": "Trader — Perbankan",
-                "default_ticker": "BBCA",
-                "favorites": ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA", "ADRO", "INDF", "SMGR"]
+                "default_ticker": "BBCA"
             },
             {
                 "email": "dewi@sahamscope.id",
@@ -61,17 +61,16 @@ def _ensure_users_table():
                 "password": generate_password_hash("password123"),
                 "name": "Dewi",
                 "role": "Trader — Properti & Energi",
-                "default_ticker": "BBNI",
-                "favorites": ["BBNI", "BJBR", "ASII", "GOTO", "SMRA", "ASRI", "CTRA", "INCO", "MAPI"]
+                "default_ticker": "BBNI"
             }
         ]
         for u in users_to_seed:
             cur.execute(
                 """
-                INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker, favorites)
-                VALUES (%s, %s, %s, %s, %s, %s, %s);
+                INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
+                VALUES (%s, %s, %s, %s, %s, %s);
                 """,
-                (u["email"], u["username"], u["password"], u["name"], u["role"], u["default_ticker"], u["favorites"])
+                (u["email"], u["username"], u["password"], u["name"], u["role"], u["default_ticker"])
             )
         conn.commit()
 
@@ -95,9 +94,9 @@ def create_user(payload):
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker, favorites)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id, email, username, name, role, default_ticker, favorites;
+        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id, email, username, name, role, default_ticker;
         """,
         (
             str(payload["email"]).strip().lower(),
@@ -106,7 +105,6 @@ def create_user(payload):
             str(payload.get("name") or "").strip() or None,
             str(payload.get("role") or "").strip() or None,
             str(payload.get("default_ticker") or "").strip().upper() or None,
-            [str(item).strip().upper() for item in (payload.get("favorites") or []) if str(item).strip()],
         ),
     )
     row = cur.fetchone()
@@ -121,7 +119,6 @@ def create_user(payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
-        "favorites": list(row[6]) if row[6] else [],
     }
 
 
@@ -133,7 +130,7 @@ def get_user(user_id):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, favorites FROM idxsaham.users WHERE id = %s;",
+        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE id = %s;",
         (user_id,),
     )
     row = cur.fetchone()
@@ -150,7 +147,6 @@ def get_user(user_id):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
-        "favorites": list(row[6]) if row[6] else [],
     }
 
 
@@ -159,7 +155,7 @@ def get_users():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, favorites FROM idxsaham.users ORDER BY id ASC;"
+        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users ORDER BY id ASC;"
     )
     rows = cur.fetchall()
     cur.close()
@@ -173,53 +169,199 @@ def get_users():
             "name": row[3],
             "role": row[4],
             "default_ticker": row[5],
-            "favorites": list(row[6]) if row[6] else [],
         }
         for row in rows
     ]
 
 
-def get_user_favorites(user_id):
-    if not user_id:
-        raise ValueError("user_id is required")
-
-    user = get_user(user_id)
-    if not user:
-        return None
-    return {"user_id": user_id, "favorites": user.get("favorites", [])}
+SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
 
 
-def update_user_favorites(user_id, payload):
-    if not user_id:
-        raise ValueError("user_id is required")
+def get_sqlite_connection():
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    if not payload:
-        raise ValueError("request body is required")
 
-    favorites = payload.get("favorites")
-    if favorites is None:
-        raise ValueError("favorites is required")
-
-    normalized_favorites = [
-        str(item).strip().upper() for item in favorites if str(item).strip()
-    ]
-
-    _ensure_users_table()
-    conn = get_connection()
+def _ensure_watchlist_db():
+    conn = get_sqlite_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE idxsaham.users SET favorites = %s WHERE id = %s RETURNING id, favorites;",
-        (normalized_favorites, user_id),
+        """
+        CREATE TABLE IF NOT EXISTS watchlists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            symbols TEXT NOT NULL DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
     )
-    row = cur.fetchone()
     conn.commit()
+    cur.close()
+    conn.close()
+
+
+def create_watchlist(user_id, payload):
+    if not payload:
+        raise ValueError("request body is required")
+    name = str(payload.get("name") or "").strip()
+    if not name:
+        raise ValueError("name is required")
+    symbols = payload.get("symbols") or []
+    if not isinstance(symbols, list):
+        raise ValueError("symbols must be a list")
+
+    normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
+
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO watchlists (user_id, name, symbols) VALUES (?, ?, ?);",
+        (user_id, name, json.dumps(normalized_symbols))
+    )
+    watchlist_id = cur.lastrowid
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "id": watchlist_id,
+        "user_id": user_id,
+        "name": name,
+        "symbols": normalized_symbols
+    }
+
+
+def get_watchlists(user_id):
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? ORDER BY id ASC;", (user_id,))
+    rows = cur.fetchall()
+
+    if not rows:
+        default_name = "Daftar Pantau Utama"
+        default_symbols = ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA"]
+        cur.execute(
+            "INSERT INTO watchlists (user_id, name, symbols) VALUES (?, ?, ?);",
+            (user_id, default_name, json.dumps(default_symbols))
+        )
+        conn.commit()
+        cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? ORDER BY id ASC;", (user_id,))
+        rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    result = []
+    for row in rows:
+        try:
+            symbols = json.loads(row["symbols"])
+        except Exception:
+            symbols = []
+        result.append({
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "name": row["name"],
+            "symbols": symbols,
+            "created_at": row["created_at"]
+        })
+    return result
+
+
+def get_watchlist(user_id, watchlist_id):
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    row = cur.fetchone()
     cur.close()
     conn.close()
 
     if not row:
         return None
 
-    return {"user_id": row[0], "favorites": list(row[1]) if row[1] else []}
+    try:
+        symbols = json.loads(row["symbols"])
+    except Exception:
+        symbols = []
+
+    return {
+        "id": row["id"],
+        "user_id": row["user_id"],
+        "name": row["name"],
+        "symbols": symbols,
+        "created_at": row["created_at"]
+    }
+
+
+def update_watchlist(user_id, watchlist_id, payload):
+    if not payload:
+        raise ValueError("request body is required")
+
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return None
+
+    fields = []
+    values = []
+
+    if "name" in payload:
+        name = str(payload["name"]).strip()
+        if not name:
+            raise ValueError("name cannot be empty")
+        fields.append("name = ?")
+        values.append(name)
+
+    if "symbols" in payload:
+        symbols = payload["symbols"]
+        if not isinstance(symbols, list):
+            raise ValueError("symbols must be a list")
+        normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
+        fields.append("symbols = ?")
+        values.append(json.dumps(normalized_symbols))
+
+    if not fields:
+        cur.close()
+        conn.close()
+        raise ValueError("no fields provided for update")
+
+    values.extend([user_id, watchlist_id])
+    cur.execute(
+        f"UPDATE watchlists SET {', '.join(fields)} WHERE user_id = ? AND id = ?;",
+        values
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return get_watchlist(user_id, watchlist_id)
+
+
+def delete_watchlist(user_id, watchlist_id):
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        return None
+
+    cur.execute("DELETE FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"id": watchlist_id, "deleted": True}
 
 
 def update_user(user_id, payload):
@@ -254,16 +396,13 @@ def update_user(user_id, payload):
     if "default_ticker" in payload:
         fields.append("default_ticker = %s")
         values.append(str(payload.get("default_ticker") or "").strip().upper() or None)
-    if "favorites" in payload:
-        fields.append("favorites = %s")
-        values.append([str(item).strip().upper() for item in (payload.get("favorites") or []) if str(item).strip()])
 
     if not fields:
         raise ValueError("no fields provided for update")
 
     values.extend([user_id])
     cur.execute(
-        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker, favorites;",
+        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker;",
         values,
     )
     row = cur.fetchone()
@@ -281,7 +420,6 @@ def update_user(user_id, payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
-        "favorites": list(row[6]) if row[6] else [],
     }
 
 
@@ -298,7 +436,7 @@ def login_user(payload):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, favorites, password FROM idxsaham.users WHERE email = %s;",
+        "SELECT id, email, username, name, role, default_ticker, password FROM idxsaham.users WHERE email = %s;",
         (email,),
     )
     row = cur.fetchone()
@@ -308,7 +446,7 @@ def login_user(payload):
     if not row:
         return None
 
-    user_id, email_value, username, name, role, default_ticker, favorites, stored_hash = row
+    user_id, email_value, username, name, role, default_ticker, stored_hash = row
     if not check_password_hash(stored_hash, password):
         return None
 
@@ -319,7 +457,6 @@ def login_user(payload):
         "name": name,
         "role": role,
         "default_ticker": default_ticker,
-        "favorites": list(favorites) if favorites else [],
     }
 
 
@@ -368,18 +505,46 @@ def update_user_route(user_id):
     return jsonify(user)
 
 
-@user_bp.route("/users/<int:user_id>/favorites", methods=["GET", "PUT"])
-def favorite_handler(user_id):
-    if request.method == "GET":
-        favorites = get_user_favorites(user_id)
-        if not favorites:
-            return jsonify({"error": "user not found"}), 404
-        return jsonify(favorites)
+@user_bp.route("/users/<int:user_id>/watchlists", methods=["GET"])
+def list_watchlists_route(user_id):
+    return jsonify(get_watchlists(user_id))
 
+
+@user_bp.route("/users/<int:user_id>/watchlists", methods=["POST"])
+def create_watchlist_route(user_id):
     payload = request.get_json(silent=True) or {}
-    result = update_user_favorites(user_id, payload)
+    try:
+        wl = create_watchlist(user_id, payload)
+        return jsonify(wl), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@user_bp.route("/users/<int:user_id>/watchlists/<int:watchlist_id>", methods=["GET"])
+def get_watchlist_route(user_id, watchlist_id):
+    wl = get_watchlist(user_id, watchlist_id)
+    if not wl:
+        return jsonify({"error": "watchlist not found"}), 404
+    return jsonify(wl)
+
+
+@user_bp.route("/users/<int:user_id>/watchlists/<int:watchlist_id>", methods=["PUT"])
+def update_watchlist_route(user_id, watchlist_id):
+    payload = request.get_json(silent=True) or {}
+    try:
+        wl = update_watchlist(user_id, watchlist_id, payload)
+        if not wl:
+            return jsonify({"error": "watchlist not found"}), 404
+        return jsonify(wl)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@user_bp.route("/users/<int:user_id>/watchlists/<int:watchlist_id>", methods=["DELETE"])
+def delete_watchlist_route(user_id, watchlist_id):
+    result = delete_watchlist(user_id, watchlist_id)
     if not result:
-        return jsonify({"error": "user not found"}), 404
+        return jsonify({"error": "watchlist not found"}), 404
     return jsonify(result)
 
 
