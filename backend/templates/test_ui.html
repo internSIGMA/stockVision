@@ -197,8 +197,8 @@
                 <button @click="activeTab = 'charts'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'charts' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
                     📊 Chart & Prices
                 </button>
-                <button @click="activeTab = 'favorites'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'favorites' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
-                    ⭐ Favorites Manager
+                <button @click="activeTab = 'watchlists'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'watchlists' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
+                    ⭐ Watchlist Manager
                 </button>
                 <button @click="activeTab = 'logs'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'logs' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
                     📜 Crawl Logs
@@ -219,7 +219,8 @@
                     <div class="space-y-2">
                         <button v-for="ticker in focusTickers" :key="ticker" @click="selectTicker(ticker)" :class="`w-full flex justify-between items-center px-4 py-3.5 rounded-2xl text-left border transition duration-200 ${selectedTicker === ticker ? 'bg-sky-500/10 border-sky-500 text-sky-200 font-semibold' : 'bg-slate-900/40 border-borderLight hover:border-slate-600 text-slate-300'}`">
                             <span>{{ ticker }}</span>
-                            <span v-if="currentUser.favorites.includes(ticker)" class="text-amber-400 text-sm">★</span>
+                            <span v-if="activeWatchlist && activeWatchlist.symbols.includes(ticker)" @click.stop="toggleSymbolInActiveWatchlist(ticker)" class="text-amber-400 text-sm hover:scale-125 transition duration-150 cursor-pointer" title="Remove from active watchlist">★</span>
+                            <span v-else @click.stop="toggleSymbolInActiveWatchlist(ticker)" class="text-slate-600 hover:text-amber-400 text-sm hover:scale-125 transition duration-150 cursor-pointer" title="Add to active watchlist">☆</span>
                         </button>
                     </div>
                 </div>
@@ -404,39 +405,75 @@
                 </div>
             </div>
 
-            <!-- Tab 2: Favorites Manager -->
-            <div v-show="activeTab === 'favorites'" class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl max-w-2xl mx-auto">
-                <div class="mb-6">
-                    <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                        <span>⭐</span> Favorites Manager
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-1">Add or remove symbols stored in <strong>idxsaham.users.favorites</strong></p>
+            <!-- Tab 2: Watchlist Manager -->
+            <div v-show="activeTab === 'watchlists'" class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+                <!-- Watchlist List Sidebar -->
+                <div class="bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl h-fit">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <span>⭐</span> Watchlists
+                        </h3>
+                        <button @click="startCreate" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs px-2.5 py-1.5 rounded-xl transition duration-200">
+                            + New
+                        </button>
+                    </div>
+                    <div class="space-y-2 max-h-[350px] overflow-y-auto">
+                        <button v-for="wl in watchlists" :key="wl.id" @click="selectWatchlist(wl)" :class="`w-full flex flex-col p-3 rounded-2xl border text-left transition duration-200 ${selectedWatchlist && selectedWatchlist.id === wl.id && !isCreating ? 'bg-sky-500/10 border-sky-500' : 'bg-slate-900/40 border-borderLight hover:border-slate-700'}`">
+                            <div class="flex justify-between items-center w-full">
+                                <span class="font-bold text-slate-200">{{ wl.name }}</span>
+                                <span v-if="activeWatchlistId === wl.id" class="text-[9px] bg-amber-500 text-slate-900 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase">Active</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 mt-1">{{ wl.symbols.length }} symbols inside</span>
+                        </button>
+                        <button v-if="isCreating" class="w-full flex flex-col p-3 rounded-2xl border border-dashed border-sky-500 bg-sky-500/5 text-left">
+                            <span class="font-bold text-sky-400">New Watchlist...</span>
+                            <span class="text-[10px] text-sky-600 mt-1">Configuring name & symbols</span>
+                        </button>
+                        <div v-if="watchlists.length === 0 && !isCreating" class="text-center py-6 text-slate-500 text-xs">
+                            No watchlists found. Click "+ New" to create one.
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Input to add favorite -->
-                <form @submit.prevent="addFavorite" class="flex gap-3 mb-6">
-                    <input v-model="newFavInput" type="text" placeholder="Enter stock code (e.g. TLKM)" class="flex-grow bg-slate-950 border border-borderLight focus:border-sky-500 rounded-2xl px-4 py-3 text-sm placeholder-slate-600 focus:outline-none transition duration-200 uppercase" required />
-                    <button type="submit" class="bg-sky-500 hover:bg-sky-600 font-bold px-6 rounded-2xl text-sm transition duration-200 flex items-center gap-2">
-                        <span>➕</span> Add Favorite
-                    </button>
-                </form>
-
-                <!-- Favorites List -->
-                <div class="space-y-3">
-                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">My Saved Favorites (Total: {{ currentUser.favorites.length }})</h4>
-                    <div v-if="currentUser.favorites.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div v-for="fav in currentUser.favorites" :key="fav" class="bg-slate-900/60 border border-borderLight rounded-2xl p-4 flex justify-between items-center group hover:border-sky-500/30 transition duration-200">
-                            <div>
-                                <span class="font-bold text-slate-200 block">{{ fav }}</span>
-                                <span class="text-[10px] text-slate-500">Stock Ticker Symbol</span>
-                            </div>
-                            <button @click="removeFavorite(fav)" class="text-xs font-bold text-red-400/80 hover:text-red-300 hover:bg-red-950/40 px-3 py-1.5 rounded-xl border border-red-500/20 transition duration-150">
-                                Remove
+                <!-- Watchlist Editor Detail Area -->
+                <div class="md:col-span-2 bg-cardBg border border-borderLight rounded-3xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center border-b border-borderLight pb-4 mb-4">
+                        <h3 class="text-lg font-bold text-slate-100">
+                            {{ isCreating ? 'Create Watchlist' : 'Edit Watchlist' }}
+                        </h3>
+                        <div v-if="!isCreating && selectedWatchlist" class="flex gap-2">
+                            <button @click="handleSetActiveWatchlist" :disabled="activeWatchlistId === selectedWatchlist.id" class="bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-300 text-xs font-semibold px-3 py-1.5 rounded-xl transition duration-150 disabled:opacity-50">
+                                {{ activeWatchlistId === selectedWatchlist.id ? '★ Primary' : 'Set Active' }}
+                            </button>
+                            <button @click="handleDeleteWatchlist" class="bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 rounded-xl transition duration-150">
+                                Delete
                             </button>
                         </div>
                     </div>
-                    <div v-else class="text-center py-12 border border-dashed border-borderLight rounded-2xl text-slate-500">
-                        No favorites stored in database yet.
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Watchlist Name</label>
+                            <input v-model="newName" type="text" placeholder="e.g. My Favorites, Bluechips, Speculative..." class="w-full bg-slate-950 border border-borderLight focus:border-sky-500 rounded-2xl px-4 py-3 text-sm placeholder-slate-600 focus:outline-none transition duration-200" required />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Emitens (Tickers)</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                                <button v-for="ticker in ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM', 'ADRO', 'GOTO', 'PTBA', 'PTPP', 'SMRA', 'ASRI', 'CTRA', 'INCO', 'INDF', 'MAPI', 'SMGR']" :key="ticker" @click="toggleSymbol(ticker)" :class="`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left text-xs transition duration-150 ${selectedSymbols.includes(ticker) ? 'bg-sky-500/10 border-sky-500 text-sky-200 font-semibold' : 'bg-slate-900/20 border-borderLight hover:border-slate-700 text-slate-400'}`">
+                                    <span class="w-4 h-4 rounded flex items-center justify-center border border-slate-600 text-[10px] font-bold" :class="selectedSymbols.includes(ticker) ? 'bg-sky-500 text-slate-950 border-sky-500' : 'bg-slate-950'">
+                                        {{ selectedSymbols.includes(ticker) ? '✓' : '' }}
+                                    </span>
+                                    <span>{{ ticker }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4 border-t border-borderLight">
+                            <button @click="handleSaveWatchlist" class="bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white font-bold py-2.5 px-6 rounded-2xl text-xs transition duration-205">
+                                {{ isCreating ? 'Create Watchlist' : 'Save Changes' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -669,7 +706,7 @@
 
     <!-- Script Application Vue -->
     <script>
-        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
 
         createApp({
             setup() {
@@ -679,17 +716,36 @@
                 const loading = ref(false);
                 const activeTab = ref('charts');
                 const toast = ref(null);
-                const focusTickers = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
+
                 const selectedTicker = ref('BBCA');
                 const ohlcData = ref([]);
                 const fetchingData = ref(false);
-                const newFavInput = ref('');
                 const logs = ref([]);
                 const crawling = ref(false);
                 const stockInfo = ref(null);
                 const insiderData = ref([]);
                 const insiderScope = ref('symbol');
 
+                // Watchlists Data
+                const watchlists = ref([]);
+                const activeWatchlistId = ref(null);
+                const selectedWatchlist = ref(null);
+                const isCreating = ref(false);
+                const newName = ref('');
+                const selectedSymbols = ref([]);
+
+                const activeWatchlist = computed(() => {
+                    if (!watchlists.value || watchlists.value.length === 0) return null;
+                    return watchlists.value.find(w => w.id === activeWatchlistId.value) || watchlists.value[0];
+                });
+
+                const DEFAULT_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
+                const focusTickers = computed(() => {
+                    if (activeWatchlist.value && activeWatchlist.value.symbols.length > 0) {
+                        return activeWatchlist.value.symbols;
+                    }
+                    return DEFAULT_TICKERS;
+                });
                 // Scheduler state
                 const schedulerData = ref({
                     scheduler: { running: false, paused: false, interval_minutes: 30, crawl_in_progress: false, last_run: null, last_result: null, next_run: null, total_runs: 0, total_success: 0, total_skipped: 0 },
@@ -724,6 +780,7 @@
                             currentUser.value = JSON.parse(session);
                             selectTicker(currentUser.value.default_ticker || 'BBCA');
                             fetchLogs();
+                            fetchWatchlists();
                             fetchSchedulerStatus();
                         } catch (e) {
                             localStorage.removeItem('stockVision_test_user');
@@ -765,6 +822,7 @@
                         // Select default ticker and load logs
                         selectTicker(data.default_ticker || 'BBCA');
                         fetchLogs();
+                        fetchWatchlists();
                     } catch (err) {
                         showToast(err.message, 'error');
                     } finally {
@@ -777,6 +835,10 @@
                     currentUser.value = null;
                     showLogin.value = false;
                     localStorage.removeItem('stockVision_test_user');
+                    watchlists.value = [];
+                    activeWatchlistId.value = null;
+                    selectedWatchlist.value = null;
+                    isCreating.value = false;
                     showToast('Logged out successfully');
                 };
 
@@ -928,57 +990,148 @@
                     }
                 };
 
-                // Add to Favorites
-                const addFavorite = async () => {
-                    const symbol = newFavInput.value.trim().toUpperCase();
-                    if (!symbol) return;
-                    if (currentUser.value.favorites.includes(symbol)) {
-                        showToast(`${symbol} is already in your favorites`, 'error');
+                // Fetch Watchlists from SQLite database
+                const fetchWatchlists = async () => {
+                    if (!currentUser.value) return;
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            watchlists.value = data;
+                            if (data.length > 0) {
+                                if (!activeWatchlistId.value) {
+                                    activeWatchlistId.value = data[0].id;
+                                }
+                                // Auto select first watchlist for editor if none selected
+                                if (!selectedWatchlist.value) {
+                                    selectWatchlist(data[0]);
+                                } else {
+                                    // Refresh active selection reference
+                                    const refreshed = data.find(w => w.id === selectedWatchlist.value.id);
+                                    if (refreshed) selectWatchlist(refreshed);
+                                }
+                            } else {
+                                startCreate();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching watchlists:', e);
+                    }
+                };
+
+                const selectWatchlist = (wl) => {
+                    selectedWatchlist.value = wl;
+                    newName.value = wl.name;
+                    selectedSymbols.value = [...wl.symbols];
+                    isCreating.value = false;
+                };
+
+                const startCreate = () => {
+                    selectedWatchlist.value = null;
+                    newName.value = '';
+                    selectedSymbols.value = [];
+                    isCreating.value = true;
+                };
+
+                const toggleSymbol = (code) => {
+                    if (selectedSymbols.value.includes(code)) {
+                        selectedSymbols.value = selectedSymbols.value.filter(s => s !== code);
+                    } else {
+                        selectedSymbols.value.push(code);
+                    }
+                };
+
+                const handleSaveWatchlist = async () => {
+                    const name = newName.value.trim();
+                    if (!name) {
+                        showToast('Watchlist name is required', 'error');
                         return;
                     }
-
-                    const updatedFavs = [...currentUser.value.favorites, symbol];
                     try {
-                        const response = await fetch(`/users/${currentUser.value.id}/favorites`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ favorites: updatedFavs })
-                        });
-                        const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data.error || 'Failed to update favorites');
+                        let response;
+                        if (isCreating.value) {
+                            response = await fetch(`/users/${currentUser.value.id}/watchlists`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name, symbols: selectedSymbols.value })
+                            });
+                        } else {
+                            response = await fetch(`/users/${currentUser.value.id}/watchlists/${selectedWatchlist.value.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name, symbols: selectedSymbols.value })
+                            });
                         }
-
-                        currentUser.value.favorites = data.favorites;
-                        localStorage.setItem('stockVision_test_user', JSON.stringify(currentUser.value));
-                        showToast(`Added ${symbol} to favorites`);
-                        newFavInput.value = '';
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Failed to save watchlist');
+                        
+                        showToast(`Watchlist "${name}" saved successfully!`);
+                        
+                        // Clear selectedWatchlist first so fetchWatchlists updates properly
+                        const savedId = data.id;
+                        selectedWatchlist.value = null;
+                        
+                        await fetchWatchlists();
+                        
+                        const savedWl = watchlists.value.find(w => w.id === savedId);
+                        if (savedWl) {
+                            selectWatchlist(savedWl);
+                        }
                     } catch (e) {
                         showToast(e.message, 'error');
                     }
                 };
 
-                // Remove from Favorites
-                const removeFavorite = async (symbol) => {
-                    const updatedFavs = currentUser.value.favorites.filter(f => f !== symbol);
+                const handleDeleteWatchlist = async () => {
+                    if (!selectedWatchlist.value) return;
+                    if (!confirm(`Are you sure you want to delete "${selectedWatchlist.value.name}"?`)) return;
                     try {
-                        const response = await fetch(`/users/${currentUser.value.id}/favorites`, {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists/${selectedWatchlist.value.id}`, {
+                            method: 'DELETE'
+                        });
+                        if (!response.ok) throw new Error('Failed to delete watchlist');
+                        
+                        showToast('Watchlist deleted');
+                        selectedWatchlist.value = null;
+                        await fetchWatchlists();
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                const handleSetActiveWatchlist = () => {
+                    if (!selectedWatchlist.value) return;
+                    activeWatchlistId.value = selectedWatchlist.value.id;
+                    showToast(`Active watchlist set to "${selectedWatchlist.value.name}"`);
+                };
+
+                const toggleSymbolInActiveWatchlist = async (symbol) => {
+                    const wl = activeWatchlist.value;
+                    if (!wl) {
+                        showToast('No active watchlist found. Please create one first.', 'error');
+                        return;
+                    }
+                    let updatedSymbols = [...wl.symbols];
+                    if (updatedSymbols.includes(symbol)) {
+                        updatedSymbols = updatedSymbols.filter(s => s !== symbol);
+                    } else {
+                        updatedSymbols.push(symbol);
+                    }
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists/${wl.id}`, {
                             method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ favorites: updatedFavs })
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbols: updatedSymbols })
                         });
                         const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data.error || 'Failed to update favorites');
+                        if (!response.ok) throw new Error('Failed to update watchlist symbols');
+                        
+                        // Update in-memory lists
+                        const idx = watchlists.value.findIndex(w => w.id === wl.id);
+                        if (idx !== -1) {
+                            watchlists.value[idx] = data;
                         }
-
-                        currentUser.value.favorites = data.favorites;
-                        localStorage.setItem('stockVision_test_user', JSON.stringify(currentUser.value));
-                        showToast(`Removed ${symbol} from favorites`);
+                        showToast(updatedSymbols.includes(symbol) ? `Added ${symbol} to watchlist` : `Removed ${symbol} from watchlist`);
                     } catch (e) {
                         showToast(e.message, 'error');
                     }
@@ -1183,7 +1336,6 @@
                     insiderData,
                     insiderScope,
                     fetchingData,
-                    newFavInput,
                     logs,
                     crawling,
                     schedulerData,
@@ -1193,9 +1345,25 @@
                     handleLogin,
                     logout,
                     selectTicker,
-                    addFavorite,
-                    removeFavorite,
                     fetchLogs,
+                    formatNumber,
+                    
+                    // Watchlists properties
+                    watchlists,
+                    activeWatchlistId,
+                    selectedWatchlist,
+                    isCreating,
+                    newName,
+                    selectedSymbols,
+                    activeWatchlist,
+                    fetchWatchlists,
+                    selectWatchlist,
+                    startCreate,
+                    toggleSymbol,
+                    handleSaveWatchlist,
+                    handleDeleteWatchlist,
+                    handleSetActiveWatchlist,
+                    toggleSymbolInActiveWatchlist
                     fetchSchedulerStatus,
                     controlScheduler,
                     formatNumber
