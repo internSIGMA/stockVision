@@ -1,0 +1,60 @@
+services:
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:14-alpine
+    container_name: stockvision_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Service (Flask REST API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stockvision_backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    # environment:
+    #   - DB_HOST=db  # Aktifkan baris ini apabila ingin menggunakan database lokal di dalam container
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount watchlist SQLite DB file to persist watchlist state on host
+      - ./backend/watchlist.db:/app/watchlist.db
+
+  # Frontend Service (Vue/Vite Development Server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stockvision_frontend
+    restart: always
+    ports:
+      - "5174:5173"
+    volumes:
+      # Mount the frontend directory for hot-reloading
+      - ./frontend:/app
+      # Avoid overwriting container's node_modules with host's node_modules
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
