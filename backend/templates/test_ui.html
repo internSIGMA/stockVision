@@ -71,7 +71,7 @@
                 <p class="text-slate-400 text-sm mt-1">Backend Interactive Integration and Testing Sandbox</p>
             </div>
             
-            <!-- User Status Header -->
+            <!-- User Status Header / Login Button -->
             <div v-if="currentUser" class="flex items-center gap-4 bg-cardBg/80 border border-borderLight p-3 rounded-2xl shadow-xl backdrop-blur-md">
                 <img :src="currentUser.avatar || 'https://i.pravatar.cc/100?img=1'" alt="avatar" class="w-10 h-10 rounded-full border border-sky-400/50" />
                 <div class="text-left">
@@ -80,6 +80,11 @@
                 </div>
                 <button @click="logout" class="ml-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 rounded-xl transition duration-200">
                     Logout
+                </button>
+            </div>
+            <div v-else>
+                <button v-if="!showLogin" @click="showLogin = true" class="bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-lg transition duration-200">
+                    Login
                 </button>
             </div>
         </header>
@@ -91,8 +96,38 @@
             <span class="text-sm font-medium">{{ toast.message }}</span>
         </div>
 
-        <!-- 1. LOGIN SCREEN -->
-        <main v-if="!currentUser" class="max-w-md mx-auto my-12 animate-fade-in">
+        <!-- 1. LANDING SCREEN -->
+        <main v-if="!currentUser && !showLogin" class="animate-fade-in flex flex-col items-center justify-center my-16">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 text-center text-slate-100 max-w-2xl leading-tight">Mulai Analisis Saham dengan <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">Data Cerdas</span></h2>
+            <p class="text-slate-400 mb-10 text-center max-w-xl text-lg">Platform interaktif untuk memonitor aliran dana asing, pergerakan bandar, dan prediksi harga menggunakan machine learning.</p>
+            
+            <div class="w-full max-w-4xl bg-cardBg border border-borderLight p-6 rounded-3xl shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl"></div>
+                <div class="absolute -bottom-20 -left-20 w-60 h-60 bg-sky-500/10 rounded-full blur-3xl"></div>
+                
+                <div class="flex items-center justify-between mb-4 border-b border-borderLight pb-4">
+                    <div class="flex gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs font-mono text-slate-500">Live Market Overview</div>
+                </div>
+                <!-- Mockup Static Chart using CSS gradients -->
+                <div class="h-64 md:h-80 w-full rounded-xl flex items-end justify-between px-2 gap-1 md:gap-2 pt-10">
+                    <div v-for="i in 30" :key="i" class="w-full bg-sky-500/20 rounded-t-sm hover:bg-sky-400/40 transition-all cursor-pointer relative group" :style="{ height: `${20 + Math.random() * 80}%` }">
+                        <div v-if="i%3==0" class="absolute bottom-full mb-1 w-0.5 h-6 bg-emerald-500/50 left-1/2 -translate-x-1/2"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <button @click="showLogin = true" class="mt-12 bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white font-bold py-4 px-12 rounded-full text-lg shadow-xl shadow-sky-500/20 transition duration-300">
+                Mulai Sekarang (Login)
+            </button>
+        </main>
+
+        <!-- 2. LOGIN SCREEN -->
+        <main v-else-if="!currentUser && showLogin" class="max-w-md mx-auto my-12 animate-fade-in">
             <div class="bg-cardBg border border-borderLight rounded-3xl p-8 shadow-2xl relative overflow-hidden">
                 <div class="absolute -top-10 -right-10 w-40 h-40 bg-sky-500/5 rounded-full blur-2xl"></div>
                 <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-500/5 rounded-full blur-2xl"></div>
@@ -132,18 +167,33 @@
                         <input v-model="loginForm.password" type="password" placeholder="••••••••" class="w-full bg-slate-950/70 border border-borderLight hover:border-slate-700 focus:border-sky-500 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition duration-200" required />
                     </div>
                     
-                    <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm transition duration-300 mt-2 shadow-xl shadow-sky-500/10 flex justify-center items-center gap-2">
+                    <div class="flex justify-end mt-1">
+                        <a href="#" class="text-xs text-sky-400 hover:text-sky-300 transition">Forgot password?</a>
+                    </div>
+                    
+                    <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm transition duration-300 mt-4 shadow-xl shadow-sky-500/10 flex justify-center items-center gap-2">
                         <span v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         Sign In
+                    </button>
+
+                    <div class="relative flex py-4 items-center">
+                        <div class="flex-grow border-t border-borderLight"></div>
+                        <span class="flex-shrink mx-4 text-xs text-slate-500">or</span>
+                        <div class="flex-grow border-t border-borderLight"></div>
+                    </div>
+
+                    <button type="button" @click="showToast('Google Login API belum terhubung.', 'error')" class="w-full bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 font-bold py-3 rounded-2xl text-sm transition duration-300 flex justify-center items-center gap-3">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/><path fill="none" d="M1 1h22v22H1z"/></svg>
+                        Sign in with Google
                     </button>
                 </form>
             </div>
         </main>
 
-        <!-- 2. LOGGED IN DASHBOARD -->
+        <!-- 3. LOGGED IN DASHBOARD -->
         <main v-else class="space-y-8 animate-fade-in">
             <!-- Tabs selection -->
-            <div class="flex gap-2 bg-cardBg border border-borderLight p-1.5 rounded-2xl max-w-md">
+            <div class="flex gap-2 bg-cardBg border border-borderLight p-1.5 rounded-2xl max-w-2xl flex-wrap">
                 <button @click="activeTab = 'charts'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'charts' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
                     📊 Chart & Prices
                 </button>
@@ -152,6 +202,9 @@
                 </button>
                 <button @click="activeTab = 'logs'" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'logs' ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`">
                     📜 Crawl Logs
+                </button>
+                <button @click="activeTab = 'scheduler'; fetchSchedulerStatus()" :class="`flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition duration-200 ${activeTab === 'scheduler' ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20' : 'text-slate-400 hover:text-slate-200'}`">
+                    ⏰ Auto Scheduler
                 </button>
             </div>
 
@@ -476,6 +529,178 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Tab 4: Auto Scheduler -->
+            <div v-show="activeTab === 'scheduler'" class="space-y-6 animate-fade-in">
+                <!-- Scheduler Header -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                            <span>⏰</span> Auto Crawling Scheduler
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Crawling otomatis setiap 30 menit pada jam bursa, hanya di hari trading.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="fetchSchedulerStatus" class="bg-slate-900 hover:bg-slate-800 border border-borderLight px-4 py-2 rounded-2xl text-xs font-semibold text-slate-300 transition duration-200 flex items-center gap-1.5">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Market & Scheduler Status Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Card: Scheduler Status -->
+                    <div class="bg-cardBg border border-borderLight p-5 rounded-2xl shadow-lg relative overflow-hidden">
+                        <div class="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl" :class="schedulerData.scheduler.running ? 'bg-emerald-500/10' : 'bg-slate-500/10'"></div>
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mb-2">Scheduler Status</span>
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-3 h-3 rounded-full" :class="schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse') : 'bg-slate-600'"></span>
+                            <span class="text-lg font-bold" :class="schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-500'">{{ schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'PAUSED' : 'ACTIVE') : 'STOPPED' }}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button v-if="!schedulerData.scheduler.running" @click="controlScheduler('start')" class="flex-1 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 text-xs px-3 py-2 rounded-xl font-semibold transition duration-200">Start</button>
+                            <button v-if="schedulerData.scheduler.running && !schedulerData.scheduler.paused" @click="controlScheduler('pause')" class="flex-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-300 text-xs px-3 py-2 rounded-xl font-semibold transition duration-200">Pause</button>
+                            <button v-if="schedulerData.scheduler.paused" @click="controlScheduler('resume')" class="flex-1 bg-sky-600/20 hover:bg-sky-600/40 border border-sky-500/30 text-sky-300 text-xs px-3 py-2 rounded-xl font-semibold transition duration-200">Resume</button>
+                            <button v-if="schedulerData.scheduler.running" @click="controlScheduler('stop')" class="flex-1 bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/30 text-rose-300 text-xs px-3 py-2 rounded-xl font-semibold transition duration-200">Stop</button>
+                        </div>
+                    </div>
+
+                    <!-- Card: Trading Day -->
+                    <div class="bg-cardBg border border-borderLight p-5 rounded-2xl shadow-lg relative overflow-hidden">
+                        <div class="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl" :class="schedulerData.market.is_trading_day ? 'bg-emerald-500/10' : 'bg-rose-500/10'"></div>
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mb-2">Hari Trading</span>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-lg font-bold" :class="schedulerData.market.is_trading_day ? 'text-emerald-400' : 'text-rose-400'">{{ schedulerData.market.is_trading_day ? 'YA' : 'TIDAK' }}</span>
+                        </div>
+                        <p v-if="schedulerData.market.day_info" class="text-xs text-amber-400/80 mt-1">📅 {{ schedulerData.market.day_info }}</p>
+                        <p v-if="!schedulerData.market.is_trading_day && schedulerData.market.next_trading_day" class="text-xs text-slate-500 mt-1">Hari trading berikut: <span class="text-sky-400 font-semibold">{{ schedulerData.market.next_trading_day }}</span></p>
+                        <p v-else class="text-xs text-slate-500 mt-1">Jam Bursa: {{ schedulerData.market.market_hours || '08:45 - 16:15 WIB' }}</p>
+                    </div>
+
+                    <!-- Card: Jam Bursa -->
+                    <div class="bg-cardBg border border-borderLight p-5 rounded-2xl shadow-lg">
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mb-2">Jam Bursa</span>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-3 h-3 rounded-full" :class="schedulerData.market.is_trading_hours ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'"></span>
+                            <span class="text-lg font-bold" :class="schedulerData.market.is_trading_hours ? 'text-emerald-400' : 'text-slate-500'">{{ schedulerData.market.is_trading_hours ? 'BUKA' : 'TUTUP' }}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1 font-mono">{{ schedulerData.market.current_time_wib || '-' }}</p>
+                    </div>
+
+                    <!-- Card: Statistik -->
+                    <div class="bg-cardBg border border-borderLight p-5 rounded-2xl shadow-lg">
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mb-2">Statistik Crawl</span>
+                        <div class="grid grid-cols-3 gap-3 mt-2">
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-sky-400">{{ schedulerData.scheduler.total_runs || 0 }}</div>
+                                <div class="text-[10px] text-slate-500">Total</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-emerald-400">{{ schedulerData.scheduler.total_success || 0 }}</div>
+                                <div class="text-[10px] text-slate-500">Sukses</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-slate-400">{{ schedulerData.scheduler.total_skipped || 0 }}</div>
+                                <div class="text-[10px] text-slate-500">Skipped</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scheduler Info Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-cardBg border border-borderLight p-4 rounded-2xl flex items-center gap-3">
+                        <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400">⏱️</div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Interval</span>
+                            <span class="text-sm font-bold text-slate-200">{{ schedulerData.scheduler.interval_minutes || 30 }} menit</span>
+                        </div>
+                    </div>
+                    <div class="bg-cardBg border border-borderLight p-4 rounded-2xl flex items-center gap-3">
+                        <div class="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-400">⏭️</div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Next Run</span>
+                            <span class="text-sm font-bold text-slate-200">{{ schedulerData.scheduler.next_run || 'Tidak dijadwalkan' }}</span>
+                        </div>
+                    </div>
+                    <div class="bg-cardBg border border-borderLight p-4 rounded-2xl flex items-center gap-3">
+                        <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">✅</div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Last Result</span>
+                            <span class="text-sm font-bold text-slate-200 truncate block max-w-[200px]">{{ schedulerData.scheduler.last_result || 'Belum pernah berjalan' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Trigger + Target Emiten -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Manual Trigger -->
+                    <div class="bg-cardBg border border-borderLight rounded-2xl p-6 shadow-xl">
+                        <h4 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2"><span>⚡</span> Manual Trigger</h4>
+                        <p class="text-xs text-slate-500 mb-4">Jalankan crawl sekarang juga tanpa menunggu scheduler (bypass jam bursa).</p>
+                        <button @click="controlScheduler('trigger')" :disabled="schedulerData.scheduler.crawl_in_progress" class="w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-40 text-white font-bold py-3 rounded-xl text-sm transition duration-300 shadow-lg shadow-violet-500/10 flex justify-center items-center gap-2">
+                            <span v-if="schedulerData.scheduler.crawl_in_progress" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            {{ schedulerData.scheduler.crawl_in_progress ? 'Sedang Crawling...' : '🚀 Trigger Crawl Sekarang' }}
+                        </button>
+                    </div>
+
+                    <!-- Target Emiten -->
+                    <div class="lg:col-span-2 bg-cardBg border border-borderLight rounded-2xl p-6 shadow-xl">
+                        <h4 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2"><span>🎯</span> Target Emiten</h4>
+                        <p class="text-xs text-slate-500 mb-4">Emiten yang akan di-crawl otomatis (Stock Info + Insider Activity).</p>
+                        <div class="flex flex-wrap gap-3">
+                            <div v-for="sym in (schedulerData.targets || ['BBCA','BBNI','BBRI','BMRI','BJBR'])" :key="sym" class="bg-slate-900/60 border border-borderLight rounded-xl px-4 py-3 flex items-center gap-3 hover:border-violet-500/30 transition duration-200">
+                                <span class="w-8 h-8 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-lg flex items-center justify-center text-xs font-bold text-violet-300">{{ sym.charAt(0) }}</span>
+                                <div>
+                                    <span class="text-sm font-bold text-slate-200 block">{{ sym }}</span>
+                                    <span class="text-[10px] text-slate-500">Stock Info + OHLC</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crawl History Table -->
+                <div class="bg-cardBg border border-borderLight rounded-2xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2"><span>📋</span> Riwayat Eksekusi Scheduler</h4>
+                        <span class="bg-violet-950/40 border border-violet-500/20 text-violet-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">{{ (schedulerData.history || []).length }} entries</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="border-b border-borderLight text-slate-400 font-semibold">
+                                    <th class="py-2.5 px-3">Waktu</th>
+                                    <th class="py-2.5 px-3">Status</th>
+                                    <th class="py-2.5 px-3">Detail</th>
+                                    <th class="py-2.5 px-3 text-right">Emiten</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(h, i) in (schedulerData.history || [])" :key="i" class="border-b border-borderLight/30 hover:bg-slate-900/20 text-slate-300">
+                                    <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">{{ h.time }}</td>
+                                    <td class="py-2.5 px-3">
+                                        <span :class="`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                            h.status === 'SUCCESS' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-500/20' :
+                                            h.status === 'SKIPPED' ? 'bg-slate-900/50 text-slate-400 border border-slate-500/20' :
+                                            h.status === 'PARTIAL' ? 'bg-amber-950/50 text-amber-400 border border-amber-500/20' :
+                                            'bg-rose-950/50 text-rose-400 border border-rose-500/20'
+                                        }`">
+                                            <span :class="`w-1.5 h-1.5 rounded-full ${h.status === 'SUCCESS' ? 'bg-emerald-400' : h.status === 'SKIPPED' ? 'bg-slate-400' : h.status === 'PARTIAL' ? 'bg-amber-400' : 'bg-rose-400'}`"></span>
+                                            {{ h.status }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2.5 px-3 text-slate-400 max-w-[300px] truncate" :title="h.detail">{{ h.detail }}</td>
+                                    <td class="py-2.5 px-3 text-right font-semibold">{{ h.symbols_crawled || '-' }}</td>
+                                </tr>
+                                <tr v-if="!(schedulerData.history || []).length">
+                                    <td colspan="4" class="text-center py-8 text-slate-500">Belum ada riwayat eksekusi scheduler.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -487,6 +712,7 @@
             setup() {
                 // State variables
                 const currentUser = ref(null);
+                const showLogin = ref(false);
                 const loading = ref(false);
                 const activeTab = ref('charts');
                 const toast = ref(null);
@@ -520,6 +746,14 @@
                     }
                     return DEFAULT_TICKERS;
                 });
+                // Scheduler state
+                const schedulerData = ref({
+                    scheduler: { running: false, paused: false, interval_minutes: 30, crawl_in_progress: false, last_run: null, last_result: null, next_run: null, total_runs: 0, total_success: 0, total_skipped: 0 },
+                    market: { current_time_wib: null, is_trading_day: false, day_info: null, is_trading_hours: false, market_hours: null, next_trading_day: null },
+                    targets: ['BBCA','BBNI','BBRI','BMRI','BJBR'],
+                    history: []
+                });
+                let schedulerPollTimer = null;
 
                 // Charts Reference
                 let candleChart = null;
@@ -547,6 +781,7 @@
                             selectTicker(currentUser.value.default_ticker || 'BBCA');
                             fetchLogs();
                             fetchWatchlists();
+                            fetchSchedulerStatus();
                         } catch (e) {
                             localStorage.removeItem('stockVision_test_user');
                         }
@@ -598,6 +833,7 @@
                 // Logout Method
                 const logout = () => {
                     currentUser.value = null;
+                    showLogin.value = false;
                     localStorage.removeItem('stockVision_test_user');
                     watchlists.value = [];
                     activeWatchlistId.value = null;
@@ -913,6 +1149,31 @@
                     }
                 };
 
+                // Fetch Scheduler Status
+                const fetchSchedulerStatus = async () => {
+                    try {
+                        const response = await fetch('/scheduler/status');
+                        if (response.ok) {
+                            schedulerData.value = await response.json();
+                        }
+                    } catch (e) {
+                        console.error('Error fetching scheduler status:', e);
+                    }
+                };
+
+                // Control Scheduler (start/stop/pause/resume/trigger)
+                const controlScheduler = async (action) => {
+                    try {
+                        const response = await fetch(`/scheduler/${action}`, { method: 'POST' });
+                        const data = await response.json();
+                        showToast(data.message || `Scheduler ${action} berhasil`);
+                        // Refresh status after short delay
+                        setTimeout(fetchSchedulerStatus, 500);
+                    } catch (e) {
+                        showToast(`Gagal ${action} scheduler: ${e.message}`, 'error');
+                    }
+                };
+
                 // Render ApexCharts for Candlestick and volume/foreign flow
                 const renderCharts = (data) => {
                     if (data.length === 0) return;
@@ -1063,6 +1324,7 @@
 
                 return {
                     currentUser,
+                    showLogin,
                     loginForm,
                     loading,
                     activeTab,
@@ -1076,6 +1338,7 @@
                     fetchingData,
                     logs,
                     crawling,
+                    schedulerData,
                     triggerCrawl,
                     crawlAllTickers,
                     fillPreset,
@@ -1101,6 +1364,9 @@
                     handleDeleteWatchlist,
                     handleSetActiveWatchlist,
                     toggleSymbolInActiveWatchlist
+                    fetchSchedulerStatus,
+                    controlScheduler,
+                    formatNumber
                 };
             }
         }).mount('#app');
