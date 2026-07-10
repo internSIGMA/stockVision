@@ -10,155 +10,122 @@ Dokumen ini ditujukan untuk memandu tim Frontend Vue/Vite dalam menghubungkan ap
 
 ---
 
-## 🛠️ 2. Daftar Endpoint & Format Response
+## 🛠️ 2. Endpoint Trigger, Crawling & Scheduler
 
-### A. Endpoint Trigger & Crawling (Untuk memperbarui data)
-Endpoint-endpoint ini bertugas memicu crawling data dari Stockbit API ke database lokal.
+### A. Endpoint Trigger Crawling Manual
+Endpoint-endpoint ini bertugas memicu crawling data dari Stockbit API ke database lokal secara manual.
 *   **`/stock-info` (GET)**: Memicu crawl snapshot saham terbaru untuk symbol tertentu (hanya `BBCA`, `BBNI`, `BBRI`, `BMRI`, `BJBR`).
 *   **`/ohlc` (GET)**: Memicu crawl data historical OHLC.
 *   **`/broker-activity` (GET)**: Memicu crawl ringkasan aktivitas broker.
 *   **`/majorholder` (GET)**: Memicu crawl data transaksi insider.
 
+### B. Endpoint Auto Scheduler (Baru)
+Digunakan untuk mengontrol crawling otomatis yang berjalan setiap 30 menit pada jam bursa.
+*   **`/scheduler/status` (GET)**: Melihat status scheduler saat ini, info hari trading, jam bursa, dan riwayat eksekusi.
+*   **`/scheduler/start` (POST)**: Menyalakan scheduler.
+*   **`/scheduler/stop` (POST)**: Mematikan scheduler secara penuh.
+*   **`/scheduler/pause` (POST)**: Menghentikan sementara (pause) eksekusi scheduler.
+*   **`/scheduler/resume` (POST)**: Melanjutkan kembali scheduler yang di-pause.
+*   **`/scheduler/trigger` (POST)**: Memaksa crawler untuk berjalan satu kali saat itu juga (bypass pengecekan jam bursa/hari libur).
+
 ---
 
-## 📊 3. Endpoint Query Data (Untuk Tampilan Tabel & Chart di Frontend)
-Endpoint-endpoint baru ini didesain khusus untuk mengambil data mentah dari database lokal PostgreSQL untuk ditampilkan di frontend:
+## 📊 3. Endpoint Query Data & Fitur (Untuk Frontend)
+Endpoint-endpoint ini didesain khusus untuk mengambil data mentah dari database lokal PostgreSQL untuk ditampilkan di frontend:
 
 ### A. Data Chart & Aliran Dana Asing (OHLC & Foreign Flow)
 *   **Endpoint**: `/api/data/ohlc`
 *   **Method**: `GET`
+*   **Query Parameters**: `symbol` (Wajib), `from` (Opsional), `to` (Opsional).
+
+### B. Prediksi Harga Saham (Forecasting) [BARU]
+Fitur ini memberikan prediksi pergerakan harga saham untuk 1 hingga 7 hari ke depan (H+1 sampai H+7) berdasarkan model Machine Learning (Time Series Forecasting).
+*   **Endpoint**: `/api/data/forecast` *(Planned/Mocukup)*
+*   **Method**: `GET`
 *   **Query Parameters**:
     *   `symbol` (Wajib, String): Kode saham (`BBCA`, `BBNI`, `BBRI`, `BMRI`, `BJBR`).
-    *   `from` (Opsional, format `YYYY-MM-DD`): Filter batas bawah tanggal.
-    *   `to` (Opsional, format `YYYY-MM-DD`): Filter batas atas tanggal.
+    *   `days` (Opsional, Integer): Jumlah hari prediksi (default: 7, max: 7).
 *   **Response (200 OK)**:
     ```json
     [
       {
         "symbol": "BBCA",
-        "tanggal": "2025-07-03",
-        "open": 6000.0,
-        "high": 6100.0,
-        "low": 5950.0,
-        "close": 6050.0,
-        "volume": 12500000,
-        "foreign_buy": 5000000.0,
-        "foreign_sell": 4000000.0,
-        "foreign_flow": 1000000.0
+        "tanggal_prediksi": "2026-07-10",
+        "hari_ke": 1,
+        "prediksi_harga": 6125.0,
+        "batas_bawah": 6050.0,
+        "batas_atas": 6200.0,
+        "confidence_level": "Tinggi"
+      },
+      {
+        "symbol": "BBCA",
+        "tanggal_prediksi": "2026-07-13",
+        "hari_ke": 2,
+        "prediksi_harga": 6150.0,
+        "batas_bawah": 6000.0,
+        "batas_atas": 6300.0,
+        "confidence_level": "Sedang"
       }
     ]
     ```
 
-### B. Aktivitas Ringkasan Broker (Broker Summary)
+### C. Aktivitas Ringkasan Broker (Broker Summary)
 *   **Endpoint**: `/api/data/broker-activity`
 *   **Method**: `GET`
-*   **Query Parameters**:
-    *   `broker_code` (Opsional, String): Kode sekuritas (contoh: `YP`, `XL`).
-    *   `symbol` (Opsional, String): Kode saham (contoh: `BBRI`).
-    *   `from` / `to` (Opsional, format `YYYY-MM-DD`): Filter rentang tanggal.
-    *   `limit` (Opsional, default 100): Jumlah record maksimal.
-*   **Response (200 OK)**:
-    ```json
-    [
-      {
-        "symbol": "BBRI",
-        "broker_code": "YP",
-        "broker_type": "DOMESTIC",
-        "tanggal": "2026-07-03",
-        "nilai_rp": 45000000.0,
-        "lot": 900,
-        "avg_price": 5000.0,
-        "frekuensi": 15,
-        "aksi": "BUY"
-      }
-    ]
-    ```
+*   **Query Parameters**: `broker_code` (Opsional), `symbol` (Opsional), `limit` (Opsional).
 
-### C. Informasi Snapshot Saham (Stock Info)
+### D. Informasi Snapshot Saham (Stock Info)
 *   **Endpoint**: `/api/data/stock-info`
 *   **Method**: `GET`
-*   **Query Parameters**:
-    *   `symbol` (Wajib, String): Kode saham (`BBCA`, `BBNI`, `BBRI`, `BMRI`, `BJBR`).
-*   **Response (200 OK)**:
-    ```json
-    {
-      "symbol": "BBCA",
-      "nama": "Bank Central Asia Tbk.",
-      "tanggal": "2026-07-06",
-      "waktu_update": "10:45:00",
-      "harga": 6075.0,
-      "harga_sebelumnya": 6050.0,
-      "perubahan": 25.0,
-      "perubahan_persen": 0.41,
-      "volume": 1250000,
-      "rata_rata": 6060.0,
-      "bid_price": 6050.0,
-      "bid_volume": 4500,
-      "offer_price": 6100.0,
-      "offer_volume": 3200,
-      "status_pasar": "OPEN"
-    }
-    ```
+*   **Query Parameters**: `symbol` (Wajib).
 
-### D. Transaksi Orang Dalam (Majorholder / Insider)
+### E. Transaksi Orang Dalam (Majorholder / Insider)
 *   **Endpoint**: `/api/data/majorholder`
 *   **Method**: `GET`
-*   **Query Parameters**:
-    *   `symbol` (Opsional, String): Kode saham (contoh: `BMRI`).
-    *   `limit` (Opsional, default 100): Jumlah record maksimal.
-*   **Response (200 OK)**:
-    ```json
-    [
-      {
-        "id_trx": "1234567",
-        "nama": "DUDI HERMAWAN",
-        "symbol": "BJBR",
-        "tanggal": "2026-07-02",
-        "aksi": "BUY",
-        "sebelumnya": 105000.0,
-        "sebelumnya_persen": 0.01,
-        "sekarang": 115000.0,
-        "sekarang_persen": 0.011,
-        "perubahan": 10000.0,
-        "perubahan_persen": 9.52,
-        "harga": "950",
-        "sumber": "KSEI",
-        "kewarganegaraan": "INDONESIA",
-        "broker": "YP",
-        "badge": "DIRECTOR"
-      }
-    ]
-    ```
+*   **Query Parameters**: `symbol` (Opsional), `limit` (Opsional).
 
-### E. Monitoring Status Pekerjaan Crawling (Crawl Logs)
+### F. Monitoring Status Pekerjaan Crawling (Crawl Logs)
 *   **Endpoint**: `/crawl-status`
 *   **Method**: `GET`
-*   **Query Parameters**:
-    *   `limit` (Opsional, default `50`): Jumlah riwayat pekerjaan terakhir yang ditampilkan.
-*   **Response (200 OK)**:
-    ```json
-    [
-      {
-        "id": 16,
-        "job_type": "AUTH_LOGIN",
-        "target": "username_anda",
-        "tanggal_target": null,
-        "status": "SUCCESS",
-        "records_count": 1,
-        "error_message": null,
-        "created_at": "2026-07-06 10:45:34"
-      }
-    ]
-    ```
+*   **Query Parameters**: `limit` (Opsional, default `50`).
 
 ---
 
-## 🔄 4. Pipeline Aliran Data (Database -> Backend -> Frontend)
+## 👤 4. Endpoint Pengguna & Favorites (Baru)
+Sistem ini memungkinkan pengguna (user) untuk login dan menyimpan daftar emiten favorit mereka.
+
+*   **Login**: `/users/login` (POST) - Body: `{"email": "...", "password": "..."}`
+*   **Ambil Profil User**: `/users/<user_id>` (GET)
+*   **Ambil Favorites**: `/users/<user_id>/favorites` (GET)
+*   **Update Favorites**: `/users/<user_id>/favorites` (PUT) - Body: `{"favorites": ["BBCA", "BMRI"]}`
+
+---
+
+## 🗺️ 5. Panduan Alur UI/UX Frontend (Routing State)
+Untuk memberikan gambaran yang jelas mengenai *user journey*, tim Frontend diharapkan membangun alur *routing* sebagai berikut:
+
+1. **Landing Page (Publik)**
+   * **Kondisi**: User belum login.
+   * **Tampilan**: Halaman statis yang memuat ilustrasi/grafik *overview* market.
+   * **Aksi**: Terdapat tombol "Login" atau "Mulai Sekarang" yang akan mengarahkan user ke halaman Login.
+2. **Login Page (Publik)**
+   * **Kondisi**: User belum login.
+   * **Tampilan**: Form input kredensial (Email, Password), link *Forgot Password*, dan tombol *Sign in with Google*.
+   * **Aksi**: Mengirim *request* POST ke endpoint `/users/login`. Jika sukses, token/sesi disimpan dan user diarahkan ke Dashboard.
+3. **Dashboard / Fitur Utama (Privat)**
+   * **Kondisi**: User sudah login (memiliki sesi).
+   * **Tampilan**: Akses penuh ke seluruh fitur (Tabel OHLC, Chart Harga, Monitor Bandar, Scheduler, dan Favorites).
+   * **Aksi**: Terhubung ke semua endpoint `/api/data/*` dan fitur *Auto-Crawl*. Terdapat tombol *Logout* untuk menghapus sesi dan kembali ke *Landing Page*.
+
+---
+
+## 🔄 6. Pipeline Aliran Data (Database -> Backend -> Frontend)
 
 ```mermaid
 graph TD
     A[Database PostgreSQL] <-->|psycopg2 SQL Queries| B(Flask Backend API)
     B <-->|HTTP REST JSON & CORS| C[Frontend Vue/Vite]
     D[Stockbit API / External] -->|Crawl & Parse| B
+    E[Forecasting Engine] -->|Prediksi 1-7 Hari| B
 ```
 Tim Frontend hanya perlu melakukan query `GET` ke endpoint `/api/data/...` untuk mengambil seluruh isi tabel dan menampilkannya di antarmuka grafik atau tabel.
