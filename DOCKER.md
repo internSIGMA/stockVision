@@ -16,19 +16,6 @@ Sebelum memulai proses instalasi, pastikan sistem Anda telah memenuhi prasyarat 
 
 Koneksi basis data dikelola sepenuhnya secara terpusat melalui file `.env` di root direktori. Sesuaikan nilai `DB_HOST` sesuai dengan skenario pengembangan Anda:
 
-### Skenario A: Menggunakan Basis Data Remote (Default)
-Gunakan alamat IP basis data remote Anda agar dapat langsung membaca data historis yang sudah ada:
-```env
-DB_HOST=34.101.242.103
-```
-
-### Skenario B: Menggunakan Container Basis Data Lokal (Docker)
-Gunakan nama layanan database Docker jika ingin mengembangkan menggunakan container PostgreSQL lokal:
-```env
-DB_HOST=db
-```
-
----
 
 ## 3. Prosedur Inisialisasi Layanan
 
