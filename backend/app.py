@@ -12,7 +12,7 @@ import json
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables from .env file (searching upwards if necessary)
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 app = Flask(__name__)
 CORS(app)

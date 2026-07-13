@@ -12,7 +12,7 @@ from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 # In-memory stores for password reset mechanism
 _reset_codes = {}   # email -> { "code": code, "expires_at": timestamp }
