@@ -129,6 +129,20 @@ _scheduler_state = {
 
 def _log_crawl(job_type, target, tanggal_target, status, records_count=0, error_message=None):
     """Log ke crawl_logs table."""
+    cleaned_msg = error_message
+    if error_message:
+        err_str = str(error_message)
+        if "401" in err_str:
+            cleaned_msg = "Akses token kedaluwarsa (Unauthorized)"
+        elif "404" in err_str:
+            cleaned_msg = "Akses token kedaluwarsa (Not Found / Sesi Habis)"
+        elif "429" in err_str:
+            cleaned_msg = "Terlalu banyak permintaan ke API Stockbit (Rate Limit). Silakan tunggu beberapa menit."
+        elif "500" in err_str or "502" in err_str or "503" in err_str or "504" in err_str:
+            cleaned_msg = "Server Stockbit sedang bermasalah / Down."
+        elif "ConnectionError" in err_str or "connection" in err_str.lower():
+            cleaned_msg = "Gagal terhubung ke internet / server Stockbit."
+
     try:
         conn = _get_connection()
         cur = conn.cursor()
@@ -136,12 +150,13 @@ def _log_crawl(job_type, target, tanggal_target, status, records_count=0, error_
             INSERT INTO idxsaham.crawl_logs
                 (job_type, target, tanggal_target, status, records_count, error_message)
             VALUES (%s, %s, %s, %s, %s, %s);
-        """, (job_type, target, tanggal_target, status, records_count, error_message))
+        """, (job_type, target, tanggal_target, status, records_count, cleaned_msg))
         conn.commit()
         cur.close()
         conn.close()
     except Exception as e:
         print(f"[Scheduler] Error logging crawl: {e}")
+
 
 
 # =============================================================
@@ -212,15 +227,26 @@ def _run_scheduled_crawl(app_context_func=None):
 
     try:
         # Import crawl functions dari app.py (lazy import to avoid circular)
-        from app import get_token, fetch_stock_info, parse_stock_info, insert_data_stock_info
-        from app import fetch_majorholder, insert_data_insider
+        from app import (
+            get_token, fetch_stock_info, parse_stock_info, insert_data_stock_info,
+            fetch_majorholder, insert_data_insider, fetch_ohlc, insert_data_ohlc
+        )
 
         token = get_token()
 
         # Crawl Stock Info untuk setiap emiten
         for symbol in TARGET_SYMBOLS:
             try:
-                raw = fetch_stock_info(token, symbol)
+                try:
+                    raw = fetch_stock_info(token, symbol)
+                except Exception as e:
+                    if "401" in str(e) or "Unauthorized" in str(e):
+                        print(f"[Scheduler] Token kedaluwarsa saat fetch {symbol}. Mencoba login ulang...")
+                        token = get_token()  # Cache sudah di-invalidate oleh fetch_stock_info, ini akan login ulang
+                        raw = fetch_stock_info(token, symbol)
+                    else:
+                        raise e
+
                 data = parse_stock_info(raw)
                 insert_data_stock_info(data)
                 total_records += 1
@@ -241,7 +267,17 @@ def _run_scheduled_crawl(app_context_func=None):
             today_str = now_wib.strftime("%Y-%m-%d")
             from datetime import date
             thirty_days_ago = (date.today() - timedelta(days=30)).strftime("%Y-%m-%d")
-            records = fetch_majorholder(token, thirty_days_ago, today_str, 2)
+            
+            try:
+                records = fetch_majorholder(token, thirty_days_ago, today_str, 2)
+            except Exception as e:
+                if "401" in str(e) or "Unauthorized" in str(e):
+                    print("[Scheduler] Token kedaluwarsa saat fetch Majorholder. Mencoba login ulang...")
+                    token = get_token()
+                    records = fetch_majorholder(token, thirty_days_ago, today_str, 2)
+                else:
+                    raise e
+
             if records:
                 insert_data_insider(records)
                 total_records += len(records)
@@ -253,6 +289,43 @@ def _run_scheduled_crawl(app_context_func=None):
             errors.append(err_msg)
             _log_crawl("SCHEDULER_MAJORHOLDER", "ALL",
                        now_wib.strftime("%Y-%m-%d"), "FAILED", 0, str(e))
+            print(f"[Scheduler] {err_msg}")
+
+        # Crawl OHLC & Foreign Flow untuk setiap emiten (7 hari ke belakang)
+        try:
+            today_str = now_wib.strftime("%Y-%m-%d")
+            from datetime import date
+            seven_days_ago = (date.today() - timedelta(days=7)).strftime("%Y-%m-%d")
+            print("[Scheduler] Memulai crawl OHLC & Foreign Flow...")
+            for symbol in TARGET_SYMBOLS:
+                try:
+                    try:
+                        records = fetch_ohlc(token, symbol, today_str, seven_days_ago)
+                    except Exception as e:
+                        if "401" in str(e) or "Unauthorized" in str(e):
+                            print(f"[Scheduler] Token kedaluwarsa saat fetch OHLC {symbol}. Mencoba login ulang...")
+                            token = get_token()
+                            records = fetch_ohlc(token, symbol, today_str, seven_days_ago)
+                        else:
+                            raise e
+
+                    if records:
+                        insert_data_ohlc(records)
+                        total_records += len(records)
+                        _log_crawl("SCHEDULER_OHLC", symbol, today_str, "SUCCESS", len(records))
+                        print(f"[Scheduler] OHLC {symbol}: {len(records)} records")
+                    else:
+                        _log_crawl("SCHEDULER_OHLC", symbol, today_str, "SUCCESS", 0)
+                        print(f"[Scheduler] OHLC {symbol}: 0 records (no new data)")
+                    time.sleep(1)  # rate limit protection
+                except Exception as e:
+                    err_msg = f"OHLC {symbol}: {str(e)}"
+                    errors.append(err_msg)
+                    _log_crawl("SCHEDULER_OHLC", symbol, today_str, "FAILED", 0, str(e))
+                    print(f"[Scheduler] {err_msg}")
+        except Exception as e:
+            err_msg = f"OHLC Crawl Init: {str(e)}"
+            errors.append(err_msg)
             print(f"[Scheduler] {err_msg}")
 
         # Summary

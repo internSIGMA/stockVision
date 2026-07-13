@@ -2,11 +2,21 @@ import os
 import sqlite3
 import json
 import psycopg2
+import string
+import random
+import time
+import uuid
+import smtplib
+from email.mime.text import MIMEText
 from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv(find_dotenv())
+
+# In-memory stores for password reset mechanism
+_reset_codes = {}   # email -> { "code": code, "expires_at": timestamp }
+_reset_tokens = {}  # temp_token -> email
 
 user_bp = Blueprint("user_bp", __name__)
 
@@ -563,6 +573,155 @@ def login_user_route():
     if not user:
         return jsonify({"error": "invalid credentials"}), 401
     return jsonify(user)
+
+
+def send_reset_email(email, code):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+    
+    subject = "Kode Verifikasi Reset Password stockVision"
+    body = f"Kode verifikasi reset password Anda adalah: {code}\nKode ini berlaku selama 5 menit."
+    
+    if smtp_host and smtp_port and smtp_user and smtp_pass:
+        try:
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = email
+            
+            # Send via SMTP
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+            print(f"[SMTP] Reset code sent to {email} successfully.")
+            return True
+        except Exception as e:
+            print(f"[SMTP] Error sending email via SMTP: {e}")
+            return False
+    else:
+        # Fallback simulation
+        print(f"\n==========================================")
+        print(f"[SMTP SIMULATION] To: {email}")
+        print(f"Subject: {subject}")
+        print(f"Body: {body}")
+        print(f"==========================================\n")
+        return False
+
+
+@user_bp.route("/users/reset-password/send-code", methods=["POST"])
+def send_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email wajib diisi"}), 400
+        
+    _ensure_users_table()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM idxsaham.users WHERE email = %s;", (email,))
+    user_exists = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if not user_exists:
+        return jsonify({"error": "Email tidak terdaftar di database"}), 404
+        
+    # Generate 6-char alphanumeric code (uppercase letters + numbers)
+    code = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    _reset_codes[email] = {
+        "code": code,
+        "expires_at": time.time() + 300 # 5 minutes
+    }
+    
+    # Send email (or simulate)
+    smtp_sent = send_reset_email(email, code)
+    
+    resp = {
+        "message": "Kode verifikasi telah dikirim ke email.",
+        "simulated": not smtp_sent
+    }
+    if not smtp_sent:
+        resp["debug_code"] = code # helper for testing in browser without console check
+        
+    return jsonify(resp)
+
+
+@user_bp.route("/users/reset-password/verify-code", methods=["POST"])
+def verify_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    code = str(payload.get("code") or "").strip().upper()
+    
+    if not email or not code:
+        return jsonify({"error": "Email dan kode verifikasi wajib diisi"}), 400
+        
+    entry = _reset_codes.get(email)
+    if not entry:
+        return jsonify({"error": "Silakan kirim kode terlebih dahulu"}), 400
+        
+    if time.time() > entry["expires_at"]:
+        # Expired
+        _reset_codes.pop(email, None)
+        return jsonify({"error": "Kode verifikasi telah kadaluwarsa (berlaku 5 menit)"}), 400
+        
+    if entry["code"] != code:
+        return jsonify({"error": "Kode verifikasi salah"}), 400
+        
+    # Validation succeeded, remove code and generate temp reset token
+    _reset_codes.pop(email, None)
+    temp_token = str(uuid.uuid4())
+    _reset_tokens[temp_token] = email
+    
+    return jsonify({
+        "message": "Autentikasi berhasil.",
+        "token": temp_token
+    })
+
+
+@user_bp.route("/users/reset-password/reset", methods=["POST"])
+def reset_password_route():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    new_password = str(payload.get("password") or "")
+    
+    if not token or not new_password:
+        return jsonify({"error": "Token dan kata sandi baru wajib diisi"}), 400
+        
+    if len(new_password) < 6:
+        return jsonify({"error": "Kata sandi minimal 6 karakter"}), 400
+        
+    email = _reset_tokens.get(token)
+    if not email:
+        return jsonify({"error": "Token reset password tidak valid atau telah kadaluwarsa"}), 400
+        
+    # Update password in DB
+    password_hash = generate_password_hash(new_password)
+    
+    _ensure_users_table()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE idxsaham.users SET password = %s WHERE email = %s RETURNING id;",
+        (password_hash, email)
+    )
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    if not updated:
+        return jsonify({"error": "Gagal mereset kata sandi. Pengguna tidak ditemukan."}), 404
+        
+    # Revoke token
+    _reset_tokens.pop(token, None)
+    
+    return jsonify({
+        "message": "Kata sandi berhasil direset. Silakan masuk kembali."
+    })
 
 
 @user_bp.route("/test-ui")
