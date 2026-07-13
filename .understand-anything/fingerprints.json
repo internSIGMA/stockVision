@@ -1,31 +1,71 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "027c4ec7ca883c14b6e04eee80346d8bd2649740",
-  "generatedAt": "2026-07-03T07:32:06.076Z",
+  "gitCommitHash": "00096a8cc051ee94c79ae31c7c1319beab4c903d",
+  "generatedAt": "2026-07-13T02:50:11.902Z",
   "files": {
+    "DOCKER.md": {
+      "filePath": "DOCKER.md",
+      "contentHash": "58e4df3507a599cf36c4dd8cc1d4cf89ffcb304a19c587d1ae1e6ed945a1eccc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 87,
+      "hasStructuralAnalysis": true
+    },
+    "INTEGRATION_GUIDE.md": {
+      "filePath": "INTEGRATION_GUIDE.md",
+      "contentHash": "eff6cbb894ac0d5765d2a32675daa14b5ed38a592b5714c67e23928016fa4e1e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 177,
+      "hasStructuralAnalysis": true
+    },
     "README.md": {
       "filePath": "README.md",
-      "contentHash": "17b4de30123db3d8f83a57636ba33b43ffc64efcc6a1f9839fe2b90a25a28650",
+      "contentHash": "daed563a1debe1800fef73a0a18bd2b8c667532704e7c745772fb99425f3b3fe",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 130,
+      "totalLines": 152,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/README.md": {
-      "filePath": "SahamAI/SahamAI/README.md",
-      "contentHash": "f1e590b774a8be5fe7088c076e5fd4ffee526096ef4aaa72040f60822e73888d",
+    "backend/.dockerignore": {
+      "filePath": "backend/.dockerignore",
+      "contentHash": "4a2bc8106e37014debf76691cd7f37f6c9a3f9f987c297162de6c4b9966162a7",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 59,
+      "totalLines": 13,
+      "hasStructuralAnalysis": false
+    },
+    "backend/Dockerfile": {
+      "filePath": "backend/Dockerfile",
+      "contentHash": "1accf3d0531c9b888fc209fe46dd1b70295d2bec02080ec361f4fdc47d8a04b0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 24,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/app.py": {
-      "filePath": "SahamAI/SahamAI/app.py",
-      "contentHash": "879d3f5317c5b90a27787282111c21c3c706431c132a0f658a15aed4ec246870",
+    "backend/INTEGRATION_GUIDE.md": {
+      "filePath": "backend/INTEGRATION_GUIDE.md",
+      "contentHash": "78a834c9c4df056e7219dc87b6f9fe12ff55f614c32226527b628d5461df6a56",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 132,
+      "hasStructuralAnalysis": true
+    },
+    "backend/app.py": {
+      "filePath": "backend/app.py",
+      "contentHash": "8f2405683a92eae4e2ba410b2a36840a21df40032d1548e1dd20c06852401523",
       "functions": [
         {
           "name": "get_connection",
@@ -34,14 +74,23 @@
           "lineCount": 4
         },
         {
-          "name": "get_brokers",
-          "params": [],
+          "name": "get_last_trading_day",
+          "params": [
+            "target_date"
+          ],
           "exported": true,
-          "lineCount": 12
+          "lineCount": 34
         },
         {
-          "name": "get_workdays",
-          "params": [],
+          "name": "log_crawl_job",
+          "params": [
+            "job_type",
+            "target",
+            "tanggal_target",
+            "status",
+            "records_count",
+            "error_message"
+          ],
           "exported": true,
           "lineCount": 13
         },
@@ -81,7 +130,7 @@
           "name": "_do_login",
           "params": [],
           "exported": true,
-          "lineCount": 20
+          "lineCount": 27
         },
         {
           "name": "_do_refresh",
@@ -89,7 +138,7 @@
             "refresh_token"
           ],
           "exported": true,
-          "lineCount": 14
+          "lineCount": 21
         },
         {
           "name": "get_token",
@@ -106,7 +155,7 @@
             "pages"
           ],
           "exported": true,
-          "lineCount": 46
+          "lineCount": 48
         },
         {
           "name": "fetch_broker_activity",
@@ -121,7 +170,7 @@
             "investor_type"
           ],
           "exported": true,
-          "lineCount": 49
+          "lineCount": 51
         },
         {
           "name": "fetch_stock_info",
@@ -156,19 +205,19 @@
           "name": "majorholder",
           "params": [],
           "exported": true,
-          "lineCount": 18
+          "lineCount": 58
         },
         {
           "name": "broker_activity",
           "params": [],
           "exported": true,
-          "lineCount": 28
+          "lineCount": 70
         },
         {
           "name": "stock_info",
           "params": [],
           "exported": true,
-          "lineCount": 17
+          "lineCount": 47
         },
         {
           "name": "insert_data_ohlc",
@@ -182,7 +231,72 @@
           "name": "get_ohlc",
           "params": [],
           "exported": true,
-          "lineCount": 53
+          "lineCount": 95
+        },
+        {
+          "name": "scheduler_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "scheduler_start",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "scheduler_stop",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "scheduler_pause",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "scheduler_resume",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "scheduler_trigger",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "crawl_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "fetch_orderbook",
+          "params": [
+            "token",
+            "symbol"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "insert_data_orderbook",
+          "params": [
+            "data"
+          ],
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "orderbook_batch",
+          "params": [],
+          "exported": true,
+          "lineCount": 86
         }
       ],
       "classes": [],
@@ -226,6 +340,12 @@
           ]
         },
         {
+          "source": "flask_cors",
+          "specifiers": [
+            "CORS"
+          ]
+        },
+        {
           "source": "datetime",
           "specifiers": [
             "datetime",
@@ -236,12 +356,6 @@
           "source": "socket",
           "specifiers": [
             "socket"
-          ]
-        },
-        {
-          "source": "re",
-          "specifiers": [
-            "re"
           ]
         },
         {
@@ -256,12 +370,35 @@
             "load_dotenv",
             "find_dotenv"
           ]
+        },
+        {
+          "source": "data_routes",
+          "specifiers": [
+            "data_bp"
+          ]
+        },
+        {
+          "source": "user",
+          "specifiers": [
+            "user_bp"
+          ]
+        },
+        {
+          "source": "scheduler",
+          "specifiers": [
+            "start_scheduler",
+            "stop_scheduler",
+            "pause_scheduler",
+            "resume_scheduler",
+            "trigger_now",
+            "get_scheduler_status"
+          ]
         }
       ],
       "exports": [
         "get_connection",
-        "get_brokers",
-        "get_workdays",
+        "get_last_trading_day",
+        "log_crawl_job",
         "insert_data_brokers",
         "insert_data_insider",
         "insert_data_stock_info",
@@ -279,170 +416,70 @@
         "broker_activity",
         "stock_info",
         "insert_data_ohlc",
-        "get_ohlc"
+        "get_ohlc",
+        "scheduler_status",
+        "scheduler_start",
+        "scheduler_stop",
+        "scheduler_pause",
+        "scheduler_resume",
+        "scheduler_trigger",
+        "crawl_status",
+        "fetch_orderbook",
+        "insert_data_orderbook",
+        "orderbook_batch"
       ],
-      "totalLines": 692,
+      "totalLines": 1125,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/bid_offer.py": {
-      "filePath": "SahamAI/SahamAI/bid_offer.py",
-      "contentHash": "46806f240845025ff6d37c90554f15832c70164a5125baf752efc5381ff334f3",
-      "functions": [
-        {
-          "name": "get_bid_offer",
-          "params": [
-            "stock_code"
-          ],
-          "exported": true,
-          "lineCount": 36
-        }
-      ],
-      "classes": [],
-      "imports": [
-        {
-          "source": "requests",
-          "specifiers": [
-            "requests"
-          ]
-        },
-        {
-          "source": "bs4",
-          "specifiers": [
-            "BeautifulSoup"
-          ]
-        }
-      ],
-      "exports": [
-        "get_bid_offer"
-      ],
-      "totalLines": 44,
-      "hasStructuralAnalysis": true
-    },
-    "SahamAI/SahamAI/database.sql": {
-      "filePath": "SahamAI/SahamAI/database.sql",
-      "contentHash": "36c0a57f67230c78af2f8bd559456440c3a42def65e36296d52c9c17a7b11cd9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 126,
-      "hasStructuralAnalysis": true
-    },
-    "SahamAI/SahamAI/helo.py": {
-      "filePath": "SahamAI/SahamAI/helo.py",
-      "contentHash": "2c3ab060616bb88452c1807728fb8c397efa1319adda8d541c8b41ee90c40e43",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 3,
-      "hasStructuralAnalysis": true
-    },
-    "SahamAI/SahamAI/idx_stock.py": {
-      "filePath": "SahamAI/SahamAI/idx_stock.py",
-      "contentHash": "a2968bf05c3d83a0c8672e0ed848f1519780645357c851682f5ba017f1a9b3f0",
+    "backend/data_routes.py": {
+      "filePath": "backend/data_routes.py",
+      "contentHash": "80e8d3ef774538f6d3e0c63276c0931e0f3f7025aaf86a8dff6957265ac1f500",
       "functions": [
         {
           "name": "get_connection",
           "params": [],
           "exported": true,
-          "lineCount": 2
+          "lineCount": 8
         },
         {
-          "name": "get_brokers",
+          "name": "decimal_to_float",
+          "params": [
+            "val"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_historical_ohlc",
           "params": [],
           "exported": true,
-          "lineCount": 25
+          "lineCount": 53
         },
         {
-          "name": "get_workdays",
+          "name": "get_broker_activity",
           "params": [],
           "exported": true,
-          "lineCount": 26
+          "lineCount": 54
         },
         {
-          "name": "insert_data_brokers",
-          "params": [
-            "data"
-          ],
-          "exported": true,
-          "lineCount": 34
-        },
-        {
-          "name": "insert_data_insider",
-          "params": [
-            "data"
-          ],
-          "exported": true,
-          "lineCount": 38
-        },
-        {
-          "name": "login",
+          "name": "get_stock_info",
           "params": [],
           "exported": true,
-          "lineCount": 14
+          "lineCount": 42
         },
         {
-          "name": "fetch_broker_activity",
-          "params": [
-            "token",
-            "broker_code",
-            "date_from",
-            "date_to",
-            "pages",
-            "transaction_type",
-            "market_board",
-            "investor_type"
-          ],
+          "name": "get_majorholder_data",
+          "params": [],
           "exported": true,
-          "lineCount": 56
-        },
-        {
-          "name": "fetch_majorholder",
-          "params": [
-            "token",
-            "date_start",
-            "date_end",
-            "pages"
-          ],
-          "exported": true,
-          "lineCount": 66
+          "lineCount": 49
         }
       ],
       "classes": [],
       "imports": [
         {
-          "source": "requests",
+          "source": "os",
           "specifiers": [
-            "requests"
-          ]
-        },
-        {
-          "source": "pandas",
-          "specifiers": [
-            "pd"
-          ]
-        },
-        {
-          "source": "openpyxl",
-          "specifiers": [
-            "load_workbook"
-          ]
-        },
-        {
-          "source": "openpyxl.styles",
-          "specifiers": [
-            "Font",
-            "PatternFill",
-            "Alignment",
-            "Border",
-            "Side"
-          ]
-        },
-        {
-          "source": "openpyxl.utils",
-          "specifiers": [
-            "get_column_letter"
+            "os"
           ]
         },
         {
@@ -452,27 +489,11 @@
           ]
         },
         {
-          "source": "psycopg2.extras",
+          "source": "flask",
           "specifiers": [
-            "execute_batch"
-          ]
-        },
-        {
-          "source": "time",
-          "specifiers": [
-            "time"
-          ]
-        },
-        {
-          "source": "datetime",
-          "specifiers": [
-            "date"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
+            "Blueprint",
+            "jsonify",
+            "request"
           ]
         },
         {
@@ -485,19 +506,739 @@
       ],
       "exports": [
         "get_connection",
-        "get_brokers",
-        "get_workdays",
-        "insert_data_brokers",
-        "insert_data_insider",
-        "login",
-        "fetch_broker_activity",
-        "fetch_majorholder"
+        "decimal_to_float",
+        "get_historical_ohlc",
+        "get_broker_activity",
+        "get_stock_info",
+        "get_majorholder_data"
       ],
-      "totalLines": 380,
+      "totalLines": 245,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/index.html": {
-      "filePath": "SahamAI/SahamAI/index.html",
+    "backend/db/database.sql": {
+      "filePath": "backend/db/database.sql",
+      "contentHash": "36c0a57f67230c78af2f8bd559456440c3a42def65e36296d52c9c17a7b11cd9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 126,
+      "hasStructuralAnalysis": true
+    },
+    "backend/db/trading_date.py": {
+      "filePath": "backend/db/trading_date.py",
+      "contentHash": "e9aac5ed9fb3fd8b0a8bc38c03d9806e8a98621ef6bdf14dcffa2066211958a5",
+      "functions": [
+        {
+          "name": "get_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "fetch_holidays_from_api",
+          "params": [
+            "year"
+          ],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "generate_calendar",
+          "params": [
+            "year"
+          ],
+          "exported": true,
+          "lineCount": 83
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        }
+      ],
+      "exports": [
+        "get_connection",
+        "fetch_holidays_from_api",
+        "generate_calendar"
+      ],
+      "totalLines": 170,
+      "hasStructuralAnalysis": true
+    },
+    "backend/requirements.txt": {
+      "filePath": "backend/requirements.txt",
+      "contentHash": "5ca6c0bbda1d45951d8bfe1bfcb5186ffaf82ce9a72671c96dde7a8878d481fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 6,
+      "hasStructuralAnalysis": false
+    },
+    "backend/scheduler.py": {
+      "filePath": "backend/scheduler.py",
+      "contentHash": "7dbe67a89ddbdd3dbc5d92d5bb19872770ed5148f6c58944b7d324607598d74a",
+      "functions": [
+        {
+          "name": "_get_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "is_trading_day",
+          "params": [
+            "target_date"
+          ],
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "is_trading_hours",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_next_trading_day",
+          "params": [],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_log_crawl",
+          "params": [
+            "job_type",
+            "target",
+            "tanggal_target",
+            "status",
+            "records_count",
+            "error_message"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_run_scheduled_crawl",
+          "params": [
+            "app_context_func"
+          ],
+          "exported": true,
+          "lineCount": 134
+        },
+        {
+          "name": "_append_history",
+          "params": [
+            "record"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_schedule_next",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "start_scheduler",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "stop_scheduler",
+          "params": [],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "pause_scheduler",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "resume_scheduler",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "trigger_now",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_scheduler_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 32
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        }
+      ],
+      "exports": [
+        "_get_connection",
+        "is_trading_day",
+        "is_trading_hours",
+        "get_next_trading_day",
+        "_log_crawl",
+        "_run_scheduled_crawl",
+        "_append_history",
+        "_schedule_next",
+        "start_scheduler",
+        "stop_scheduler",
+        "pause_scheduler",
+        "resume_scheduler",
+        "trigger_now",
+        "get_scheduler_status"
+      ],
+      "totalLines": 418,
+      "hasStructuralAnalysis": true
+    },
+    "backend/templates/test_ui.html": {
+      "filePath": "backend/templates/test_ui.html",
+      "contentHash": "cd2be07405d7b0112933c3891b40b73653855d27e76cfb6ec9c5df11ba3b6078",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1375,
+      "hasStructuralAnalysis": false
+    },
+    "backend/tests/test_user.py": {
+      "filePath": "backend/tests/test_user.py",
+      "contentHash": "3409bdbe6b0c71e8c31d7e541807ab287463162dff4c71680cb04fd790af2ac7",
+      "functions": [],
+      "classes": [
+        {
+          "name": "FakeCursor",
+          "methods": [
+            "__init__",
+            "execute",
+            "fetchone",
+            "fetchall",
+            "close"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "FakeConnection",
+          "methods": [
+            "__init__",
+            "cursor",
+            "commit",
+            "close"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "UserCrudTests",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "test_create_user",
+            "test_get_user",
+            "test_watchlist_crud"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 73
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "user",
+          "specifiers": [
+            "user"
+          ]
+        }
+      ],
+      "exports": [
+        "FakeCursor",
+        "FakeConnection",
+        "UserCrudTests"
+      ],
+      "totalLines": 126,
+      "hasStructuralAnalysis": true
+    },
+    "backend/user.py": {
+      "filePath": "backend/user.py",
+      "contentHash": "57943034935e9ce6eb653eb8b861222e43ba272b11d1ca823b234777d5730e33",
+      "functions": [
+        {
+          "name": "get_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_ensure_users_table",
+          "params": [],
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "create_user",
+          "params": [
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 42
+        },
+        {
+          "name": "get_user",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "get_users",
+          "params": [],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "get_sqlite_connection",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_ensure_watchlist_db",
+          "params": [],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "create_watchlist",
+          "params": [
+            "user_id",
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "get_watchlists",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "get_watchlist",
+          "params": [
+            "user_id",
+            "watchlist_id"
+          ],
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "update_watchlist",
+          "params": [
+            "user_id",
+            "watchlist_id",
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "delete_watchlist",
+          "params": [
+            "user_id",
+            "watchlist_id"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "update_user",
+          "params": [
+            "user_id",
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 57
+        },
+        {
+          "name": "login_user",
+          "params": [
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "delete_user",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "create_user_route",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "list_users_route",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "get_user_route",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "update_user_route",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "list_watchlists_route",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "create_watchlist_route",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_watchlist_route",
+          "params": [
+            "user_id",
+            "watchlist_id"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "update_watchlist_route",
+          "params": [
+            "user_id",
+            "watchlist_id"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "delete_watchlist_route",
+          "params": [
+            "user_id",
+            "watchlist_id"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "delete_user_route",
+          "params": [
+            "user_id"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "login_user_route",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_ui",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "psycopg2",
+          "specifiers": [
+            "psycopg2"
+          ]
+        },
+        {
+          "source": "flask",
+          "specifiers": [
+            "Blueprint",
+            "jsonify",
+            "request",
+            "render_template"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "load_dotenv",
+            "find_dotenv"
+          ]
+        },
+        {
+          "source": "werkzeug.security",
+          "specifiers": [
+            "generate_password_hash",
+            "check_password_hash"
+          ]
+        }
+      ],
+      "exports": [
+        "get_connection",
+        "_ensure_users_table",
+        "create_user",
+        "get_user",
+        "get_users",
+        "get_sqlite_connection",
+        "_ensure_watchlist_db",
+        "create_watchlist",
+        "get_watchlists",
+        "get_watchlist",
+        "update_watchlist",
+        "delete_watchlist",
+        "update_user",
+        "login_user",
+        "delete_user",
+        "create_user_route",
+        "list_users_route",
+        "get_user_route",
+        "update_user_route",
+        "list_watchlists_route",
+        "create_watchlist_route",
+        "get_watchlist_route",
+        "update_watchlist_route",
+        "delete_watchlist_route",
+        "delete_user_route",
+        "login_user_route",
+        "test_ui"
+      ],
+      "totalLines": 571,
+      "hasStructuralAnalysis": true
+    },
+    "backend/utils/helo.py": {
+      "filePath": "backend/utils/helo.py",
+      "contentHash": "2c3ab060616bb88452c1807728fb8c397efa1319adda8d541c8b41ee90c40e43",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 3,
+      "hasStructuralAnalysis": true
+    },
+    "backend/utils/url": {
+      "filePath": "backend/utils/url",
+      "contentHash": "58835822e7d328b3bbc873f20a46beb1d1f1119cc0e590db2cf1981a76665bf3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": false
+    },
+    "docker-compose.yml": {
+      "filePath": "docker-compose.yml",
+      "contentHash": "10ca92e754a9330ef9f626668a8c2fd06c352f299e0ed870ff122781a3f4e16f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "frontend/.dockerignore": {
+      "filePath": "frontend/.dockerignore",
+      "contentHash": "6c1eb24e84fc497cbf8ac6c461e56b7bab6890e68abf08f071ab3370b7b57784",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": false
+    },
+    "frontend/.gitignore": {
+      "filePath": "frontend/.gitignore",
+      "contentHash": "626df783c134f6294cf4728ece80ebf128d36da82d721a5ce0b99dad08f90ff9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": false
+    },
+    "frontend/Dockerfile": {
+      "filePath": "frontend/Dockerfile",
+      "contentHash": "6ba39769c574a7dda1bd5ca7bd46905802295e6f4e0bcffb9e26eb2c7aedb676",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "frontend/README.md": {
+      "filePath": "frontend/README.md",
+      "contentHash": "f1e590b774a8be5fe7088c076e5fd4ffee526096ef4aaa72040f60822e73888d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 59,
+      "hasStructuralAnalysis": true
+    },
+    "frontend/index.html": {
+      "filePath": "frontend/index.html",
       "contentHash": "632dacc6b98b68d2b8c6b29e913a6d3bb92713294380b3aae0ae637c93499a19",
       "functions": [],
       "classes": [],
@@ -506,8 +1247,8 @@
       "totalLines": 14,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/package.json": {
-      "filePath": "SahamAI/SahamAI/package.json",
+    "frontend/package.json": {
+      "filePath": "frontend/package.json",
       "contentHash": "09dc4f2c169943846a7be1030042abf2d3c68740f3bf7da967a6e938faa04aae",
       "functions": [],
       "classes": [],
@@ -516,8 +1257,8 @@
       "totalLines": 23,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/App.vue": {
-      "filePath": "SahamAI/SahamAI/src/App.vue",
+    "frontend/src/App.vue": {
+      "filePath": "frontend/src/App.vue",
       "contentHash": "e6679d20977b65a41bc04dd929712df2f66b0afbfb77c8f4102322eff654a863",
       "functions": [],
       "classes": [],
@@ -526,8 +1267,8 @@
       "totalLines": 8,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/assets/main.css": {
-      "filePath": "SahamAI/SahamAI/src/assets/main.css",
+    "frontend/src/assets/main.css": {
+      "filePath": "frontend/src/assets/main.css",
       "contentHash": "c5b44d24dbd394ecf5d4fbcc89debfcb5169768a11cb79e7eced29173e8d5d6d",
       "functions": [],
       "classes": [],
@@ -536,8 +1277,8 @@
       "totalLines": 238,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/components/charts/AreaChart.vue": {
-      "filePath": "SahamAI/SahamAI/src/components/charts/AreaChart.vue",
+    "frontend/src/components/charts/AreaChart.vue": {
+      "filePath": "frontend/src/components/charts/AreaChart.vue",
       "contentHash": "331f41cb1cb3099c5f0b9d92f46a869dd9e5dc19c571c5ba891805db723e7895",
       "functions": [],
       "classes": [],
@@ -546,8 +1287,8 @@
       "totalLines": 52,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/components/charts/BarChart.vue": {
-      "filePath": "SahamAI/SahamAI/src/components/charts/BarChart.vue",
+    "frontend/src/components/charts/BarChart.vue": {
+      "filePath": "frontend/src/components/charts/BarChart.vue",
       "contentHash": "ea80d8b37ae30385e5baabacda744986cc3a5c04b05ce27760f52d4b58bc5663",
       "functions": [],
       "classes": [],
@@ -556,8 +1297,8 @@
       "totalLines": 44,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/components/charts/CandleChart.vue": {
-      "filePath": "SahamAI/SahamAI/src/components/charts/CandleChart.vue",
+    "frontend/src/components/charts/CandleChart.vue": {
+      "filePath": "frontend/src/components/charts/CandleChart.vue",
       "contentHash": "f17e378f604db9db515eb9c3c02e200e2e9bf75ff48836620963af5c46631afc",
       "functions": [],
       "classes": [],
@@ -566,8 +1307,8 @@
       "totalLines": 54,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/components/charts/chartTheme.js": {
-      "filePath": "SahamAI/SahamAI/src/components/charts/chartTheme.js",
+    "frontend/src/components/charts/chartTheme.js": {
+      "filePath": "frontend/src/components/charts/chartTheme.js",
       "contentHash": "7ed8c897473945ac6dafefea9ad88d1c6f6bfcd6632e3e94f4cafb7aca7ab8f9",
       "functions": [
         {
@@ -588,8 +1329,8 @@
       "totalLines": 34,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/components/ui/StatCard.vue": {
-      "filePath": "SahamAI/SahamAI/src/components/ui/StatCard.vue",
+    "frontend/src/components/ui/StatCard.vue": {
+      "filePath": "frontend/src/components/ui/StatCard.vue",
       "contentHash": "1a2d528a82e28d1c6e5ef6e8027f119ab142cdbc68e2f010c39b70248e44bc4e",
       "functions": [],
       "classes": [],
@@ -598,8 +1339,8 @@
       "totalLines": 83,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/data/market.js": {
-      "filePath": "SahamAI/SahamAI/src/data/market.js",
+    "frontend/src/data/market.js": {
+      "filePath": "frontend/src/data/market.js",
       "contentHash": "1dc4f4124c1e8fc513f05584d5c904781f4462b66a48f4305f14649a96124698",
       "functions": [
         {
@@ -752,8 +1493,8 @@
       "totalLines": 402,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/layout/AppLayout.vue": {
-      "filePath": "SahamAI/SahamAI/src/layout/AppLayout.vue",
+    "frontend/src/layout/AppLayout.vue": {
+      "filePath": "frontend/src/layout/AppLayout.vue",
       "contentHash": "e7119e6ba5844a7d3417274faefddfc3accc38e8a55515f068df382b4d50db70",
       "functions": [],
       "classes": [],
@@ -762,8 +1503,8 @@
       "totalLines": 34,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/layout/AppTopbar.vue": {
-      "filePath": "SahamAI/SahamAI/src/layout/AppTopbar.vue",
+    "frontend/src/layout/AppTopbar.vue": {
+      "filePath": "frontend/src/layout/AppTopbar.vue",
       "contentHash": "4e8fb46f3003cd42ad8f1910f7b215be8418142b541a4b17d3cb1a35bd03a57a",
       "functions": [],
       "classes": [],
@@ -772,8 +1513,8 @@
       "totalLines": 232,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/main.js": {
-      "filePath": "SahamAI/SahamAI/src/main.js",
+    "frontend/src/main.js": {
+      "filePath": "frontend/src/main.js",
       "contentHash": "08ae2fef3224532ab560421dfcaee54ddabe1a790c46f91df5340ccaaacebb7f",
       "functions": [],
       "classes": [],
@@ -817,8 +1558,8 @@
       "totalLines": 13,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/router/index.js": {
-      "filePath": "SahamAI/SahamAI/src/router/index.js",
+    "frontend/src/router/index.js": {
+      "filePath": "frontend/src/router/index.js",
       "contentHash": "a9e5d0e1f0c34b36f4c0b4604c86309d9e5222a1dc56058a262b2c78072d61c5",
       "functions": [],
       "classes": [],
@@ -841,9 +1582,9 @@
       "totalLines": 39,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/services/authService.js": {
-      "filePath": "SahamAI/SahamAI/src/services/authService.js",
-      "contentHash": "3b44c70f3d042809fd2f82fddc1f0795f091d3c621171bbc2c4c612e8b5e21bc",
+    "frontend/src/services/authService.js": {
+      "filePath": "frontend/src/services/authService.js",
+      "contentHash": "6906f8054e2a10ca71da9cde26fd883fd289652a1a724e4a444bbc8709a2a886",
       "functions": [
         {
           "name": "delay",
@@ -857,7 +1598,7 @@
           "name": "login",
           "params": [],
           "exported": true,
-          "lineCount": 40
+          "lineCount": 42
         }
       ],
       "classes": [
@@ -876,12 +1617,12 @@
         "AuthError",
         "login"
       ],
-      "totalLines": 88,
+      "totalLines": 90,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/stores/auth.js": {
-      "filePath": "SahamAI/SahamAI/src/stores/auth.js",
-      "contentHash": "9c6b5908b11c564576383126b866d368aef0d2333e4afcac661d152ecd117cb3",
+    "frontend/src/stores/auth.js": {
+      "filePath": "frontend/src/stores/auth.js",
+      "contentHash": "0b2577c4632d54580502bb339dc01d9d5d69df97efc82ea7c6466426e6a55cb3",
       "functions": [
         {
           "name": "loadPersisted",
@@ -915,20 +1656,13 @@
       "exports": [
         "useAuthStore"
       ],
-      "totalLines": 48,
+      "totalLines": 58,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/stores/market.js": {
-      "filePath": "SahamAI/SahamAI/src/stores/market.js",
-      "contentHash": "7c2737a0e400443770e8fbe0234910da216b6ee66fa7a6359bd7c3831f4dc55a",
-      "functions": [
-        {
-          "name": "loadWatchlist",
-          "params": [],
-          "exported": false,
-          "lineCount": 8
-        }
-      ],
+    "frontend/src/stores/market.js": {
+      "filePath": "frontend/src/stores/market.js",
+      "contentHash": "eecfa6689ecf594ddbbcc6fc7a00f38cb283028d00e687f20b4f2c908a9e2286",
+      "functions": [],
       "classes": [],
       "imports": [
         {
@@ -962,11 +1696,11 @@
       "exports": [
         "useMarketStore"
       ],
-      "totalLines": 85,
+      "totalLines": 108,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/utils/format.js": {
-      "filePath": "SahamAI/SahamAI/src/utils/format.js",
+    "frontend/src/utils/format.js": {
+      "filePath": "frontend/src/utils/format.js",
       "contentHash": "5564f076455ce57b13070e7cd904e2f10ed05fa053554cc6536b75dc32043916",
       "functions": [
         {
@@ -1022,8 +1756,8 @@
       "totalLines": 44,
       "hasStructuralAnalysis": true
     },
-    "SahamAI/SahamAI/src/views/BrokerSummaryView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/BrokerSummaryView.vue",
+    "frontend/src/views/BrokerSummaryView.vue": {
+      "filePath": "frontend/src/views/BrokerSummaryView.vue",
       "contentHash": "a6727e0f0b0c3886d51f44f80a141b957cd481712bc37f4238308969affe527d",
       "functions": [],
       "classes": [],
@@ -1032,8 +1766,8 @@
       "totalLines": 145,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/CrawlingView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/CrawlingView.vue",
+    "frontend/src/views/CrawlingView.vue": {
+      "filePath": "frontend/src/views/CrawlingView.vue",
       "contentHash": "531ad30fed1aae124404f92705cc7f800c7db5efa377b35b05e110910f46cade",
       "functions": [],
       "classes": [],
@@ -1042,8 +1776,8 @@
       "totalLines": 195,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/DashboardView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/DashboardView.vue",
+    "frontend/src/views/DashboardView.vue": {
+      "filePath": "frontend/src/views/DashboardView.vue",
       "contentHash": "02baeb69ce4751e7931aeff9e90a12eec2242c15cbc401ddb0e3c4626865eb72",
       "functions": [],
       "classes": [],
@@ -1052,8 +1786,8 @@
       "totalLines": 591,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/ForecastingView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/ForecastingView.vue",
+    "frontend/src/views/ForecastingView.vue": {
+      "filePath": "frontend/src/views/ForecastingView.vue",
       "contentHash": "c9b808f446fefb0441018b58214321cc2a558ed5c7e058180ac1b99187ecadf7",
       "functions": [],
       "classes": [],
@@ -1062,8 +1796,8 @@
       "totalLines": 117,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/InsiderView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/InsiderView.vue",
+    "frontend/src/views/InsiderView.vue": {
+      "filePath": "frontend/src/views/InsiderView.vue",
       "contentHash": "34e2adb838c7eeb4534ed2a32e5278619e4ab80a9245ca529e815fecc16b4569",
       "functions": [],
       "classes": [],
@@ -1072,8 +1806,8 @@
       "totalLines": 148,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/LoginView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/LoginView.vue",
+    "frontend/src/views/LoginView.vue": {
+      "filePath": "frontend/src/views/LoginView.vue",
       "contentHash": "a3b06d103d6afca33786362b39ea0efb65dc22c95b29a6a391f135b4b6b26b12",
       "functions": [],
       "classes": [],
@@ -1082,8 +1816,8 @@
       "totalLines": 533,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/PricesView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/PricesView.vue",
+    "frontend/src/views/PricesView.vue": {
+      "filePath": "frontend/src/views/PricesView.vue",
       "contentHash": "cd64b07d1073e234c03a40d2beef3897ee1875d22994195ce3b75bca95f75d88",
       "functions": [],
       "classes": [],
@@ -1092,8 +1826,8 @@
       "totalLines": 158,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/TechnicalView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/TechnicalView.vue",
+    "frontend/src/views/TechnicalView.vue": {
+      "filePath": "frontend/src/views/TechnicalView.vue",
       "contentHash": "cdd4b337a3f89a9a8a192d79043fede223925d98262b0da85bc39746a1149a60",
       "functions": [],
       "classes": [],
@@ -1102,8 +1836,8 @@
       "totalLines": 356,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/src/views/WatchlistView.vue": {
-      "filePath": "SahamAI/SahamAI/src/views/WatchlistView.vue",
+    "frontend/src/views/WatchlistView.vue": {
+      "filePath": "frontend/src/views/WatchlistView.vue",
       "contentHash": "b1eab012981479a9cdfadc7f7f0d1b7fdf87a801c86607497fcb4acbdabb4839",
       "functions": [],
       "classes": [],
@@ -1112,86 +1846,8 @@
       "totalLines": 349,
       "hasStructuralAnalysis": false
     },
-    "SahamAI/SahamAI/stock.py": {
-      "filePath": "SahamAI/SahamAI/stock.py",
-      "contentHash": "7c14129dea9106b4b47bcfe86a1584c47459160f4e0fb7cdb3a033a9b258ed6f",
-      "functions": [
-        {
-          "name": "get_cookie",
-          "params": [],
-          "exported": true,
-          "lineCount": 12
-        }
-      ],
-      "classes": [],
-      "imports": [
-        {
-          "source": "selenium",
-          "specifiers": [
-            "webdriver"
-          ]
-        },
-        {
-          "source": "selenium.webdriver.chrome.service",
-          "specifiers": [
-            "Service"
-          ]
-        },
-        {
-          "source": "webdriver_manager.chrome",
-          "specifiers": [
-            "ChromeDriverManager"
-          ]
-        }
-      ],
-      "exports": [
-        "get_cookie"
-      ],
-      "totalLines": 19,
-      "hasStructuralAnalysis": true
-    },
-    "SahamAI/SahamAI/trading_date.py": {
-      "filePath": "SahamAI/SahamAI/trading_date.py",
-      "contentHash": "2f062857c17325c4654346b369ed61418d44c465d3e6872d3af0864ec3fe958e",
-      "functions": [],
-      "classes": [],
-      "imports": [
-        {
-          "source": "psycopg2",
-          "specifiers": [
-            "psycopg2"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "dotenv",
-          "specifiers": [
-            "load_dotenv",
-            "find_dotenv"
-          ]
-        }
-      ],
-      "exports": [],
-      "totalLines": 41,
-      "hasStructuralAnalysis": true
-    },
-    "SahamAI/SahamAI/url": {
-      "filePath": "SahamAI/SahamAI/url",
-      "contentHash": "351d895309658308b3254a7699bd51c20cb6924cfacbb088715bfb0ba6aa646a",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 4,
-      "hasStructuralAnalysis": false
-    },
-    "SahamAI/SahamAI/vite.config.js": {
-      "filePath": "SahamAI/SahamAI/vite.config.js",
+    "frontend/vite.config.js": {
+      "filePath": "frontend/vite.config.js",
       "contentHash": "67f7f4faee90e697a49913767864ac34e3b6dea968060bc76b2bf015b8d1b31b",
       "functions": [],
       "classes": [],
