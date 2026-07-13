@@ -3,38 +3,29 @@ import { ref, computed } from 'vue'
 import { emitens, latestQuote, FOCUS_CODES } from '@/data/market'
 import { useAuthStore } from '@/stores/auth'
 
-const WATCHLIST_KEY = 'sahamscope.watchlist'
-
-// Default crawl targets — the emiten the Python crawler is configured to
-// scrape. This is the data behind the "CRUD mana yang akan di-crawl" page.
-const DEFAULT_WATCHLIST = [
-  { code: 'BBRI', name: 'Bank Rakyat Indonesia', sector: 'Perbankan', sources: { broker: true, price: true, insider: true }, interval: 15, enabled: true },
-  { code: 'BBCA', name: 'Bank Central Asia', sector: 'Perbankan', sources: { broker: true, price: true, insider: true }, interval: 15, enabled: true },
-  { code: 'BBNI', name: 'Bank Negara Indonesia', sector: 'Perbankan', sources: { broker: true, price: true, insider: false }, interval: 30, enabled: true },
-]
-
-function loadWatchlist() {
-  try {
-    const raw = localStorage.getItem(WATCHLIST_KEY)
-    return raw ? JSON.parse(raw) : structuredClone(DEFAULT_WATCHLIST)
-  } catch {
-    return structuredClone(DEFAULT_WATCHLIST)
-  }
-}
-
 export const useMarketStore = defineStore('market', () => {
   const auth = useAuthStore()
   const selected = ref(auth.user?.defaultTicker || 'BBCA')
-  const watchlist = ref(loadWatchlist())
 
   const universe = computed(() => emitens)
   const quote = computed(() => latestQuote(selected.value))
 
-  // The logged-in user's favorite tickers (drives the bottom favorites bar).
-  const favorites = computed(() =>
-    auth.user?.favorites?.length ? auth.user.favorites : FOCUS_CODES,
-  )
-  const favoriteQuotes = computed(() => favorites.value.map((c) => latestQuote(c)))
+  // Watchlist states
+  const watchlists = ref([])
+  const activeWatchlistId = ref(null)
+
+  const activeWatchlist = computed(() => {
+    if (!watchlists.value || watchlists.value.length === 0) return null
+    return watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0]
+  })
+
+  const watchlistSymbols = computed(() => {
+    return activeWatchlist.value?.symbols?.length ? activeWatchlist.value.symbols : FOCUS_CODES
+  })
+
+  // To prevent breaking other views/components that use favorites, we alias them
+  const favorites = computed(() => watchlistSymbols.value)
+  const favoriteQuotes = computed(() => watchlistSymbols.value.map((c) => latestQuote(c)).filter(Boolean))
 
   // Quotes for the five focus bank tickers, always available on the dashboard.
   const focusQuotes = computed(() => FOCUS_CODES.map((c) => latestQuote(c)))
@@ -43,42 +34,74 @@ export const useMarketStore = defineStore('market', () => {
     selected.value = code
   }
 
-  function persist() {
-    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist.value))
-  }
-
-  function addWatch(item) {
-    if (watchlist.value.some((w) => w.code === item.code)) {
-      throw new Error(`${item.code} sudah ada di daftar crawling.`)
+  async function fetchWatchlists() {
+    if (!auth.user) {
+      watchlists.value = []
+      activeWatchlistId.value = null
+      return
     }
-    watchlist.value.push(item)
-    persist()
-  }
-
-  function updateWatch(code, patch) {
-    const idx = watchlist.value.findIndex((w) => w.code === code)
-    if (idx !== -1) {
-      watchlist.value[idx] = { ...watchlist.value[idx], ...patch }
-      persist()
+    try {
+      const response = await fetch(`http://localhost:8080/users/${auth.user.id}/watchlists`)
+      if (response.ok) {
+        const data = await response.json()
+        watchlists.value = data
+        if (data.length > 0 && !activeWatchlistId.value) {
+          activeWatchlistId.value = data[0].id
+        }
+      }
+    } catch (e) {
+      console.error('Gagal memuat daftar pantau:', e)
     }
   }
 
-  function removeWatch(code) {
-    watchlist.value = watchlist.value.filter((w) => w.code !== code)
-    persist()
+  function selectWatchlist(id) {
+    activeWatchlistId.value = id
   }
 
-  function toggleEnabled(code) {
-    const w = watchlist.value.find((x) => x.code === code)
-    if (w) {
-      w.enabled = !w.enabled
-      persist()
+  async function toggleWatchlistSymbol(symbol) {
+    if (!auth.user) return
+    const wl = activeWatchlist.value
+    if (!wl) return
+
+    let updatedSymbols = [...wl.symbols]
+    if (updatedSymbols.includes(symbol)) {
+      updatedSymbols = updatedSymbols.filter((s) => s !== symbol)
+    } else {
+      updatedSymbols.push(symbol)
     }
+
+    try {
+      const response = await fetch(`http://localhost:8080/users/${auth.user.id}/watchlists/${wl.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols: updatedSymbols })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const idx = watchlists.value.findIndex((w) => w.id === wl.id)
+        if (idx !== -1) {
+          watchlists.value[idx] = data
+        }
+      }
+    } catch (e) {
+      console.error('Gagal memperbarui simbol daftar pantau:', e)
+    }
+  }
+
+  function clearWatchlists() {
+    watchlists.value = []
+    activeWatchlistId.value = null
+  }
+
+  // Load watchlists initially if user is logged in
+  if (auth.user) {
+    fetchWatchlists()
   }
 
   return {
-    selected, watchlist, universe, quote, focusQuotes,
+    selected, universe, quote, focusQuotes,
+    watchlists, activeWatchlistId, activeWatchlist, watchlistSymbols,
     favorites, favoriteQuotes,
-    select, addWatch, updateWatch, removeWatch, toggleEnabled,
+    select, fetchWatchlists, selectWatchlist, toggleWatchlistSymbol, clearWatchlists,
   }
 })
