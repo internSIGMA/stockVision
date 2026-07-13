@@ -12,7 +12,25 @@ Sebelum memulai proses instalasi, pastikan sistem Anda telah memenuhi prasyarat 
 
 ---
 
-## 2. Prosedur Inisialisasi Layanan
+## 2. Konfigurasi Basis Data (.env)
+
+Koneksi basis data dikelola sepenuhnya secara terpusat melalui file `.env` di root direktori. Sesuaikan nilai `DB_HOST` sesuai dengan skenario pengembangan Anda:
+
+### Skenario A: Menggunakan Basis Data Remote (Default)
+Gunakan alamat IP basis data remote Anda agar dapat langsung membaca data historis yang sudah ada:
+```env
+DB_HOST=34.101.242.103
+```
+
+### Skenario B: Menggunakan Container Basis Data Lokal (Docker)
+Gunakan nama layanan database Docker jika ingin mengembangkan menggunakan container PostgreSQL lokal:
+```env
+DB_HOST=db
+```
+
+---
+
+## 3. Prosedur Inisialisasi Layanan
 
 Jalankan perintah berikut pada direktori utama (root) proyek untuk membangun (*build*) image dan menjalankan seluruh container di latar belakang (*detached mode*):
 
@@ -22,7 +40,25 @@ docker compose up --build -d
 
 ---
 
-## 3. Alamat Akses Layanan
+## 4. Prosedur Pengelolaan Basis Data Lokal (Khusus Skenario B)
+
+Apabila Anda menggunakan basis data lokal (`DB_HOST=db`), lakukan langkah-langkah inisialisasi berikut setelah kontainer aktif:
+
+### A. Inisialisasi Skema Tabel (DDL)
+Jalankan skrip DDL untuk membuat skema, tabel, dan indeks di dalam container PostgreSQL lokal:
+```bash
+docker compose exec -T db psql -U stockvision -d stockVision < backend/db/database.sql
+```
+
+### B. Membuat Kalender Trading Bursa (IDX)
+Jalankan skrip Python berikut untuk mengisi data kalender trading (contoh untuk tahun 2026):
+```bash
+docker compose exec backend python db/trading_date.py 2026
+```
+
+---
+
+## 5. Alamat Akses Layanan
 
 Setelah seluruh container berhasil dijalankan dan berstatus aktif, layanan dapat diakses melalui protokol HTTP pada alamat berikut:
 
@@ -31,13 +67,13 @@ Setelah seluruh container berhasil dijalankan dan berstatus aktif, layanan dapat
 
 ---
 
-## 4. Fitur Hot-Reloading
+## 6. Fitur Hot-Reloading
 
 Untuk memfasilitasi proses pengembangan perangkat lunak, direktori lokal `./frontend` telah dipetakan (*bind mount*) ke dalam container. Setiap modifikasi kode sumber yang dilakukan pada direktori `frontend/src` akan secara langsung dideteksi oleh Vite, kemudian memicu pembaruan tampilan (*hot-reload*) pada peramban web secara instan.
 
 ---
 
-## 5. Instruksi Operasional Tambahan
+## 7. Instruksi Operasional Tambahan
 
 Berikut adalah daftar perintah baris (*command line*) untuk pemeliharaan dan pemantauan kontainer:
 
