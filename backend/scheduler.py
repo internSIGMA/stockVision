@@ -15,7 +15,7 @@ import psycopg2
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 # =============================================================
 # KONFIGURASI

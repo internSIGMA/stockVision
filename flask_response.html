@@ -1,4 +1,4 @@
-{% raw %}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -434,31 +434,32 @@
                         <!-- Single Integrated Watchlist & Focus Emiten Card -->
                         <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
                             <!-- Watchlist Dropdown Selector Section (Only when not editing) -->
-                            <div v-if="!showInlineEditor" class="space-y-2">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Pilihan Watchlist</span>
-                                    <div class="flex gap-1.5">
-                                        <!-- '+' Add Button -->
-                                        <button @click="startInlineCreate"
-                                            class="bg-brandBlue/5 hover:bg-brandBlue/10 border border-brandBlue/10 hover:border-brandBlue/30 text-brandBlue text-[10px] font-bold w-6 h-6 rounded-md transition flex items-center justify-center"
-                                            title="Buat Watchlist Baru">
-                                            ＋
-                                        </button>
+                            <div v-if="!showInlineEditor">
+                                <span
+                                    class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Pilihan
+                                    Watchlist</span>
+                                <div class="flex gap-1.5">
+                                    <select v-model="activeWatchlistId"
+                                        class="flex-grow bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue font-bold transition">
+                                        <option v-for="wl in watchlists" :key="wl.id" :value="wl.id">{{ wl.name }}
+                                        </option>
+                                        <option v-if="watchlists.length === 0" disabled>No watchlists</option>
+                                    </select>
 
-                                        <!-- 'Edit' Button -->
-                                        <button @click="startInlineEdit"
-                                            class="bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-600 text-[10px] font-bold px-2 h-6 rounded-md transition flex items-center justify-center gap-1"
-                                            title="Edit Watchlist Ini">
-                                            ✏️ Edit
-                                        </button>
-                                    </div>
+                                    <!-- '+' Add Button -->
+                                    <button @click="startInlineCreate"
+                                        class="bg-brandBlue/5 hover:bg-brandBlue/10 border border-brandBlue/10 hover:border-brandBlue/30 text-brandBlue text-xs font-bold w-8 h-8 rounded-lg transition flex items-center justify-center shrink-0"
+                                        title="Buat Watchlist Baru">
+                                        ＋
+                                    </button>
+
+                                    <!-- 'Edit' Button -->
+                                    <button @click="startInlineEdit"
+                                        class="bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-600 text-xs font-bold px-2.5 h-8 rounded-lg transition flex items-center justify-center gap-1 shrink-0"
+                                        title="Edit Watchlist Ini">
+                                        ✏️ Edit
+                                    </button>
                                 </div>
-                                <select v-model="activeWatchlistId"
-                                    class="w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue font-bold transition">
-                                    <option v-for="wl in watchlists" :key="wl.id" :value="wl.id">{{ wl.name }}
-                                    </option>
-                                    <option v-if="watchlists.length === 0" disabled>No watchlists</option>
-                                </select>
                             </div>
 
                             <!-- Header when inline editing -->
@@ -1999,4 +2000,4 @@
     </script>
 </body>
 
-</html>{% endraw %}
+</html>
