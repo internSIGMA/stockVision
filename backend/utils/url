@@ -1,0 +1,4 @@
+http://localhost:8080/auth/login
+http://localhost:8080/stock-info?symbol=BBCA
+http://127.0.0.1:8080/majorholder?date_start=2026-04-01&date_end=2026-04-02&pages=3 ```
+http://localhost:8080/broker-activity?broker_code=YP&from=2026-04-14&to=2026-04-14&pages=2&transaction_type=TRANSACTION_TYPE_NET&market_board=MARKET_TYPE_REGULER&investor_type=INVESTOR_TYPE_ALL   

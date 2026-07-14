@@ -1,0 +1,23 @@
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies if compiling psycopg2 (optional, using binary here)
+# RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend application source
+COPY . .
+
+# Expose the Flask port
+EXPOSE 8080
+
+# Command to run the Flask application
+CMD ["python", "app.py"]
