@@ -46,42 +46,44 @@ export class AuthError extends Error {
 }
 
 export async function login({ email, password }) {
-  await delay(700 + Math.random() * 500)
+  try {
+    const response = await fetch('http://localhost:8080/users/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-  // Simulate an intermittent network/server failure (~8% of requests).
-  if (Math.random() < 0.08) {
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new AuthError('INVALID_CREDENTIALS', 'Email atau kata sandi salah.');
+      }
+      throw new AuthError('SERVER_ERROR', data.error || 'Terjadi kesalahan pada server.');
+    }
+
+    // Map backend snake_case keys to camelCase keys for Vue store
+    const token = `jwt-${btoa(data.email)}-${Date.now()}`;
+    const user = {
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      defaultTicker: data.default_ticker || 'BBCA',
+      avatar: data.email.toLowerCase() === 'fariz@sahamscope.id'
+        ? 'https://i.pravatar.cc/100?img=68'
+        : (data.email.toLowerCase() === 'dewi@sahamscope.id' ? 'https://i.pravatar.cc/100?img=47' : 'https://i.pravatar.cc/100?img=1')
+    };
+
+    return { token, user };
+  } catch (err) {
+    if (err instanceof AuthError) {
+      throw err;
+    }
     throw new AuthError(
       'NETWORK',
       'Tidak dapat terhubung ke server. Periksa koneksi kamu lalu coba lagi.',
-    )
+    );
   }
-
-  const normalizedEmail = email.trim().toLowerCase()
-
-  if (failedAttempts[normalizedEmail] >= MAX_ATTEMPTS) {
-    throw new AuthError(
-      'LOCKED',
-      'Akun terkunci sementara karena terlalu banyak percobaan. Coba lagi dalam beberapa menit.',
-    )
-  }
-
-  const user = USERS.find((u) => u.email === normalizedEmail)
-
-  if (!user || user.password !== password) {
-    failedAttempts[normalizedEmail] = (failedAttempts[normalizedEmail] || 0) + 1
-    const remaining = MAX_ATTEMPTS - failedAttempts[normalizedEmail]
-    throw new AuthError(
-      'INVALID_CREDENTIALS',
-      remaining > 0
-        ? `Email atau kata sandi salah. Sisa ${remaining} percobaan.`
-        : 'Email atau kata sandi salah.',
-    )
-  }
-
-  // Success — reset lockout counter.
-  delete failedAttempts[normalizedEmail]
-
-  const token = `mock-jwt-${btoa(normalizedEmail)}-${Date.now()}`
-  const { password: _pw, ...safeUser } = user
-  return { token, user: safeUser }
 }

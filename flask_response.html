@@ -1,0 +1,2003 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stockVision - Backend Verification & Testing UI</title>
+    <!-- Outfit Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 CDN (Global Build) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- ApexCharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Tailwind Custom Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#f4f5f6',        // light gray background (Stockbit page bg)
+                        cardBg: '#ffffff',        // white card containers
+                        glassBg: 'rgba(255, 255, 255, 0.8)',
+                        brandBlue: '#2563eb',     // Stockbit green replacement (Royal Blue)
+                        brandBlueHover: '#1d4ed8',
+                        brandRed: '#ef4444',      // stock decline red
+                        brandGreen: '#10b981',    // stock gain green
+                        borderLight: '#e5e7eb',   // standard light gray border
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f4f5f6;
+            min-height: 100vh;
+            color: #1f2937;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.20);
+        }
+
+        [v-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="antialiased font-sans">
+    <div id="app" class="min-h-screen flex flex-col" v-cloak>
+
+        <!-- 1. TOP NAVBAR (STOCKBIT STYLE) -->
+        <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-14 items-center">
+
+                    <!-- Left: Logo & Search -->
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <!-- Blue Sparkline Icon -->
+                            <div
+                                class="w-8 h-8 bg-brandBlue rounded-lg flex items-center justify-center shadow-md shadow-brandBlue/20">
+                                <svg viewBox="0 0 24 24" class="w-5 h-5 stroke-white" fill="none" stroke-width="3"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                                    <polyline points="16 7 22 7 22 13"></polyline>
+                                </svg>
+                            </div>
+                            <span class="text-xl font-bold tracking-tight text-slate-800">
+                                stock<span class="text-brandBlue font-extrabold">vision</span>
+                            </span>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="hidden md:block relative w-64 lg:w-80">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </span>
+                            <input type="text" placeholder="Search for brand, symbol or username..."
+                                class="w-full bg-slate-50 border border-gray-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition duration-150"
+                                disabled />
+                        </div>
+                    </div>
+
+                    <!-- Right: Navigation Menu and User State -->
+                    <div class="flex items-center gap-4">
+                        <!-- Pro Subscription Button -->
+                        <button
+                            class="border border-brandBlue text-brandBlue hover:bg-brandBlue/5 text-xs font-semibold px-4 py-1.5 rounded-lg transition duration-150">
+                            Berlangganan Pro
+                        </button>
+
+                        <!-- Chat & Notification Icons -->
+                        <div class="flex items-center gap-3.5 text-slate-500">
+                            <button class="hover:text-brandBlue transition" title="Chats"><svg class="w-5 h-5"
+                                    fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                                    </path>
+                                </svg></button>
+                            <div class="relative">
+                                <button class="hover:text-brandBlue transition" title="Notifications"><svg
+                                        class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+                                        </path>
+                                    </svg></button>
+                                <span
+                                    class="absolute -top-1.5 -right-1.5 bg-brandRed text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-90">3</span>
+                            </div>
+                        </div>
+
+                        <!-- User Profile or Login Button -->
+                        <div v-if="currentUser" class="flex items-center gap-3 pl-3 border-l border-gray-200">
+                            <img :src="currentUser.avatar || 'https://i.pravatar.cc/100?img=1'" alt="avatar"
+                                class="w-8 h-8 rounded-full border border-gray-200" />
+                            <div class="hidden sm:block text-left">
+                                <div class="text-xs font-bold text-slate-800 leading-tight">{{ currentUser.name }}</div>
+                                <div class="text-[10px] text-slate-500 leading-none">{{ currentUser.role }}</div>
+                            </div>
+                            <button @click="logout"
+                                class="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-[10px] font-semibold px-2.5 py-1 rounded-lg transition duration-150">
+                                Logout
+                            </button>
+                        </div>
+                        <div v-else>
+                            <button v-if="!showLogin" @click="showLogin = true"
+                                class="bg-brandBlue hover:bg-brandBlueHover text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition duration-150">
+                                Login
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 2. SUB-NAVBAR TABS (STOCKBIT STYLE SUBHEADER LINK) -->
+        <div v-if="currentUser" class="bg-white border-b border-gray-200 py-1.5 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div
+                    class="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-none text-xs font-medium text-slate-600">
+                    <button @click="activeTab = 'charts'"
+                        :class="`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${activeTab === 'charts' ? 'bg-brandBlue/10 text-brandBlue font-bold' : 'hover:bg-slate-50 hover:text-slate-900'}`">
+                        📊 <span>Stream (Charts)</span>
+                    </button>
+                    <button @click="activeTab = 'logs'"
+                        :class="`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${activeTab === 'logs' ? 'bg-brandBlue/10 text-brandBlue font-bold' : 'hover:bg-slate-50 hover:text-slate-900'}`">
+                        📜 <span>Crawl Logs</span>
+                    </button>
+                    <button @click="activeTab = 'scheduler'; fetchSchedulerStatus()"
+                        :class="`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${activeTab === 'scheduler' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 hover:text-slate-900'}`">
+                        ⏰ <span>Auto Scheduler</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div v-if="toast"
+            :class="`fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl border flex items-center gap-3 shadow-2xl transition-all duration-300 ${toast.type === 'error' ? 'bg-red-50 text-red-850 border-red-200' : 'bg-blue-50 text-blue-850 border-blue-200'}`">
+            <span v-if="toast.type === 'error'">🚨</span>
+            <span v-else>ℹ️</span>
+            <span class="text-xs font-semibold">{{ toast.message }}</span>
+        </div>
+
+        <!-- MAIN CONTAINER -->
+        <div class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+
+            <!-- 3. LANDING SCREEN -->
+            <main v-if="!currentUser && !showLogin"
+                class="animate-fade-in flex flex-col items-center justify-center my-16">
+                <h2 class="text-4xl md:text-5xl font-extrabold mb-6 text-center text-slate-800 max-w-3xl leading-tight">
+                    Mulai Analisis Saham dengan <span class="text-brandBlue">Data Cerdas</span>
+                </h2>
+                <p class="text-slate-500 mb-10 text-center max-w-xl text-base">
+                    Platform interaktif untuk memonitor aliran dana asing, pergerakan bandar, dan prediksi harga saham
+                    menggunakan machine learning tanpa broker trading.
+                </p>
+
+                <div
+                    class="w-full max-w-4xl bg-white border border-gray-200 p-6 rounded-2xl shadow-md relative overflow-hidden">
+                    <div class="absolute -top-20 -right-20 w-60 h-60 bg-brandBlue/5 rounded-full blur-3xl"></div>
+                    <div class="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl"></div>
+
+                    <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-4">
+                        <div class="flex gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                            <span class="w-3 h-3 rounded-full bg-brandBlue"></span>
+                        </div>
+                        <div class="text-xs font-mono text-slate-400">Live Market Overview</div>
+                    </div>
+                    <!-- Mockup Static Chart using CSS gradients -->
+                    <div class="h-64 md:h-80 w-full rounded-xl flex items-end justify-between px-2 gap-1.5 pt-10">
+                        <div v-for="i in 30" :key="i"
+                            class="w-full bg-brandBlue/20 rounded-t-md hover:bg-brandBlue/40 transition-all cursor-pointer relative group"
+                            :style="{ height: `${20 + Math.random() * 80}%` }">
+                            <div v-if="i%3==0"
+                                class="absolute bottom-full mb-1 w-0.5 h-6 bg-brandBlue left-1/2 -translate-x-1/2">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="showLogin = true"
+                    class="mt-12 bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-3.5 px-12 rounded-full text-base shadow-lg shadow-brandBlue/20 transition duration-200">
+                    Mulai Sekarang (Login)
+                </button>
+            </main>
+
+            <!-- 4. LOGIN SCREEN & PASSWORD RESET -->
+            <main v-else-if="!currentUser && showLogin" class="max-w-md mx-auto my-12 animate-fade-in">
+                <!-- Reset Password Card -->
+                <div v-if="showResetPassword"
+                    class="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg relative overflow-hidden">
+                    <h2 class="text-2xl font-bold mb-2 text-slate-800">Reset Password</h2>
+                    <p class="text-slate-500 text-xs mb-6">Reset akun database stockVision secara aman</p>
+
+                    <!-- Step 1: Input email and Send Code -->
+                    <div v-if="resetStep === 1" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email
+                                Address</label>
+                            <input v-model="resetForm.email" type="email" placeholder="example@email.com"
+                                class="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition"
+                                required />
+                        </div>
+
+                        <button type="button" @click="sendResetCode" :disabled="loading"
+                            class="w-full bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-sm flex justify-center items-center gap-2">
+                            <span v-if="loading"
+                                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Kirim Kode Verifikasi
+                        </button>
+                    </div>
+
+                    <!-- Step 2: Verification code -->
+                    <div v-else-if="resetStep === 2" class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-800 mb-2">
+                            Kode verifikasi 6 digit telah dikirim ke <strong class="text-blue-900">{{ resetForm.email
+                                }}</strong>.
+                            <div v-if="resetForm.debugCode"
+                                class="mt-2 p-2 bg-white border border-gray-200 rounded-lg text-center text-xs font-mono text-amber-600">
+                                Simulasi Kode: <strong class="text-amber-800 tracking-wider font-extrabold">{{
+                                    resetForm.debugCode }}</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">6-Digit
+                                Verification Code</label>
+                            <input v-model="resetForm.code" type="text" maxlength="6" placeholder="KODE12"
+                                class="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-center font-mono tracking-widest text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition"
+                                required />
+                        </div>
+
+                        <button type="button" @click="verifyResetCode" :disabled="loading"
+                            class="w-full bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-sm flex justify-center items-center gap-2">
+                            <span v-if="loading"
+                                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Verifikasi Kode
+                        </button>
+
+                        <button type="button" @click="resetStep = 1"
+                            class="w-full text-center text-xs text-slate-500 hover:text-slate-700 mt-2">
+                            Kembali ke Step 1
+                        </button>
+                    </div>
+
+                    <!-- Step 3: Enter new password -->
+                    <div v-else-if="resetStep === 3" class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-800 mb-2">
+                            Autentikasi sukses. Silakan masukkan kata sandi baru untuk akun Anda.
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kata
+                                Sandi Baru</label>
+                            <input v-model="resetForm.newPassword" type="password" placeholder="••••••••"
+                                class="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition"
+                                required />
+                        </div>
+
+                        <button type="button" @click="submitNewPassword" :disabled="loading"
+                            class="w-full bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-sm flex justify-center items-center gap-2">
+                            <span v-if="loading"
+                                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Simpan Kata Sandi Baru
+                        </button>
+                    </div>
+
+                    <div class="text-center mt-6">
+                        <a href="#" @click.prevent="cancelResetPassword"
+                            class="text-xs text-brandBlue hover:text-brandBlueHover transition font-semibold">Kembali ke
+                            halaman Login</a>
+                    </div>
+                </div>
+
+                <!-- Login Card -->
+                <div v-else class="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg relative overflow-hidden">
+                    <h2 class="text-2xl font-bold mb-1 text-slate-800">Welcome back</h2>
+                    <p class="text-slate-500 text-xs mb-6">Enter database credentials to verify backend endpoints</p>
+
+                    <!-- Preset accounts quick sign in -->
+                    <div class="mb-6">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-3">Quick
+                            Login (Database Seeded Profiles)</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button @click="fillPreset('fariz@sahamscope.id')"
+                                class="bg-slate-50 hover:bg-slate-100 hover:border-brandBlue/50 border border-gray-200 px-4 py-3 rounded-xl text-left transition duration-150 group">
+                                <span
+                                    class="text-xs font-bold text-brandBlue group-hover:text-brandBlueHover block">Fariz
+                                    (Perbankan)</span>
+                                <span
+                                    class="text-[10px] text-slate-500 block truncate mt-0.5">fariz@sahamscope.id</span>
+                            </button>
+                            <button @click="fillPreset('dewi@sahamscope.id')"
+                                class="bg-slate-50 hover:bg-slate-100 hover:border-brandBlue/50 border border-gray-200 px-4 py-3 rounded-xl text-left transition duration-150 group">
+                                <span class="text-xs font-bold text-indigo-600 block">Dewi (Properti & Energi)</span>
+                                <span class="text-[10px] text-slate-500 block truncate mt-0.5">dewi@sahamscope.id</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative flex py-2 items-center mb-4">
+                        <div class="flex-grow border-t border-gray-200"></div>
+                        <span class="flex-shrink mx-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">Or
+                            manual input</span>
+                        <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
+
+                    <!-- Form login -->
+                    <form @submit.prevent="handleLogin" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email
+                                Address</label>
+                            <input v-model="loginForm.email" type="email" placeholder="example@email.com"
+                                class="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition duration-150"
+                                required />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                            <input v-model="loginForm.password" type="password" placeholder="••••••••"
+                                class="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition duration-150"
+                                required />
+                        </div>
+
+                        <div class="flex justify-end mt-1">
+                            <a href="#" @click.prevent="startResetPassword"
+                                class="text-xs text-brandBlue hover:text-brandBlueHover transition font-semibold">Forgot
+                                password?</a>
+                        </div>
+
+                        <button type="submit" :disabled="loading"
+                            class="w-full bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-3 rounded-xl text-xs transition duration-200 mt-2 shadow-md shadow-brandBlue/10 flex justify-center items-center gap-2">
+                            <span v-if="loading"
+                                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            Sign In
+                        </button>
+                    </form>
+                </div>
+            </main>
+
+            <!-- 5. LOGGED IN DASHBOARD -->
+            <main v-else class="space-y-6 animate-fade-in">
+
+                <!-- TRENDING STOCKS BAR (STOCKBIT ACCENT) -->
+                <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">Trending
+                        Stocks</span>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+
+                        <div v-for="ticker in ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']" :key="ticker"
+                            @click="selectTicker(ticker)"
+                            :class="`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition ${selectedTicker === ticker ? 'border-brandBlue bg-brandBlue/5' : 'border-gray-100 hover:border-gray-300'}`">
+                            <div>
+                                <span class="text-xs font-bold block text-slate-800">{{ ticker }}</span>
+                                <span class="text-xs font-bold text-slate-900 mt-0.5 block">
+                                    {{ trendingStocks[ticker] ? formatNumber(trendingStocks[ticker].price) : '-' }}
+                                </span>
+                                <span v-if="trendingStocks[ticker]"
+                                    :class="`text-[9px] font-bold flex items-center gap-0.5 mt-0.5 ${trendingStocks[ticker].isUp ? 'text-brandGreen' : 'text-brandRed'}`">
+                                    {{ trendingStocks[ticker].isUp ? '▲' : '▼' }}
+                                    {{ formatNumber(Math.abs(trendingStocks[ticker].change)) }}
+                                    ({{ trendingStocks[ticker].changePercent }}%)
+                                </span>
+                                <span v-else class="text-[9px] font-bold text-slate-400 mt-0.5 block">Loading...</span>
+                            </div>
+                            <svg :class="`w-12 h-6 stroke-current ${trendingStocks[ticker] && trendingStocks[ticker].isUp ? 'text-brandGreen' : 'text-brandRed'}`"
+                                fill="none" stroke-width="2" stroke-linecap="round" viewBox="0 0 50 20">
+                                <path
+                                    :d="trendingStocks[ticker] && trendingStocks[ticker].isUp ? 'M 0 15 Q 10 5, 20 12 T 40 8 T 50 3' : 'M 0 3 Q 10 15, 20 8 T 40 12 T 50 17'">
+                                </path>
+                            </svg>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Tab 1: Charts and Prices -->
+                <div v-show="activeTab === 'charts'" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+                    <!-- Left sidebar: Ticker details / Focus emiten list -->
+                    <div class="space-y-6 h-fit">
+                        <!-- Single Integrated Watchlist & Focus Emiten Card -->
+                        <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+                            <!-- Watchlist Dropdown Selector Section (Only when not editing) -->
+                            <div v-if="!showInlineEditor">
+                                <span
+                                    class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Pilihan
+                                    Watchlist</span>
+                                <div class="flex gap-1.5">
+                                    <select v-model="activeWatchlistId"
+                                        class="flex-grow bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue font-bold transition">
+                                        <option v-for="wl in watchlists" :key="wl.id" :value="wl.id">{{ wl.name }}
+                                        </option>
+                                        <option v-if="watchlists.length === 0" disabled>No watchlists</option>
+                                    </select>
+
+                                    <!-- '+' Add Button -->
+                                    <button @click="startInlineCreate"
+                                        class="bg-brandBlue/5 hover:bg-brandBlue/10 border border-brandBlue/10 hover:border-brandBlue/30 text-brandBlue text-xs font-bold w-8 h-8 rounded-lg transition flex items-center justify-center shrink-0"
+                                        title="Buat Watchlist Baru">
+                                        ＋
+                                    </button>
+
+                                    <!-- 'Edit' Button -->
+                                    <button @click="startInlineEdit"
+                                        class="bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-600 text-xs font-bold px-2.5 h-8 rounded-lg transition flex items-center justify-center gap-1 shrink-0"
+                                        title="Edit Watchlist Ini">
+                                        ✏️ Edit
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Header when inline editing -->
+                            <div v-else class="flex justify-between items-center pb-2 border-b border-gray-150">
+                                <span class="text-xs font-bold text-slate-800">{{ isCreating ? 'Tambah Watchlist' :
+                                    'Edit Watchlist' }}</span>
+                                <button v-if="!isCreating && selectedWatchlist" @click="handleDeleteWatchlistInline"
+                                    class="text-red-550 hover:text-red-700 text-[10px] font-semibold">
+                                    Hapus
+                                </button>
+                            </div>
+
+                            <!-- Divider line (Only when not editing) -->
+                            <div v-if="!showInlineEditor" class="border-t border-gray-100"></div>
+
+                            <!-- Normal Focus Emiten Section (Only when not editing) -->
+                            <div v-if="!showInlineEditor">
+                                <h3 class="text-sm font-bold mb-2 text-slate-800 flex items-center gap-2">
+                                    <span>🏛</span> Focus Emiten
+                                </h3>
+                                <p class="text-[11px] text-slate-500 mb-3.5 leading-normal">Pilih kode saham untuk
+                                    memuat riwayat data transaksi dan grafik aliran dana asing.</p>
+                                <div class="space-y-2">
+                                    <button v-for="ticker in focusTickers" :key="ticker" @click="selectTicker(ticker)"
+                                        :class="`w-full flex justify-between items-center px-4 py-2.5 rounded-lg border text-left text-xs transition duration-150 ${selectedTicker === ticker ? 'bg-brandBlue/5 border-brandBlue text-brandBlue font-bold' : 'bg-white border-gray-200 hover:border-gray-400 text-slate-700'}`">
+                                        <span>{{ ticker }}</span>
+                                        <span v-if="activeWatchlist && activeWatchlist.symbols.includes(ticker)"
+                                            @click.stop="toggleSymbolInActiveWatchlist(ticker)"
+                                            class="text-amber-500 text-sm hover:scale-125 transition duration-150 cursor-pointer"
+                                            title="Remove from active watchlist">★</span>
+                                        <span v-else @click.stop="toggleSymbolInActiveWatchlist(ticker)"
+                                            class="text-slate-300 hover:text-amber-400 text-sm hover:scale-125 transition duration-150 cursor-pointer"
+                                            title="Add to active watchlist">☆</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Inline Editor Section (Only when editing) -->
+                            <div v-else class="space-y-3">
+                                <div>
+                                    <label
+                                        class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nama
+                                        Watchlist</label>
+                                    <input v-model="newName" type="text" placeholder="Nama watchlist..."
+                                        class="w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition duration-150"
+                                        required />
+                                </div>
+
+                                <div>
+                                    <label
+                                        class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pilih
+                                        Saham</label>
+                                    <div class="grid grid-cols-2 gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                                        <button
+                                            v-for="ticker in ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM', 'ADRO', 'GOTO', 'PTBA', 'PTPP', 'SMRA', 'ASRI', 'CTRA', 'INCO', 'INDF', 'MAPI', 'SMGR']"
+                                            :key="ticker" @click="toggleSymbol(ticker)"
+                                            :class="`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-left text-[10px] transition duration-150 ${selectedSymbols.includes(ticker) ? 'bg-brandBlue/5 border-brandBlue text-brandBlue font-bold' : 'bg-white border-gray-200 hover:border-gray-400 text-slate-600'}`">
+                                            <span
+                                                class="w-3 h-3 rounded flex items-center justify-center border border-gray-300 text-[6px] font-bold shrink-0"
+                                                :class="selectedSymbols.includes(ticker) ? 'bg-brandBlue text-white border-brandBlue' : 'bg-white'">
+                                                {{ selectedSymbols.includes(ticker) ? '✓' : '' }}
+                                            </span>
+                                            <span class="truncate">{{ ticker }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2 pt-2 border-t border-gray-150">
+                                    <button @click="showInlineEditor = false"
+                                        class="flex-grow bg-slate-50 border border-gray-200 hover:bg-slate-100 text-slate-650 font-bold py-1.5 rounded-lg text-[10px] text-center transition">
+                                        Batal
+                                    </button>
+                                    <button @click="handleSaveWatchlistInline"
+                                        class="flex-grow bg-brandBlue hover:bg-brandBlueHover text-white font-bold py-1.5 rounded-lg text-[10px] text-center transition">
+                                        Simpan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Main panel: Charts & Tables -->
+                    <div class="lg:col-span-3 space-y-6">
+
+                        <!-- Stockbit styled Pro Banner -->
+                        <div
+                            class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                            <div>
+                                <span
+                                    class="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-wide uppercase">stockVision
+                                    Pro Features</span>
+                                <h3 class="text-lg font-bold mt-1.5">Technical & Foreign Flow Session on Web</h3>
+                                <p class="text-xs text-white/80 mt-1">Gunakan analisis data tercatat untuk menentukan
+                                    kapan transaksi dana asing optimal terjadi.</p>
+                            </div>
+                            <span
+                                class="bg-white text-brandBlue text-xs font-bold px-4 py-2 rounded-lg cursor-default shadow-sm shrink-0">Bebas
+                                Akses Analisis</span>
+                        </div>
+
+                        <!-- Stock Info Stats Panel -->
+                        <div v-if="stockInfo" class="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+                            <!-- Card 1: Last Price -->
+                            <div
+                                class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Last
+                                    Price & Change</span>
+                                <div class="flex items-baseline gap-2 mt-1.5">
+                                    <span class="text-lg font-extrabold text-brandBlue tabular">{{
+                                        formatNumber(stockInfo.harga) }}</span>
+                                    <span
+                                        :class="`text-xs font-semibold tabular flex items-center ${stockInfo.perubahan >= 0 ? 'text-brandGreen' : 'text-brandRed'}`">
+                                        {{ stockInfo.perubahan >= 0 ? '▲' : '▼' }}{{ stockInfo.perubahan_persen }}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Bid -->
+                            <div
+                                class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Best
+                                    Bid</span>
+                                <div class="flex justify-between items-end mt-1.5">
+                                    <span class="text-base font-bold text-brandGreen tabular">{{
+                                        formatNumber(stockInfo.bid_price) }}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">Vol: {{
+                                        formatNumber(stockInfo.bid_volume) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Card 3: Offer -->
+                            <div
+                                class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Best
+                                    Offer</span>
+                                <div class="flex justify-between items-end mt-1.5">
+                                    <span class="text-base font-bold text-brandRed tabular">{{
+                                        formatNumber(stockInfo.offer_price) }}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">Vol: {{
+                                        formatNumber(stockInfo.offer_volume) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: Volume & Status -->
+                            <div
+                                class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Volume
+                                    & Market Status</span>
+                                <div class="flex justify-between items-end mt-1.5">
+                                    <span class="text-xs font-bold text-slate-700 tabular">{{
+                                        formatNumber(stockInfo.volume) }}</span>
+                                    <span
+                                        class="bg-blue-50 border border-blue-100 text-brandBlue text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                        {{ stockInfo.status_pasar || 'CLOSED' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interactive Charts Panel -->
+                        <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm relative min-h-[350px]">
+                            <div v-if="fetchingData"
+                                class="absolute inset-0 bg-white/60 backdrop-blur-sm rounded-xl flex flex-col justify-center items-center z-10 gap-3">
+                                <div
+                                    class="w-8 h-8 border-4 border-brandBlue/20 border-t-brandBlue rounded-full animate-spin">
+                                </div>
+                                <span class="text-xs text-slate-500 font-semibold">Mengambil data dari
+                                    database...</span>
+                            </div>
+
+                            <div
+                                class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-3">
+                                        <span>Historical Candlestick — {{ selectedTicker }}</span>
+                                    </h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">ApexCharts dengan data real-time
+                                        terambil dari database local.</p>
+                                </div>
+                                <span
+                                    class="bg-slate-50 border border-gray-200 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold tabular">
+                                    {{ ohlcData.length }} trading days
+                                </span>
+                            </div>
+
+                            <!-- Candlestick Chart -->
+                            <div id="candle-chart-mount" class="w-full h-80"></div>
+
+                            <!-- Volume/Flow Chart -->
+                            <div class="mt-4 border-t border-gray-200 pt-4">
+                                <h4 class="text-xs font-bold text-slate-500 mb-2">Foreign Flow Activity (IDR)</h4>
+                                <div id="volume-chart-mount" class="w-full h-40"></div>
+                            </div>
+                        </div>
+
+                        <!-- ML Price Forecasting Card (NEW) -->
+                        <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                            <div
+                                class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                                <div>
+                                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <span>🔮</span> ML Price Forecasting — {{ selectedTicker }}
+                                    </h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Prediksi harga OHLC 5 hari ke depan
+                                        berbasis model machine learning.</p>
+                                </div>
+                                <span
+                                    class="bg-blue-50 border border-blue-100 text-brandBlue px-3 py-1 rounded-full text-[10px] font-semibold">
+                                    {{ forecastData.length }} predictions loaded
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Left side: Forecasting Table -->
+                                <div class="overflow-x-auto max-h-[250px]">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr
+                                                class="border-b border-gray-200 text-slate-400 font-bold bg-slate-50/50">
+                                                <th class="py-2 px-2.5">Date</th>
+                                                <th class="py-2 px-2 text-right">Open</th>
+                                                <th class="py-2 px-2 text-right">High</th>
+                                                <th class="py-2 px-2 text-right">Low</th>
+                                                <th class="py-2 px-2 text-right">Close</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in forecastData" :key="row.tanggal"
+                                                class="border-b border-gray-100 hover:bg-slate-50/50 text-slate-700">
+                                                <td class="py-2 px-2.5 font-mono text-[9px] text-slate-400">{{
+                                                    row.tanggal }}</td>
+                                                <td class="py-2 px-2 text-right font-medium tabular">{{
+                                                    formatNumber(row.open) }}</td>
+                                                <td class="py-2 px-2 text-right font-medium text-brandGreen tabular">{{
+                                                    formatNumber(row.high) }}</td>
+                                                <td class="py-2 px-2 text-right font-medium text-brandRed tabular">{{
+                                                    formatNumber(row.low) }}</td>
+                                                <td class="py-2 px-2 text-right font-bold text-brandBlue tabular">{{
+                                                    formatNumber(row.close) }}</td>
+                                            </tr>
+                                            <tr v-if="forecastData.length === 0">
+                                                <td colspan="5" class="text-center py-8 text-slate-400">Tidak ada data
+                                                    peramalan.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Right side: Forecasting Trend Chart -->
+                                <div class="lg:col-span-2">
+                                    <div id="forecast-chart-mount" class="w-full h-[220px]"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Side-by-Side Tables -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Left Table: Insider Transactions -->
+                            <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                        <span>👥</span> Insider Transactions
+                                        <span
+                                            class="text-[9px] font-bold text-brandBlue bg-brandBlue/5 border border-brandBlue/10 px-1.5 py-0.5 rounded font-mono">{{
+                                            insiderScope }}</span>
+                                    </h3>
+                                    <span
+                                        class="bg-slate-50 border border-gray-100 text-slate-500 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">
+                                        {{ insiderData.length }} recent trades
+                                    </span>
+                                </div>
+                                <div class="overflow-x-auto max-h-[300px]">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr
+                                                class="border-b border-gray-200 text-slate-400 font-bold bg-slate-50/50">
+                                                <th class="py-2 px-3">Date</th>
+                                                <th class="py-2 px-3">Ticker</th>
+                                                <th class="py-2 px-3">Insider Name</th>
+                                                <th class="py-2 px-3">Action</th>
+                                                <th class="py-2 px-3 text-right">Shares Change</th>
+                                                <th class="py-2 px-3 text-right">Avg Price</th>
+                                                <th class="py-2 px-3 text-right">Holding %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in insiderData" :key="row.id_trx"
+                                                class="border-b border-gray-100 hover:bg-slate-50/50 text-slate-700">
+                                                <td class="py-2 px-3 font-mono text-[9px] text-slate-400">{{ row.tanggal
+                                                    }}</td>
+                                                <td class="py-2 px-3">
+                                                    <span
+                                                        class="bg-slate-50 border border-gray-200 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[9px]">{{
+                                                        row.symbol }}</span>
+                                                </td>
+                                                <td class="py-2 px-3 font-semibold text-slate-800 max-w-[100px] truncate"
+                                                    :title="row.nama">{{ row.nama }}</td>
+                                                <td class="py-2 px-3">
+                                                    <span
+                                                        :class="`px-1.5 py-0.25 rounded text-[9px] font-bold ${row.aksi.toUpperCase() === 'BUY' ? 'bg-blue-50 text-brandBlue border border-blue-100' : 'bg-red-50 text-brandRed border border-red-100'}`">
+                                                        {{ row.aksi }}
+                                                    </span>
+                                                </td>
+                                                <td
+                                                    :class="`py-2 px-3 text-right font-semibold ${row.perubahan >= 0 ? 'text-brandGreen' : 'text-brandRed'}`">
+                                                    {{ row.perubahan >= 0 ? '+' : '' }}{{ formatNumber(row.perubahan) }}
+                                                </td>
+                                                <td class="py-2 px-3 text-right font-mono">{{ row.harga || '-' }}</td>
+                                                <td class="py-2 px-3 text-right font-semibold text-slate-500 tabular">{{
+                                                    row.sekarang_persen }}%</td>
+                                            </tr>
+                                            <tr v-if="insiderData.length === 0">
+                                                <td colspan="7" class="text-center py-8 text-slate-400">Tidak ada data
+                                                    transaksi insider.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Right Table: Historical OHLC Records -->
+                            <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                                <h3 class="text-sm font-bold mb-4 text-slate-800 flex items-center gap-1.5">
+                                    <span>🗄️</span> Historical Records
+                                </h3>
+                                <div class="overflow-x-auto max-h-[300px]">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr
+                                                class="border-b border-gray-200 text-slate-400 font-bold bg-slate-50/50">
+                                                <th class="py-2 px-3">Date</th>
+                                                <th class="py-2 px-3 text-right">Open</th>
+                                                <th class="py-2 px-3 text-right">High</th>
+                                                <th class="py-2 px-3 text-right">Low</th>
+                                                <th class="py-2 px-3 text-right">Close</th>
+                                                <th class="py-2 px-3 text-right">Net Flow</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in ohlcData.slice().reverse().slice(0, 30)"
+                                                :key="row.tanggal"
+                                                class="border-b border-gray-100 hover:bg-slate-50/50 text-slate-700">
+                                                <td class="py-2 px-3 font-mono text-[9px] text-slate-400">{{ row.tanggal
+                                                    }}</td>
+                                                <td class="py-2 px-3 text-right tabular">{{ formatNumber(row.open) }}
+                                                </td>
+                                                <td class="py-2 px-3 text-right tabular">{{ formatNumber(row.high) }}
+                                                </td>
+                                                <td class="py-2 px-3 text-right tabular">{{ formatNumber(row.low) }}
+                                                </td>
+                                                <td class="py-2 px-3 text-right font-bold text-brandBlue tabular">{{
+                                                    formatNumber(row.close) }}</td>
+                                                <td
+                                                    :class="`py-2 px-3 text-right font-semibold tabular ${row.foreign_flow >= 0 ? 'text-brandGreen' : 'text-brandRed'}`">
+                                                    {{ row.foreign_flow >= 0 ? '+' : '' }}{{
+                                                    formatNumber(row.foreign_flow) }}
+                                                </td>
+                                            </tr>
+                                            <tr v-if="ohlcData.length === 0">
+                                                <td colspan="6" class="text-center py-8 text-slate-400">Tidak ada data
+                                                    records.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+
+
+                <!-- Tab 3: Crawl Monitor Logs -->
+                <div v-show="activeTab === 'logs'" class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                <span>📜</span> Crawl Jobs Logs
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Log catatan pekerjaan crawling data yang berhasil
+                                diproses oleh scheduler.</p>
+                        </div>
+                        <button @click="fetchLogs"
+                            class="bg-white hover:bg-slate-50 border border-gray-200 px-4 py-2 rounded-lg text-xs font-semibold text-slate-700 transition">
+                            🔄 Refresh Logs
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-200 text-slate-400 font-bold bg-slate-50/50">
+                                    <th class="py-2.5 px-3">Job ID</th>
+                                    <th class="py-2.5 px-3">Job Type</th>
+                                    <th class="py-2.5 px-3">Target Ticker</th>
+                                    <th class="py-2.5 px-3">Target Date</th>
+                                    <th class="py-2.5 px-3">Status</th>
+                                    <th class="py-2.5 px-3 text-right">Records Count</th>
+                                    <th class="py-2.5 px-3">Created At</th>
+                                    <th class="py-2.5 px-3">Error Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="log in logs" :key="log.id"
+                                    class="border-b border-gray-100 hover:bg-slate-50/50 text-slate-700">
+                                    <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">#{{ log.id }}</td>
+                                    <td class="py-2.5 px-3 font-semibold text-brandBlue">{{ log.job_type }}</td>
+                                    <td class="py-2.5 px-3 font-bold">{{ log.target }}</td>
+                                    <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">{{ log.tanggal_target
+                                        || '-' }}</td>
+                                    <td class="py-2.5 px-3">
+                                        <span
+                                            :class="`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${log.status === 'SUCCESS' ? 'bg-blue-50 text-brandBlue border border-blue-100' : 'bg-red-50 text-brandRed border border-red-100'}`">
+                                            <span
+                                                :class="`w-1 h-1 rounded-full ${log.status === 'SUCCESS' ? 'bg-brandBlue' : 'bg-brandRed'}`"></span>
+                                            {{ log.status }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2.5 px-3 text-right font-semibold tabular">{{ log.records_count }}
+                                    </td>
+                                    <td class="py-2.5 px-3 text-[10px] text-slate-400">{{ log.created_at }}</td>
+                                    <td class="py-2.5 px-3 text-[10px] text-brandRed max-w-xs truncate"
+                                        :title="log.error_message">{{ log.error_message || '-' }}</td>
+                                </tr>
+                                <tr v-if="logs.length === 0">
+                                    <td colspan="8" class="text-center py-8 text-slate-400">Tidak ada log data crawl
+                                        dalam database.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Auto Scheduler -->
+                <div v-show="activeTab === 'scheduler'" class="space-y-6 animate-fade-in">
+
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                <span>⏰</span> Auto Crawling Scheduler
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-1">Crawling otomatis setiap 30 menit pada jam bursa,
+                                hanya di hari trading.</p>
+                        </div>
+                        <button @click="fetchSchedulerStatus"
+                            class="bg-white hover:bg-slate-50 border border-gray-200 px-4 py-2 rounded-lg text-xs font-semibold text-slate-700 transition">
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    <!-- Market & Scheduler Status Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Card: Scheduler Status -->
+                        <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm relative overflow-hidden">
+                            <span
+                                class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-2">Scheduler
+                                Status</span>
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="w-2.5 h-2.5 rounded-full"
+                                    :class="schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'bg-amber-500 animate-pulse' : 'bg-brandBlue animate-pulse') : 'bg-slate-400'"></span>
+                                <span class="text-base font-bold"
+                                    :class="schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'text-amber-600' : 'text-brandBlue') : 'text-slate-500'">{{
+                                    schedulerData.scheduler.running ? (schedulerData.scheduler.paused ? 'PAUSED' :
+                                    'ACTIVE') : 'STOPPED' }}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button v-if="!schedulerData.scheduler.running" @click="controlScheduler('start')"
+                                    class="flex-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-brandBlue text-[10px] px-2 py-1.5 rounded-lg font-bold transition">Start</button>
+                                <button v-if="schedulerData.scheduler.running && !schedulerData.scheduler.paused"
+                                    @click="controlScheduler('pause')"
+                                    class="flex-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-[10px] px-2 py-1.5 rounded-lg font-bold transition">Pause</button>
+                                <button v-if="schedulerData.scheduler.paused" @click="controlScheduler('resume')"
+                                    class="flex-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-brandBlue text-[10px] px-2 py-1.5 rounded-lg font-bold transition">Resume</button>
+                                <button v-if="schedulerData.scheduler.running" @click="controlScheduler('stop')"
+                                    class="flex-1 bg-red-50 hover:bg-red-100 border border-red-200 text-brandRed text-[10px] px-2 py-1.5 rounded-lg font-bold transition">Stop</button>
+                            </div>
+                        </div>
+
+                        <!-- Card: Trading Day -->
+                        <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm relative overflow-hidden">
+                            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-2">Hari
+                                Trading</span>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-base font-bold"
+                                    :class="schedulerData.market.is_trading_day ? 'text-brandGreen' : 'text-brandRed'">{{
+                                    schedulerData.market.is_trading_day ? 'YA' : 'TIDAK' }}</span>
+                            </div>
+                            <p v-if="schedulerData.market.day_info"
+                                class="text-[10px] text-amber-600 mt-1 font-semibold">📅 {{
+                                schedulerData.market.day_info }}</p>
+                            <p v-if="!schedulerData.market.is_trading_day && schedulerData.market.next_trading_day"
+                                class="text-[10px] text-slate-500 mt-1">Hari trading berikut: <span
+                                    class="text-brandBlue font-bold">{{ schedulerData.market.next_trading_day }}</span>
+                            </p>
+                            <p v-else class="text-[10px] text-slate-500 mt-1 font-semibold">Jam Bursa: {{
+                                schedulerData.market.market_hours || '08:45 - 16:15 WIB' }}</p>
+                        </div>
+
+                        <!-- Card: Jam Bursa -->
+                        <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-2">Jam
+                                Bursa</span>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2.5 h-2.5 rounded-full"
+                                    :class="schedulerData.market.is_trading_hours ? 'bg-brandGreen animate-pulse' : 'bg-slate-400'"></span>
+                                <span class="text-base font-bold"
+                                    :class="schedulerData.market.is_trading_hours ? 'text-brandGreen' : 'text-slate-500'">{{
+                                    schedulerData.market.is_trading_hours ? 'BUKA' : 'TUTUP' }}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-1 font-mono">{{
+                                schedulerData.market.current_time_wib || '-' }}</p>
+                        </div>
+
+                        <!-- Card: Statistik -->
+                        <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                            <span
+                                class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-2">Statistik
+                                Crawl</span>
+                            <div class="grid grid-cols-3 gap-2 mt-1 text-center">
+                                <div>
+                                    <div class="text-sm font-bold text-brandBlue">{{ schedulerData.scheduler.total_runs
+                                        || 0 }}</div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Total</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-brandGreen">{{
+                                        schedulerData.scheduler.total_success || 0 }}</div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Sukses</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-500">{{
+                                        schedulerData.scheduler.total_skipped || 0 }}</div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Skip</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduler Info Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-3 shadow-sm">
+                            <div
+                                class="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 font-bold">
+                                ⏱️</div>
+                            <div>
+                                <span
+                                    class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Interval</span>
+                                <span class="text-xs font-bold text-slate-800">{{
+                                    schedulerData.scheduler.interval_minutes || 30 }} menit</span>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-3 shadow-sm">
+                            <div
+                                class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-brandBlue font-bold">
+                                ⏭️</div>
+                            <div>
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Next
+                                    Run</span>
+                                <span class="text-xs font-bold text-slate-800">{{ schedulerData.scheduler.next_run ||
+                                    'Tidak dijadwalkan' }}</span>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-3 shadow-sm">
+                            <div
+                                class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-brandGreen font-bold">
+                                ✅</div>
+                            <div>
+                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Last
+                                    Result</span>
+                                <span class="text-xs font-bold text-slate-800 truncate block max-w-[200px]">{{
+                                    schedulerData.scheduler.last_result || 'Belum pernah berjalan' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Trigger & Target Emiten -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Manual Trigger -->
+                        <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                            <h4 class="text-xs font-bold text-slate-800 mb-2 flex items-center gap-2"><span>⚡</span>
+                                Manual Trigger</h4>
+                            <p class="text-[10px] text-slate-400 mb-4">Jalankan crawl sekarang juga tanpa menunggu
+                                scheduler (bypass jam bursa).</p>
+                            <button @click="controlScheduler('trigger')"
+                                :disabled="schedulerData.scheduler.crawl_in_progress"
+                                class="w-full bg-brandBlue hover:bg-brandBlueHover disabled:opacity-40 text-white font-bold py-2.5 rounded-lg text-xs transition flex justify-center items-center gap-2">
+                                <span v-if="schedulerData.scheduler.crawl_in_progress"
+                                    class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                {{ schedulerData.scheduler.crawl_in_progress ? 'Sedang Crawling...' : '🚀 Trigger Crawl Sekarang' }}
+                            </button>
+                        </div>
+
+                        <!-- Target Emiten -->
+                        <div class="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                            <h4 class="text-xs font-bold text-slate-800 mb-2 flex items-center gap-2"><span>🎯</span>
+                                Target Emiten</h4>
+                            <p class="text-[10px] text-slate-400 mb-4">Emiten yang akan di-crawl otomatis (Stock Info +
+                                Insider Activity).</p>
+                            <div class="flex flex-wrap gap-2.5">
+                                <div v-for="sym in (schedulerData.targets || ['BBCA','BBNI','BBRI','BMRI','BJBR'])"
+                                    :key="sym"
+                                    class="bg-slate-50 border border-gray-150 rounded-xl px-4 py-2.5 flex items-center gap-2.5 hover:border-brandBlue/30 transition">
+                                    <span
+                                        class="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center text-[10px] font-bold text-brandBlue">{{
+                                        sym.charAt(0) }}</span>
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-800 block leading-tight">{{ sym
+                                            }}</span>
+                                        <span class="text-[9px] text-slate-400">Stock Info + OHLC</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Crawl History Table -->
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5"><span>📋</span>
+                                Riwayat Eksekusi Scheduler</h4>
+                            <span
+                                class="bg-slate-50 border border-gray-200 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">{{
+                                (schedulerData.history || []).length }} entries</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-gray-200 text-slate-400 font-bold bg-slate-50/50">
+                                        <th class="py-2.5 px-3">Waktu</th>
+                                        <th class="py-2.5 px-3">Status</th>
+                                        <th class="py-2.5 px-3">Detail</th>
+                                        <th class="py-2.5 px-3 text-right">Emiten</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(h, i) in (schedulerData.history || [])" :key="i"
+                                        class="border-b border-gray-100 hover:bg-slate-50/50 text-slate-700">
+                                        <td class="py-2.5 px-3 font-mono text-[9px] text-slate-400">{{ h.time }}</td>
+                                        <td class="py-2.5 px-3">
+                                            <span :class="`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                                h.status === 'SUCCESS' ? 'bg-blue-50 text-brandBlue border border-blue-100' :
+                                                h.status === 'SKIPPED' ? 'bg-slate-50 text-slate-500 border border-gray-200' :
+                                                h.status === 'PARTIAL' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                                'bg-red-50 text-brandRed border border-red-100'
+                                            }`">
+                                                <span
+                                                    :class="`w-1 h-1 rounded-full ${h.status === 'SUCCESS' ? 'bg-brandBlue' : h.status === 'SKIPPED' ? 'bg-slate-400' : h.status === 'PARTIAL' ? 'bg-amber-400' : 'bg-brandRed'}`"></span>
+                                                {{ h.status }}
+                                            </span>
+                                        </td>
+                                        <td class="py-2.5 px-3 text-slate-500 max-w-[300px] truncate" :title="h.detail">
+                                            {{ h.detail }}</td>
+                                        <td class="py-2.5 px-3 text-right font-semibold">{{ h.symbols_crawled || '-' }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!(schedulerData.history || []).length">
+                                        <td colspan="4" class="text-center py-8 text-slate-400">Belum ada riwayat
+                                            eksekusi scheduler.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+
+        </div>
+    </div>
+
+    <!-- Script Application Vue -->
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
+
+        createApp({
+            setup() {
+                // State variables
+                const currentUser = ref(null);
+                const showLogin = ref(false);
+                const loading = ref(false);
+                const activeTab = ref('charts');
+                const toast = ref(null);
+
+                // Reset Password state variables
+                const showResetPassword = ref(false);
+                const resetStep = ref(1);
+                const resetForm = reactive({
+                    email: '',
+                    code: '',
+                    newPassword: '',
+                    token: '',
+                    debugCode: ''
+                });
+
+                const selectedTicker = ref('BBCA');
+                const ohlcData = ref([]);
+                const forecastData = ref([]);
+                const fetchingData = ref(false);
+                const logs = ref([]);
+                const schedulerData = ref({
+                    scheduler: {},
+                    market: {},
+                    history: []
+                });
+                const stockInfo = ref(null);
+                const insiderData = ref([]);
+                const insiderScope = ref('symbol');
+                const trendingStocks = ref({});
+
+                // Watchlists Data
+                const watchlists = ref([]);
+                const activeWatchlistId = ref(null);
+                const selectedWatchlist = ref(null);
+                const isCreating = ref(false);
+                const newName = ref('');
+                const selectedSymbols = ref([]);
+                const showInlineEditor = ref(false);
+
+                const activeWatchlist = computed(() => {
+                    if (!watchlists.value || watchlists.value.length === 0) return null;
+                    return watchlists.value.find(w => w.id === activeWatchlistId.value) || watchlists.value[0];
+                });
+
+                const DEFAULT_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
+                const focusTickers = computed(() => {
+                    if (activeWatchlist.value && activeWatchlist.value.symbols.length > 0) {
+                        return activeWatchlist.value.symbols;
+                    }
+                    return DEFAULT_TICKERS;
+                });
+
+                let schedulerPollTimer = null;
+
+                // Charts Reference
+                let candleChart = null;
+                let volumeChart = null;
+
+                const loginForm = reactive({
+                    email: '',
+                    password: ''
+                });
+
+                // Toast Handler
+                const showToast = (message, type = 'success') => {
+                    toast.value = { message, type };
+                    setTimeout(() => {
+                        toast.value = null;
+                    }, 3500);
+                };
+
+                // Load User session
+                onMounted(() => {
+                    const session = localStorage.getItem('stockVision_test_user');
+                    if (session) {
+                        try {
+                            currentUser.value = JSON.parse(session);
+                            selectTicker(currentUser.value.default_ticker || 'BBCA');
+                            fetchLogs();
+                            fetchWatchlists();
+                            fetchSchedulerStatus();
+                        } catch (e) {
+                            localStorage.removeItem('stockVision_test_user');
+                        }
+                    }
+                    fetchTrendingStocksData();
+                });
+
+                // Fill Preset Details
+                const fillPreset = (email) => {
+                    loginForm.email = email;
+                    loginForm.password = 'password123';
+                    handleLogin();
+                };
+
+                // Reset Password Methods
+                const startResetPassword = () => {
+                    showResetPassword.value = true;
+                    resetStep.value = 1;
+                    resetForm.email = loginForm.email;
+                    resetForm.code = '';
+                    resetForm.newPassword = '';
+                    resetForm.token = '';
+                    resetForm.debugCode = '';
+                };
+
+                const cancelResetPassword = () => {
+                    showResetPassword.value = false;
+                };
+
+                const sendResetCode = async () => {
+                    if (!resetForm.email.trim()) {
+                        showToast('Email wajib diisi.', 'error');
+                        return;
+                    }
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/users/reset-password/send-code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: resetForm.email })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Gagal mengirim kode');
+
+                        showToast(data.message || 'Kode verifikasi telah dikirim.');
+                        resetForm.debugCode = data.debug_code || '';
+                        resetStep.value = 2;
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const verifyResetCode = async () => {
+                    if (!resetForm.code.trim()) {
+                        showToast('Kode verifikasi wajib diisi.', 'error');
+                        return;
+                    }
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/users/reset-password/verify-code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: resetForm.email, code: resetForm.code })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Kode verifikasi salah');
+
+                        showToast(data.message || 'Verifikasi berhasil.');
+                        resetForm.token = data.token;
+                        resetStep.value = 3;
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const submitNewPassword = async () => {
+                    if (!resetForm.newPassword) {
+                        showToast('Kata sandi baru wajib diisi.', 'error');
+                        return;
+                    }
+                    if (resetForm.newPassword.length < 6) {
+                        showToast('Kata sandi minimal 6 karakter.', 'error');
+                        return;
+                    }
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/users/reset-password/reset', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: resetForm.token, password: resetForm.newPassword })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Gagal mereset kata sandi');
+
+                        showToast(data.message || 'Kata sandi berhasil direset!');
+                        loginForm.email = resetForm.email;
+                        loginForm.password = '';
+                        showResetPassword.value = false;
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // Login Method
+                const handleLogin = async () => {
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/users/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(loginForm)
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Login failed');
+                        }
+
+                        // Emulate a token addition as backend user API returns the user object directly.
+                        data.token = `test-token-jwt-${btoa(data.email)}-${Date.now()}`;
+                        currentUser.value = data;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(data));
+
+                        showToast(`Successfully logged in as ${data.name}!`);
+
+                        // Select default ticker and load logs
+                        selectTicker(data.default_ticker || 'BBCA');
+                        fetchLogs();
+                        fetchWatchlists();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // Logout Method
+                const logout = () => {
+                    currentUser.value = null;
+                    showLogin.value = false;
+                    localStorage.removeItem('stockVision_test_user');
+                    watchlists.value = [];
+                    activeWatchlistId.value = null;
+                    selectedWatchlist.value = null;
+                    isCreating.value = false;
+                    showToast('Logged out successfully');
+                };
+
+                // Fetch Stock Info Snapshot
+                const fetchStockInfo = async (symbol) => {
+                    try {
+                        const response = await fetch(`/api/data/stock-info?symbol=${symbol}`);
+                        if (!response.ok) {
+                            stockInfo.value = null;
+                            return;
+                        }
+                        stockInfo.value = await response.json();
+                    } catch (e) {
+                        console.error('Error fetching stock info:', e);
+                        stockInfo.value = null;
+                    }
+                };
+
+                // Fetch Insider Trade Data
+                const fetchInsider = async (symbol) => {
+                    try {
+                        // First try fetching for the specific symbol
+                        let response = await fetch(`/api/data/majorholder?symbol=${symbol}&limit=30`);
+                        if (response.ok) {
+                            let data = await response.json();
+                            if (data.length > 0) {
+                                insiderData.value = data;
+                                insiderScope.value = symbol;
+                                return;
+                            }
+                        }
+
+                        // Fallback to global recent insider trades if empty
+                        response = await fetch(`/api/data/majorholder?limit=30`);
+                        if (response.ok) {
+                            insiderData.value = await response.json();
+                            insiderScope.value = 'Global Activity';
+                        } else {
+                            insiderData.value = [];
+                            insiderScope.value = 'None';
+                        }
+                    } catch (e) {
+                        console.error('Error fetching insider data:', e);
+                        insiderData.value = [];
+                        insiderScope.value = 'None';
+                    }
+                };
+
+                const fetchTrendingStocksData = async () => {
+                    const tickers = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
+                    for (const ticker of tickers) {
+                        try {
+                            const response = await fetch(`/api/data/stock-info?symbol=${ticker}`);
+                            if (response.ok) {
+                                const data = await response.json();
+                                trendingStocks.value[ticker] = {
+                                    price: data.harga,
+                                    change: data.perubahan,
+                                    changePercent: data.perubahan_persen,
+                                    isUp: data.perubahan >= 0
+                                };
+                            }
+                        } catch (e) {
+                            console.error(`Error fetching trending stock ${ticker}:`, e);
+                        }
+                    }
+                };
+
+                const fetchForecast = async (symbol) => {
+                    try {
+                        const response = await fetch(`/api/data/forecast?symbol=${symbol}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            forecastData.value = data;
+                            nextTick(() => {
+                                renderForecastChart();
+                            });
+                        } else {
+                            forecastData.value = [];
+                        }
+                    } catch (e) {
+                        console.error('Error fetching forecast data:', e);
+                        forecastData.value = [];
+                    }
+                };
+
+                let forecastChart = null;
+                const renderForecastChart = () => {
+                    const element = document.querySelector('#forecast-chart-mount');
+                    if (!element || forecastData.value.length === 0) return;
+
+                    const dates = forecastData.value.map(row => row.tanggal);
+                    const closePrices = forecastData.value.map(row => row.close);
+
+                    const options = {
+                        series: [{
+                            name: 'Predicted Close',
+                            data: closePrices
+                        }],
+                        chart: {
+                            type: 'line',
+                            height: 220,
+                            toolbar: { show: false },
+                            fontFamily: 'Outfit, sans-serif'
+                        },
+                        colors: ['#2563eb'],
+                        stroke: {
+                            curve: 'smooth',
+                            width: 3.5,
+                            dashArray: [5]
+                        },
+                        grid: {
+                            borderColor: '#f1f5f9',
+                            row: { opacity: 0.5 }
+                        },
+                        markers: {
+                            size: 5,
+                            colors: ['#2563eb'],
+                            strokeColors: '#fff',
+                            strokeWidth: 2
+                        },
+                        xaxis: {
+                            categories: dates,
+                            labels: {
+                                style: { colors: '#94a3b8', fontSize: '9px', fontWeight: 600 }
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                formatter: (val) => formatNumber(val),
+                                style: { colors: '#94a3b8', fontSize: '9px', fontWeight: 600 }
+                            }
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: (val) => `Rp ${formatNumber(val)}`
+                            }
+                        }
+                    };
+
+                    if (forecastChart) {
+                        forecastChart.destroy();
+                    }
+                    forecastChart = new ApexCharts(element, options);
+                    forecastChart.render();
+                };
+
+                // Select and load Ticker Data
+                const selectTicker = async (symbol) => {
+                    selectedTicker.value = symbol;
+                    fetchingData.value = true;
+                    fetchTrendingStocksData();
+                    try {
+                        const response = await fetch(`/api/data/ohlc?symbol=${symbol}`);
+                        if (!response.ok) {
+                            const err = await response.json();
+                            throw new Error(err.error || 'Failed to fetch OHLC');
+                        }
+                        const data = await response.json();
+                        ohlcData.value = data;
+
+                        // Parallel fetch for Stock Info & Insider Data
+                        await Promise.all([
+                            fetchStockInfo(symbol),
+                            fetchInsider(symbol)
+                        ]);
+
+                        // Render charts
+                        await nextTick();
+                        renderCharts(data);
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                        ohlcData.value = [];
+                        stockInfo.value = null;
+                        insiderData.value = [];
+                    } finally {
+                        fetchingData.value = false;
+                    }
+                };
+
+                // Fetch Watchlists from SQLite database
+                const fetchWatchlists = async () => {
+                    if (!currentUser.value) return;
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            watchlists.value = data;
+                            if (data.length > 0) {
+                                if (!activeWatchlistId.value) {
+                                    activeWatchlistId.value = data[0].id;
+                                }
+                                // Auto select first watchlist for editor if none selected
+                                if (!selectedWatchlist.value) {
+                                    selectWatchlist(data[0]);
+                                } else {
+                                    // Refresh active selection reference
+                                    const refreshed = data.find(w => w.id === selectedWatchlist.value.id);
+                                    if (refreshed) selectWatchlist(refreshed);
+                                }
+                            } else {
+                                startCreate();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching watchlists:', e);
+                    }
+                };
+
+                const selectWatchlist = (wl) => {
+                    selectedWatchlist.value = wl;
+                    newName.value = wl.name;
+                    selectedSymbols.value = [...wl.symbols];
+                    isCreating.value = false;
+                };
+
+                const startCreate = () => {
+                    selectedWatchlist.value = null;
+                    newName.value = '';
+                    selectedSymbols.value = [];
+                    isCreating.value = true;
+                };
+
+                const toggleSymbol = (code) => {
+                    if (selectedSymbols.value.includes(code)) {
+                        selectedSymbols.value = selectedSymbols.value.filter(s => s !== code);
+                    } else {
+                        selectedSymbols.value.push(code);
+                    }
+                };
+
+                const handleSaveWatchlist = async () => {
+                    const name = newName.value.trim();
+                    if (!name) {
+                        showToast('Watchlist name is required', 'error');
+                        return;
+                    }
+                    try {
+                        let response;
+                        if (isCreating.value) {
+                            response = await fetch(`/users/${currentUser.value.id}/watchlists`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name, symbols: selectedSymbols.value })
+                            });
+                        } else {
+                            response = await fetch(`/users/${currentUser.value.id}/watchlists/${selectedWatchlist.value.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name, symbols: selectedSymbols.value })
+                            });
+                        }
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Failed to save watchlist');
+
+                        showToast(`Watchlist "${name}" saved successfully!`);
+
+                        // Clear selectedWatchlist first so fetchWatchlists updates properly
+                        const savedId = data.id;
+                        selectedWatchlist.value = null;
+
+                        await fetchWatchlists();
+
+                        const savedWl = watchlists.value.find(w => w.id === savedId);
+                        if (savedWl) {
+                            selectWatchlist(savedWl);
+                        }
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                const handleDeleteWatchlist = async () => {
+                    if (!selectedWatchlist.value) return;
+                    if (!confirm(`Are you sure you want to delete "${selectedWatchlist.value.name}"?`)) return;
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists/${selectedWatchlist.value.id}`, {
+                            method: 'DELETE'
+                        });
+                        if (!response.ok) throw new Error('Failed to delete watchlist');
+
+                        showToast('Watchlist deleted');
+                        selectedWatchlist.value = null;
+                        await fetchWatchlists();
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                const handleSetActiveWatchlist = () => {
+                    if (!selectedWatchlist.value) return;
+                    activeWatchlistId.value = selectedWatchlist.value.id;
+                    showToast(`Active watchlist set to "${selectedWatchlist.value.name}"`);
+                };
+
+                const toggleSymbolInActiveWatchlist = async (symbol) => {
+                    const wl = activeWatchlist.value;
+                    if (!wl) {
+                        showToast('No active watchlist found. Please create one first.', 'error');
+                        return;
+                    }
+                    let updatedSymbols = [...wl.symbols];
+                    if (updatedSymbols.includes(symbol)) {
+                        updatedSymbols = updatedSymbols.filter(s => s !== symbol);
+                    } else {
+                        updatedSymbols.push(symbol);
+                    }
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists/${wl.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbols: updatedSymbols })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error('Failed to update watchlist symbols');
+
+                        // Update in-memory lists
+                        const idx = watchlists.value.findIndex(w => w.id === wl.id);
+                        if (idx !== -1) {
+                            watchlists.value[idx] = data;
+                        }
+                        showToast(updatedSymbols.includes(symbol) ? `Added ${symbol} to watchlist` : `Removed ${symbol} from watchlist`);
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                const startInlineCreate = () => {
+                    startCreate();
+                    showInlineEditor.value = true;
+                };
+
+                const startInlineEdit = () => {
+                    if (watchlists.value.length > 0) {
+                        const activeWl = watchlists.value.find(w => w.id === activeWatchlistId.value) || watchlists.value[0];
+                        selectWatchlist(activeWl);
+                        isCreating.value = false;
+                        showInlineEditor.value = true;
+                    } else {
+                        startInlineCreate();
+                    }
+                };
+
+                const handleSaveWatchlistInline = async () => {
+                    await handleSaveWatchlist();
+                    showInlineEditor.value = false;
+                };
+
+                const handleDeleteWatchlistInline = async () => {
+                    if (!selectedWatchlist.value) return;
+                    if (!confirm(`Apakah Anda yakin ingin menghapus watchlist "${selectedWatchlist.value.name}"?`)) return;
+                    try {
+                        const response = await fetch(`/users/${currentUser.value.id}/watchlists/${selectedWatchlist.value.id}`, {
+                            method: 'DELETE'
+                        });
+                        if (!response.ok) throw new Error('Failed to delete watchlist');
+
+                        showToast('Watchlist deleted');
+                        selectedWatchlist.value = null;
+                        await fetchWatchlists();
+
+                        if (watchlists.value.length > 0) {
+                            activeWatchlistId.value = watchlists.value[0].id;
+                        } else {
+                            activeWatchlistId.value = null;
+                        }
+
+                        showInlineEditor.value = false;
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                };
+
+                // Fetch Crawl status logs
+                const fetchLogs = async () => {
+                    try {
+                        const response = await fetch('/crawl-status?limit=30');
+                        if (!response.ok) throw new Error('Failed to load crawl status logs');
+                        const data = await response.json();
+                        logs.value = data;
+                    } catch (e) {
+                        console.error('Error fetching logs:', e);
+                    }
+                };
+
+                // Fetch Scheduler Status
+                const fetchSchedulerStatus = async () => {
+                    try {
+                        const response = await fetch('/scheduler/status');
+                        if (response.ok) {
+                            schedulerData.value = await response.json();
+                        }
+                    } catch (e) {
+                        console.error('Error fetching scheduler status:', e);
+                    }
+                };
+
+                // Control Scheduler (start/stop/pause/resume/trigger)
+                const controlScheduler = async (action) => {
+                    try {
+                        const response = await fetch(`/scheduler/${action}`, { method: 'POST' });
+                        const data = await response.json();
+                        showToast(data.message || `Scheduler ${action} berhasil`);
+                        // Refresh status after short delay
+                        setTimeout(fetchSchedulerStatus, 500);
+                    } catch (e) {
+                        showToast(`Gagal ${action} scheduler: ${e.message}`, 'error');
+                    }
+                };
+
+                // Render ApexCharts for Candlestick and volume/foreign flow (Light Styled)
+                const renderCharts = (data) => {
+                    if (data.length === 0) return;
+
+                    // Formating data for candlestick chart
+                    const candleSeriesData = data.map(item => {
+                        return {
+                            x: new Date(item.tanggal),
+                            y: [item.open, item.high, item.low, item.close]
+                        };
+                    });
+
+                    // Format data for foreign net flow chart
+                    const flowSeriesData = data.map(item => {
+                        return {
+                            x: new Date(item.tanggal),
+                            y: item.foreign_flow
+                        };
+                    });
+
+                    // Option Candlestick Chart (Stockbit Light Theme colors)
+                    const candleOptions = {
+                        series: [{
+                            data: candleSeriesData
+                        }],
+                        chart: {
+                            type: 'candlestick',
+                            height: 320,
+                            id: 'candlestick-chart',
+                            background: 'transparent',
+                            foreColor: '#64748b',
+                            toolbar: {
+                                show: true,
+                                tools: {
+                                    download: false
+                                }
+                            }
+                        },
+                        grid: {
+                            borderColor: '#e2e8f0'
+                        },
+                        xaxis: {
+                            type: 'datetime',
+                            axisBorder: {
+                                color: '#e2e8f0'
+                            },
+                            axisTicks: {
+                                color: '#e2e8f0'
+                            }
+                        },
+                        yaxis: {
+                            tooltip: {
+                                enabled: true
+                            },
+                            labels: {
+                                formatter: function (val) {
+                                    return Math.round(val);
+                                }
+                            }
+                        },
+                        plotOptions: {
+                            candlestick: {
+                                colors: {
+                                    upward: '#2563eb', // positive blue
+                                    downward: '#ef4444' // negative red
+                                }
+                            }
+                        },
+                        theme: {
+                            mode: 'light'
+                        }
+                    };
+
+                    // Option Volume/Flow Chart (Stockbit Light Theme colors)
+                    const volumeOptions = {
+                        series: [{
+                            name: 'Net Flow (IDR)',
+                            data: flowSeriesData
+                        }],
+                        chart: {
+                            type: 'bar',
+                            height: 160,
+                            background: 'transparent',
+                            foreColor: '#64748b',
+                            toolbar: {
+                                show: false
+                            }
+                        },
+                        grid: {
+                            borderColor: '#e2e8f0'
+                        },
+                        plotOptions: {
+                            bar: {
+                                colors: {
+                                    ranges: [{
+                                        from: -999999999999,
+                                        to: 0,
+                                        color: '#ef4444' // negative red
+                                    }, {
+                                        from: 1,
+                                        to: 999999999999,
+                                        color: '#2563eb' // positive blue
+                                    }]
+                                }
+                            }
+                        },
+                        xaxis: {
+                            type: 'datetime',
+                            axisBorder: {
+                                color: '#e2e8f0'
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                formatter: function (val) {
+                                    if (Math.abs(val) >= 1e9) {
+                                        return (val / 1e9).toFixed(1) + 'B';
+                                    }
+                                    if (Math.abs(val) >= 1e6) {
+                                        return (val / 1e6).toFixed(1) + 'M';
+                                    }
+                                    return val;
+                                }
+                            }
+                        },
+                        theme: {
+                            mode: 'light'
+                        }
+                    };
+
+                    // Destroy old charts if existing
+                    if (candleChart) candleChart.destroy();
+                    if (volumeChart) volumeChart.destroy();
+
+                    // Mount new charts
+                    candleChart = new ApexCharts(document.querySelector("#candle-chart-mount"), candleOptions);
+                    candleChart.render();
+
+                    volumeChart = new ApexCharts(document.querySelector("#volume-chart-mount"), volumeOptions);
+                    volumeChart.render();
+                };
+
+                // Utilities Formatting
+                const formatNumber = (num) => {
+                    if (num === null || num === undefined) return '-';
+                    return new Intl.NumberFormat('id-ID').format(Math.round(num));
+                };
+
+                return {
+                    currentUser,
+                    showLogin,
+                    loginForm,
+                    loading,
+                    activeTab,
+                    toast,
+
+                    // Reset Password
+                    showResetPassword,
+                    resetStep,
+                    resetForm,
+                    startResetPassword,
+                    cancelResetPassword,
+                    sendResetCode,
+                    verifyResetCode,
+                    submitNewPassword,
+                    focusTickers,
+                    selectedTicker,
+                    ohlcData,
+                    stockInfo,
+                    insiderData,
+                    insiderScope,
+                    fetchingData,
+                    logs,
+                    schedulerData,
+                    fillPreset,
+                    handleLogin,
+                    logout,
+                    selectTicker,
+                    fetchLogs,
+                    formatNumber,
+                    trendingStocks,
+                    fetchTrendingStocksData,
+                    forecastData,
+                    fetchForecast,
+                    renderForecastChart,
+
+                    // Watchlists properties
+                    watchlists,
+                    activeWatchlistId,
+                    selectedWatchlist,
+                    isCreating,
+                    newName,
+                    selectedSymbols,
+                    activeWatchlist,
+                    showInlineEditor,
+                    startInlineCreate,
+                    startInlineEdit,
+                    handleSaveWatchlistInline,
+                    handleDeleteWatchlistInline,
+                    fetchWatchlists,
+                    selectWatchlist,
+                    startCreate,
+                    toggleSymbol,
+                    handleSaveWatchlist,
+                    handleDeleteWatchlist,
+                    handleSetActiveWatchlist,
+                    toggleSymbolInActiveWatchlist,
+                    fetchSchedulerStatus,
+                    controlScheduler
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>

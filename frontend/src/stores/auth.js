@@ -31,6 +31,11 @@ export const useAuthStore = defineStore('auth', () => {
       if (remember) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: t, user: u }))
       }
+      // Load watchlists upon successful login
+      import('@/stores/market').then(({ useMarketStore }) => {
+        const market = useMarketStore()
+        market.fetchWatchlists()
+      })
       return u
     } finally {
       loading.value = false
@@ -41,6 +46,11 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     localStorage.removeItem(STORAGE_KEY)
+    // Clear watchlists upon logout
+    import('@/stores/market').then(({ useMarketStore }) => {
+      const market = useMarketStore()
+      market.clearWatchlists()
+    })
   }
 
   return { user, token, loading, isAuthenticated, login, logout }

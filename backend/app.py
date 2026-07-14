@@ -4,15 +4,29 @@ import requests
 import psycopg2
 from psycopg2.extras import execute_batch
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from datetime import datetime, timezone
 import socket
 import os
+import json
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables from .env file (searching upwards if necessary)
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 app = Flask(__name__)
+CORS(app)
+
+from data_routes import data_bp
+app.register_blueprint(data_bp)
+
+from user import user_bp
+app.register_blueprint(user_bp)
+
+from scheduler import (
+    start_scheduler, stop_scheduler, pause_scheduler,
+    resume_scheduler, trigger_now, get_scheduler_status
+)
 
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
 PASSWORD  = os.getenv("STOCKBIT_PASSWORD")
@@ -92,6 +106,43 @@ def get_last_trading_day(target_date):
         curr -= timedelta(days=1)
 
 
+# ============================================================
+# LOG CRAWL JOB STATUS
+# ============================================================
+def clean_error_message(error_msg):
+    if not error_msg:
+        return None
+    err_str = str(error_msg)
+    if "401" in err_str:
+        return "Akses token kedaluwarsa (Unauthorized)"
+    elif "404" in err_str:
+        return "Akses token kedaluwarsa (Not Found / Sesi Habis)"
+    elif "429" in err_str:
+        return "Terlalu banyak permintaan ke API Stockbit (Rate Limit). Silakan tunggu beberapa menit."
+    elif "500" in err_str or "502" in err_str or "503" in err_str or "504" in err_str:
+        return "Server Stockbit sedang bermasalah / Down."
+    elif "ConnectionError" in err_str or "connection" in err_str.lower():
+        return "Gagal terhubung ke internet / server Stockbit."
+    return err_str
+
+
+def log_crawl_job(job_type, target, tanggal_target, status, records_count=0, error_message=None):
+    try:
+        cleaned_msg = clean_error_message(error_message)
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
+            VALUES (%s, %s, %s, %s, %s, %s);
+        """, (job_type, target, tanggal_target, status, records_count, cleaned_msg))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Error logging crawl job status to DB:", e)
+
+
+
 # =========================
 # INSERT BROKER ACTIVITY
 # =========================
@@ -147,7 +198,7 @@ def insert_data_insider(data):
 
 
 # =========================
-# INSERT STOCK INFO
+# INSERT 
 # =========================
 def insert_data_stock_info(data):
     query = """
@@ -227,6 +278,34 @@ _token_cache = {
     "lock":          threading.Lock(),
 }
 
+TOKEN_CACHE_FILE = os.path.join(os.path.dirname(__file__), "token_cache.json")
+
+def _load_token_cache_from_disk():
+    global _token_cache
+    try:
+        if os.path.exists(TOKEN_CACHE_FILE):
+            with open(TOKEN_CACHE_FILE, "r") as f:
+                data = json.load(f)
+                _token_cache["access_token"] = data.get("access_token")
+                _token_cache["refresh_token"] = data.get("refresh_token")
+                _token_cache["expires_at"] = data.get("expires_at", 0)
+                print(f"[Token Cache] Loaded existing tokens from disk. Expires at: {datetime.fromtimestamp(_token_cache['expires_at'])}")
+    except Exception as e:
+        print(f"[Token Cache] Error loading token cache from disk: {e}")
+
+def _save_token_cache_to_disk():
+    try:
+        data = {
+            "access_token": _token_cache["access_token"],
+            "refresh_token": _token_cache["refresh_token"],
+            "expires_at": _token_cache["expires_at"]
+        }
+        with open(TOKEN_CACHE_FILE, "w") as f:
+            json.dump(data, f)
+            print("[Token Cache] Saved updated tokens to disk.")
+    except Exception as e:
+        print(f"[Token Cache] Error saving token cache to disk: {e}")
+
 def normalize_number(val):
     if val is None:
         return None
@@ -252,45 +331,79 @@ def normalize_number(val):
     return val
 
 def _do_login():
-    resp = requests.post(
-        "https://exodus.stockbit.com/login/v6/username",
-        headers=LOGIN_HEADERS,
-        json={
-            "user":               USERNAME,
-            "password":           PASSWORD,
-            "recaptcha_version":  "RECAPTCHA_VERSION_3",
-            "player_id":          PLAYER_ID,
-        },
-    )
-    if resp.status_code != 200:
-        raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
-    token_data    = resp.json()["data"]["login"]["token_data"]
-    access_token  = token_data["access"]["token"]
-    refresh_token = token_data["refresh"]["token"]
-    expires_at    = datetime.fromisoformat(
-        token_data["access"]["expired_at"].replace("Z", "+00:00")
-    ).timestamp()
-    return access_token, refresh_token, expires_at
+    try:
+        resp = requests.post(
+            "https://exodus.stockbit.com/login/v6/username",
+            headers=LOGIN_HEADERS,
+            json={
+                "user":               USERNAME,
+                "password":           PASSWORD,
+                "recaptcha_version":  "RECAPTCHA_VERSION_3",
+                "player_id":          PLAYER_ID,
+            },
+        )
+        if resp.status_code != 200:
+            log_crawl_job("AUTH_LOGIN", USERNAME, None, "FAILED", 0, f"Login gagal ({resp.status_code}): {resp.text}")
+            raise Exception(f"Login gagal ({resp.status_code}): {resp.text}")
+        token_data    = resp.json()["data"]["login"]["token_data"]
+        access_token  = token_data["access"]["token"]
+        refresh_token = token_data["refresh"]["token"]
+        expires_at    = datetime.fromisoformat(
+            token_data["access"]["expired_at"].replace("Z", "+00:00")
+        ).timestamp()
+        
+        log_crawl_job("AUTH_LOGIN", USERNAME, None, "SUCCESS", 1)
+        return access_token, refresh_token, expires_at
+    except Exception as e:
+        log_crawl_job("AUTH_LOGIN", USERNAME, None, "FAILED", 0, str(e))
+        raise e
 
 
 def _do_refresh(refresh_token):
-    resp = requests.post(
-        "https://exodus.stockbit.com/login/v6/token/refresh",
-        headers={**LOGIN_HEADERS, "Authorization": f"Bearer {refresh_token}"},
-    )
-    if resp.status_code != 200:
+    try:
+        resp = requests.post(
+            "https://exodus.stockbit.com/login/v6/token/refresh",
+            headers={**LOGIN_HEADERS, "Authorization": f"Bearer {refresh_token}"},
+        )
+        if resp.status_code != 200:
+            log_crawl_job("AUTH_REFRESH", USERNAME, None, "FAILED", 0, f"Refresh gagal ({resp.status_code}): {resp.text}")
+            return None, None, 0
+        token_data        = resp.json()["data"]["login"]["token_data"]
+        access_token      = token_data["access"]["token"]
+        new_refresh_token = token_data["refresh"]["token"]
+        expires_at        = datetime.fromisoformat(
+            token_data["access"]["expired_at"].replace("Z", "+00:00")
+        ).timestamp()
+        
+        log_crawl_job("AUTH_REFRESH", USERNAME, None, "SUCCESS", 1)
+        return access_token, new_refresh_token, expires_at
+    except Exception as e:
+        log_crawl_job("AUTH_REFRESH", USERNAME, None, "FAILED", 0, str(e))
         return None, None, 0
-    token_data        = resp.json()["data"]["login"]["token_data"]
-    access_token      = token_data["access"]["token"]
-    new_refresh_token = token_data["refresh"]["token"]
-    expires_at        = datetime.fromisoformat(
-        token_data["access"]["expired_at"].replace("Z", "+00:00")
-    ).timestamp()
-    return access_token, new_refresh_token, expires_at
+
+
+def invalidate_token():
+    with _token_cache["lock"]:
+        _token_cache["access_token"]  = None
+        _token_cache["refresh_token"] = None
+        _token_cache["expires_at"]    = 0
+        if os.path.exists(TOKEN_CACHE_FILE):
+            try:
+                os.remove(TOKEN_CACHE_FILE)
+                print("[Token Cache] Invalidated token due to 401 Unauthorized.")
+            except Exception as e:
+                print(f"[Token Cache] Error removing cache file: {e}")
 
 
 def get_token():
+    env_token = os.getenv("STOCKBIT_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+
     with _token_cache["lock"]:
+        if _token_cache["access_token"] is None and _token_cache["refresh_token"] is None:
+            _load_token_cache_from_disk()
+
         now = time.time()
         if _token_cache["access_token"] and _token_cache["expires_at"] - now > 300:
             return _token_cache["access_token"]
@@ -300,11 +413,13 @@ def get_token():
                 _token_cache["access_token"]  = access
                 _token_cache["refresh_token"] = refresh
                 _token_cache["expires_at"]    = expires_at
+                _save_token_cache_to_disk()
                 return access
         access, refresh, expires_at = _do_login()
         _token_cache["access_token"]  = access
         _token_cache["refresh_token"] = refresh
         _token_cache["expires_at"]    = expires_at
+        _save_token_cache_to_disk()
         return access
 
 
@@ -329,6 +444,8 @@ def fetch_majorholder(token, date_start, date_end, pages):
             headers=headers,
             params={**params_base, "page": page},
         )
+        if resp.status_code == 401:
+            invalidate_token()
         if resp.status_code != 200:
             raise Exception(f"Fetch page {page} gagal ({resp.status_code}): {resp.text}")
         data      = resp.json()
@@ -386,6 +503,8 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
             headers=headers,
             params={**params_base, "page": page},
         )
+        if resp.status_code == 401:
+            invalidate_token()
         if resp.status_code != 200:
             raise Exception(f"Fetch page {page} gagal ({resp.status_code}): {resp.text}")
 
@@ -426,6 +545,8 @@ def fetch_stock_info(token, symbol):
         f"https://exodus.stockbit.com/emitten/{symbol}/info",
         headers=headers,
     )
+    if resp.status_code == 401:
+        invalidate_token()
     if resp.status_code != 200:
         raise Exception(f"Fetch gagal ({resp.status_code}): {resp.text}")
     return resp.json().get("data", {})
@@ -516,82 +637,12 @@ def force_login():
 
 @app.route("/majorholder", methods=["GET"])
 def majorholder():
-    from datetime import date, timedelta, datetime
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    date_end = request.args.get("date_end")
-    if date_end:
-        date_end = get_last_trading_day(date_end)
-    else:
-        date_end = get_last_trading_day(yesterday_str)
-        
-    date_start = request.args.get("date_start")
-    if date_start:
-        date_start = get_last_trading_day(date_start)
-    else:
-        end_dt = datetime.strptime(date_end, "%Y-%m-%d").date()
-        date_start = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
-        
-    pages      = int(request.args.get("pages", 5))
-    try:
-        token   = get_token()
-        records = fetch_majorholder(token, date_start, date_end, pages)
-        if not records:
-            return jsonify({"error": "Tidak ada data ditemukan"}), 404
-        insert_data_insider(records)
-        return jsonify({
-            "message":       f"{len(records)} data berhasil disimpan ke DB",
-            "date_start":    date_start,
-            "date_end":      date_end,
-            "total_records": len(records),
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 
 @app.route("/broker-activity", methods=["GET"])
 def broker_activity():
-    from datetime import date, timedelta
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-
-    broker_code      = request.args.get("broker_code", "XL")
-    
-    date_from        = request.args.get("from")
-    if date_from:
-        date_from = get_last_trading_day(date_from)
-    else:
-        date_from = get_last_trading_day(yesterday_str)
-        
-    date_to          = request.args.get("to")
-    if date_to:
-        date_to = get_last_trading_day(date_to)
-    else:
-        date_to = get_last_trading_day(yesterday_str)
-        
-    pages            = int(request.args.get("pages", 1))
-    transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
-    market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
-    investor_type    = request.args.get("investor_type",    "INVESTOR_TYPE_ALL")
-    try:
-        token = get_token()
-        buy_records, sell_records = fetch_broker_activity(
-            token, broker_code, date_from, date_to, pages,
-            transaction_type, market_board, investor_type,
-        )
-        if not buy_records and not sell_records:
-            return jsonify({"error": "Tidak ada data ditemukan"}), 404
-        all_records = buy_records + sell_records
-        insert_data_brokers(all_records)
-        return jsonify({
-            "message":      f"{len(all_records)} data berhasil disimpan ke DB",
-            "broker_code":  broker_code,
-            "date_from":    date_from,
-            "date_to":      date_to,
-            "total_buy":    len(buy_records),
-            "total_sell":   len(sell_records),
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 
 @app.route("/stock-info", methods=["GET"])
@@ -680,56 +731,72 @@ def insert_data_ohlc(data):
     cur.close()
     conn.close()
 
-# ============================================================
-# ENDPOINT OHLC (CHARTBIT API)
-# ============================================================
-@app.route("/ohlc", methods=["GET"])
-def get_ohlc():
-    from datetime import date, timedelta, datetime
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+def insert_data_ohlc(data):
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_ohlc (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        open NUMERIC(15, 2) NOT NULL,
+        high NUMERIC(15, 2) NOT NULL,
+        low NUMERIC(15, 2) NOT NULL,
+        close NUMERIC(15, 2) NOT NULL,
+        volume BIGINT NOT NULL,
+        foreign_buy NUMERIC(20, 2),
+        foreign_sell NUMERIC(20, 2),
+        foreign_flow NUMERIC(20, 2),
+        CONSTRAINT pk_stock_ohlc PRIMARY KEY (symbol, tanggal)
+    );
+    """
+    insert_query = """
+    INSERT INTO idxsaham.stock_ohlc (
+        symbol, tanggal, open, high, low, close, volume, foreign_buy, foreign_sell, foreign_flow
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(open)s, %(high)s, %(low)s, %(close)s, %(volume)s, %(foreignbuy)s, %(foreignsell)s, %(foreignflow)s
+    )
+    ON CONFLICT (symbol, tanggal)
+    DO UPDATE SET
+        open = EXCLUDED.open,
+        high = EXCLUDED.high,
+        low = EXCLUDED.low,
+        close = EXCLUDED.close,
+        volume = EXCLUDED.volume,
+        foreign_buy = EXCLUDED.foreign_buy,
+        foreign_sell = EXCLUDED.foreign_sell,
+        foreign_flow = EXCLUDED.foreign_flow;
+    """
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(create_table_query) 
+    execute_batch(cur, insert_query, data)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def fetch_ohlc(token, symbol, from_date, to_date):
+    headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+    url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
+    resp = requests.get(
+        url,
+        headers=headers,
+        params={"from": from_date, "to": to_date, "limit": 0}
+    )
+    if resp.status_code == 401:
+        invalidate_token()
+    if resp.status_code != 200:
+        raise Exception(f"Fetch OHLC {symbol} gagal ({resp.status_code}): {resp.text}")
     
-    symbol = request.args.get("symbol", "BBRI").upper()
+    json_data = resp.json()
+    chart_data = json_data.get("data", {}).get("chartbit", [])
     
-    f = request.args.get("from")
-    if f:
-        f = get_last_trading_day(f)
-    else:
-        f = get_last_trading_day(yesterday_str)
-        
-    t = request.args.get("to")
-    if t:
-        t = get_last_trading_day(t)
-    else:
-        from_dt = datetime.strptime(f, "%Y-%m-%d").date()
-        t = (from_dt - timedelta(days=365)).strftime("%Y-%m-%d")
-    
-    try:
-        token = get_token()
-        headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
-        
-        # Endpoint Chartbit
-        url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
-        
-        resp = requests.get(
-            url,
-            headers=headers,
-            params={"from": f, "to": t, "limit": 0}
-        )
-        
-        if resp.status_code != 200:
-            return jsonify({"error": f"Gagal fetch OHLC: {resp.text}"}), resp.status_code
-            
-        json_data = resp.json()
-        chart_data = json_data.get("data", {}).get("chartbit", [])
-        
-        if not chart_data:
-            return jsonify({"error": "Tidak ada data OHLC (array chartbit kosong)"}), 404
-            
-        records = []
-        for item in chart_data:
+    records = []
+    for item in chart_data:
+        item_date = item.get("date")
+        if item_date and (to_date <= item_date <= from_date):
             records.append({
                 "symbol": symbol,
-                "tanggal": item.get("date"),
+                "tanggal": item_date,
                 "open": normalize_number(item.get("open")),
                 "high": normalize_number(item.get("high")),
                 "low": normalize_number(item.get("low")),
@@ -739,16 +806,166 @@ def get_ohlc():
                 "foreignsell": normalize_number(item.get("foreignsell")),
                 "foreignflow": normalize_number(item.get("foreignflow"))
             })
-        # Simpan ke Database
-        insert_data_ohlc(records)
+    return records
+
+
+# ============================================================
+# ENDPOINT OHLC (CHARTBIT API)
+# ============================================================
+@app.route("/ohlc", methods=["GET"])
+def get_ohlc():
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
+
+
+# ============================================================
+# SCHEDULER ENDPOINTS
+# ============================================================
+@app.route("/scheduler/status", methods=["GET"])
+def scheduler_status():
+    return jsonify(get_scheduler_status())
+
+
+@app.route("/scheduler/start", methods=["POST"])
+def scheduler_start():
+    result = start_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/stop", methods=["POST"])
+def scheduler_stop():
+    result = stop_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/pause", methods=["POST"])
+def scheduler_pause():
+    result = pause_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/resume", methods=["POST"])
+def scheduler_resume():
+    result = resume_scheduler()
+    return jsonify(result)
+
+
+@app.route("/scheduler/trigger", methods=["POST"])
+def scheduler_trigger():
+    result = trigger_now()
+    return jsonify(result)
+
+
+# ============================================================
+# ENDPOINT CRAWL STATUS (MONITORING JOB)
+# ============================================================
+@app.route("/crawl-status", methods=["GET"])
+def crawl_status():
+    limit = int(request.args.get("limit", 50))
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, job_type, target, tanggal_target, status, records_count, error_message, created_at
+            FROM idxsaham.crawl_logs
+            ORDER BY id DESC
+            LIMIT %s;
+        """, (limit,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
         
-        return jsonify({
-            "message": f"Berhasil menyimpan {len(records)} hari data OHLC & Foreign Flow untuk {symbol}",
-            "symbol": symbol,
-            "total_data": len(records)
-        })
+        logs = []
+        from datetime import timedelta
+        for r in rows:
+            # PostgreSQL default timestamp is in UTC, convert to local Jakarta/WIB (UTC+7)
+            dt_utc = r[7].replace(tzinfo=timezone.utc)
+            dt_wib = dt_utc.astimezone(timezone(timedelta(hours=7)))
+            logs.append({
+                "id": r[0],
+                "job_type": r[1],
+                "target": r[2],
+                "tanggal_target": str(r[3]) if r[3] else None,
+                "status": r[4],
+                "records_count": r[5],
+                "error_message": r[6],
+                "created_at": dt_wib.strftime("%Y-%m-%d %H:%M:%S")
+            })
+        return jsonify(logs)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ============================================================
+# FETCH ORDERBOOK (V2)
+# ============================================================
+def fetch_orderbook(token, symbol):
+    headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+    
+    # Menggunakan endpoint v2 yang baru Anda temukan dari DevTools!
+    resp = requests.get(
+        "https://exodus.stockbit.com/company-price-feed/v2/orderbook/template/0",
+        headers=headers,
+        params={"symbol": symbol}  # Mengirimkan kode saham (misal: BBCA)
+    )
+    
+    if resp.status_code == 401:
+        invalidate_token()
+    if resp.status_code != 200:
+        raise Exception(f"Fetch orderbook {symbol} gagal ({resp.status_code}): {resp.text}")
+        
+    return resp.json().get("data", {})
+
+# ============================================================
+# INSERT ORDERBOOK
+# ============================================================
+def insert_data_orderbook(data):
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_orderbook (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        waktu_update TIMESTAMP NOT NULL,
+        tipe VARCHAR(10) NOT NULL,
+        lapis INT NOT NULL,
+        harga NUMERIC(15, 2) NOT NULL,
+        volume_lot BIGINT NOT NULL,
+        CONSTRAINT pk_stock_orderbook PRIMARY KEY (symbol, tanggal, waktu_update, tipe, lapis)
+    );
+    """
+    
+    insert_query = """
+    INSERT INTO idxsaham.stock_orderbook (
+        symbol, tanggal, waktu_update, tipe, lapis, harga, volume_lot
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(waktu_update)s, %(tipe)s, %(lapis)s, %(harga)s, %(volume_lot)s
+    )
+    ON CONFLICT (symbol, tanggal, waktu_update, tipe, lapis)
+    DO NOTHING;
+    """
+    
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(create_table_query) 
+    execute_batch(cur, insert_query, data)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# ============================================================
+# ENDPOINT BATCH ORDERBOOK
+# ============================================================
+@app.route("/orderbook/batch", methods=["GET"])
+def orderbook_batch():
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
+
 if __name__ == "__main__":
+    # Auto-start scheduler saat app boot
+    # Di Flask debug mode, reloader menjalankan server dua kali.
+    # Kita hanya ingin scheduler jalan sekali di process worker utama (WERKZEUG_RUN_MAIN=true).
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        print("\n[App] Starting auto-crawl scheduler...")
+        start_scheduler()
+        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
+    else:
+        print("\n[App] Flask starting parent process (skipping scheduler start for parent)...")
+        
     app.run(host="0.0.0.0", port=8080, debug=True)
