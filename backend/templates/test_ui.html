@@ -17,6 +17,8 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- ApexCharts CDN -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Google Sign-In (OAuth) client library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Tailwind Custom Config -->
     <script>
         tailwind.config = {
@@ -346,6 +348,16 @@
                             Sign In
                         </button>
                     </form>
+
+                    <!-- Google Sign-in Option -->
+                    <div class="mt-4">
+                        <div class="relative flex py-2 items-center mb-4">
+                            <div class="flex-grow border-t border-gray-200"></div>
+                            <span class="flex-shrink mx-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">Or sign in with</span>
+                            <div class="flex-grow border-t border-gray-200"></div>
+                        </div>
+                        <div id="google-signin-btn" class="w-full flex justify-center"></div>
+                    </div>
                 </div>
             </main>
 
@@ -581,10 +593,16 @@
                                     <p class="text-[10px] text-slate-400 mt-0.5">ApexCharts dengan data real-time
                                         terambil dari database local.</p>
                                 </div>
-                                <span
-                                    class="bg-slate-50 border border-gray-200 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold tabular">
-                                    {{ ohlcData.length }} trading days
-                                </span>
+                                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                    <button 
+                                        v-for="p in ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'YTD']" 
+                                        :key="p"
+                                        @click="changePeriod(p)"
+                                        :class="`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${selectedPeriod === p ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`"
+                                    >
+                                        {{ p }}
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Candlestick Chart -->
@@ -592,7 +610,7 @@
 
                             <!-- Volume/Flow Chart -->
                             <div class="mt-4 border-t border-gray-200 pt-4">
-                                <h4 class="text-xs font-bold text-slate-500 mb-2">Foreign Flow Activity (IDR)</h4>
+                                <h4 class="text-xs font-bold text-slate-500 mb-2">Stock Volume</h4>
                                 <div id="volume-chart-mount" class="w-full h-40"></div>
                             </div>
                         </div>
@@ -1075,7 +1093,7 @@
 
     <!-- Script Application Vue -->
     <script>
-        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
+        const { createApp, ref, reactive, onMounted, nextTick, computed, watch } = Vue;
 
         createApp({
             setup() {
@@ -1099,6 +1117,7 @@
 
                 const selectedTicker = ref('BBCA');
                 const ohlcData = ref([]);
+                const selectedPeriod = ref('1Y');
                 const forecastData = ref([]);
                 const fetchingData = ref(false);
                 const logs = ref([]);
@@ -1153,8 +1172,76 @@
                     }, 3500);
                 };
 
+                // Google Sign-In verification and login
+                const handleGoogleLogin = async (response) => {
+                    loading.value = true;
+                    try {
+                        const res = await fetch('/users/google-login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ id_token: response.credential })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            throw new Error(data.error || 'Google Login failed');
+                        }
+                        
+                        // Emulate a token addition
+                        data.token = `test-token-jwt-${btoa(data.email)}-${Date.now()}`;
+                        currentUser.value = data;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(data));
+                        showToast(`Successfully logged in with Google as ${data.name}!`);
+                        
+                        selectTicker(data.default_ticker || 'BBCA');
+                        fetchLogs();
+                        fetchWatchlists();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderGoogleButton = () => {
+                    const btn = document.getElementById("google-signin-btn");
+                    if (!btn) return;
+                    if (typeof google !== 'undefined') {
+                        google.accounts.id.renderButton(
+                            btn,
+                            { theme: "outline", size: "large", width: "384" }
+                        );
+                    } else {
+                        setTimeout(renderGoogleButton, 100);
+                    }
+                };
+
+                // Watch showLogin to render Google Sign-In Button when modal/view opens
+                watch(showLogin, (newVal) => {
+                    if (newVal) {
+                        nextTick(() => {
+                            renderGoogleButton();
+                        });
+                    }
+                });
+
                 // Load User session
                 onMounted(() => {
+                    // Check and initialize Google Identity Services
+                    const checkGsi = setInterval(() => {
+                        if (typeof google !== 'undefined') {
+                            clearInterval(checkGsi);
+                            google.accounts.id.initialize({
+                                client_id: '984699715154-avv957f6q8sncnjglfe00d4ksrg01ifl.apps.googleusercontent.com',
+                                callback: handleGoogleLogin
+                            });
+                            if (showLogin.value) {
+                                renderGoogleButton();
+                            }
+                        }
+                    }, 100);
+
                     const session = localStorage.getItem('stockVision_test_user');
                     if (session) {
                         try {
@@ -1485,7 +1572,7 @@
 
                         // Render charts
                         await nextTick();
-                        renderCharts(data);
+                        renderCharts(filterDataByPeriod(data, selectedPeriod.value));
                     } catch (e) {
                         showToast(e.message, 'error');
                         ohlcData.value = [];
@@ -1494,6 +1581,48 @@
                     } finally {
                         fetchingData.value = false;
                     }
+                };
+
+                const filterDataByPeriod = (data, period) => {
+                    if (!data || data.length === 0) return [];
+                    const sorted = [...data].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                    
+                    if (period === '5Y') {
+                        return sorted;
+                    }
+                    
+                    const lastRow = sorted[sorted.length - 1];
+                    if (!lastRow) return [];
+                    
+                    const lastDate = new Date(lastRow.tanggal);
+                    let startDate = new Date(lastDate);
+                    
+                    if (period === '1D') {
+                        return sorted.slice(-1);
+                    } else if (period === '1W') {
+                        return sorted.slice(-5);
+                    } else if (period === '1M') {
+                        startDate.setMonth(startDate.getMonth() - 1);
+                    } else if (period === '3M') {
+                        startDate.setMonth(startDate.getMonth() - 3);
+                    } else if (period === '6M') {
+                        startDate.setMonth(startDate.getMonth() - 6);
+                    } else if (period === '1Y') {
+                        startDate.setFullYear(startDate.getFullYear() - 1);
+                    } else if (period === 'YTD') {
+                        const year = lastDate.getFullYear();
+                        return sorted.filter(item => item.tanggal >= `${year}-01-01`);
+                    } else {
+                        return sorted;
+                    }
+                    
+                    const startStr = startDate.toISOString().split('T')[0];
+                    return sorted.filter(item => item.tanggal >= startStr);
+                };
+
+                const changePeriod = (period) => {
+                    selectedPeriod.value = period;
+                    renderCharts(filterDataByPeriod(ohlcData.value, period));
                 };
 
                 // Fetch Watchlists from SQLite database
@@ -1726,23 +1855,23 @@
                     }
                 };
 
-                // Render ApexCharts for Candlestick and volume/foreign flow (Light Styled)
+                // Render ApexCharts for Candlestick and volume (Light Styled)
                 const renderCharts = (data) => {
                     if (data.length === 0) return;
 
                     // Formating data for candlestick chart
                     const candleSeriesData = data.map(item => {
                         return {
-                            x: new Date(item.tanggal),
+                            x: item.tanggal,
                             y: [item.open, item.high, item.low, item.close]
                         };
                     });
 
-                    // Format data for foreign net flow chart
-                    const flowSeriesData = data.map(item => {
+                    // Format data for stock volume chart
+                    const volumeSeriesData = data.map(item => {
                         return {
-                            x: new Date(item.tanggal),
-                            y: item.foreign_flow
+                            x: item.tanggal,
+                            y: item.volume
                         };
                     });
 
@@ -1768,12 +1897,18 @@
                             borderColor: '#e2e8f0'
                         },
                         xaxis: {
-                            type: 'datetime',
+                            type: 'category',
+                            tickAmount: 10,
                             axisBorder: {
                                 color: '#e2e8f0'
                             },
                             axisTicks: {
                                 color: '#e2e8f0'
+                            },
+                            labels: {
+                                style: {
+                                    fontSize: '9px'
+                                }
                             }
                         },
                         yaxis: {
@@ -1799,11 +1934,11 @@
                         }
                     };
 
-                    // Option Volume/Flow Chart (Stockbit Light Theme colors)
+                    // Option Volume Chart (Stockbit Light Theme colors)
                     const volumeOptions = {
                         series: [{
-                            name: 'Net Flow (IDR)',
-                            data: flowSeriesData
+                            name: 'Volume',
+                            data: volumeSeriesData
                         }],
                         chart: {
                             type: 'bar',
@@ -1821,21 +1956,23 @@
                             bar: {
                                 colors: {
                                     ranges: [{
-                                        from: -999999999999,
-                                        to: 0,
-                                        color: '#ef4444' // negative red
-                                    }, {
-                                        from: 1,
-                                        to: 999999999999,
-                                        color: '#2563eb' // positive blue
+                                        from: 0,
+                                        to: 99999999999999,
+                                        color: '#3b82f6' // tailwind blue-500
                                     }]
                                 }
                             }
                         },
                         xaxis: {
-                            type: 'datetime',
+                            type: 'category',
+                            tickAmount: 10,
                             axisBorder: {
                                 color: '#e2e8f0'
+                            },
+                            labels: {
+                                style: {
+                                    fontSize: '9px'
+                                }
                             }
                         },
                         yaxis: {
@@ -1907,6 +2044,8 @@
                     fetchLogs,
                     formatNumber,
                     trendingStocks,
+                    selectedPeriod,
+                    changePeriod,
                     fetchTrendingStocksData,
                     forecastData,
                     fetchForecast,
@@ -1934,7 +2073,9 @@
                     handleSetActiveWatchlist,
                     toggleSymbolInActiveWatchlist,
                     fetchSchedulerStatus,
-                    controlScheduler
+                    controlScheduler,
+                    handleGoogleLogin,
+                    renderGoogleButton
                 };
             }
         }).mount('#app');
