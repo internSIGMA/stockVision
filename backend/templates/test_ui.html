@@ -593,10 +593,16 @@
                                     <p class="text-[10px] text-slate-400 mt-0.5">ApexCharts dengan data real-time
                                         terambil dari database local.</p>
                                 </div>
-                                <span
-                                    class="bg-slate-50 border border-gray-200 text-slate-600 px-3 py-1 rounded-full text-xs font-semibold tabular">
-                                    {{ ohlcData.length }} trading days
-                                </span>
+                                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                    <button 
+                                        v-for="p in ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'YTD']" 
+                                        :key="p"
+                                        @click="changePeriod(p)"
+                                        :class="`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${selectedPeriod === p ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`"
+                                    >
+                                        {{ p }}
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Candlestick Chart -->
@@ -604,7 +610,7 @@
 
                             <!-- Volume/Flow Chart -->
                             <div class="mt-4 border-t border-gray-200 pt-4">
-                                <h4 class="text-xs font-bold text-slate-500 mb-2">Foreign Flow Activity (IDR)</h4>
+                                <h4 class="text-xs font-bold text-slate-500 mb-2">Stock Volume</h4>
                                 <div id="volume-chart-mount" class="w-full h-40"></div>
                             </div>
                         </div>
@@ -1111,6 +1117,7 @@
 
                 const selectedTicker = ref('BBCA');
                 const ohlcData = ref([]);
+                const selectedPeriod = ref('1Y');
                 const forecastData = ref([]);
                 const fetchingData = ref(false);
                 const logs = ref([]);
@@ -1565,7 +1572,7 @@
 
                         // Render charts
                         await nextTick();
-                        renderCharts(data);
+                        renderCharts(filterDataByPeriod(data, selectedPeriod.value));
                     } catch (e) {
                         showToast(e.message, 'error');
                         ohlcData.value = [];
@@ -1574,6 +1581,48 @@
                     } finally {
                         fetchingData.value = false;
                     }
+                };
+
+                const filterDataByPeriod = (data, period) => {
+                    if (!data || data.length === 0) return [];
+                    const sorted = [...data].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                    
+                    if (period === '5Y') {
+                        return sorted;
+                    }
+                    
+                    const lastRow = sorted[sorted.length - 1];
+                    if (!lastRow) return [];
+                    
+                    const lastDate = new Date(lastRow.tanggal);
+                    let startDate = new Date(lastDate);
+                    
+                    if (period === '1D') {
+                        return sorted.slice(-1);
+                    } else if (period === '1W') {
+                        return sorted.slice(-5);
+                    } else if (period === '1M') {
+                        startDate.setMonth(startDate.getMonth() - 1);
+                    } else if (period === '3M') {
+                        startDate.setMonth(startDate.getMonth() - 3);
+                    } else if (period === '6M') {
+                        startDate.setMonth(startDate.getMonth() - 6);
+                    } else if (period === '1Y') {
+                        startDate.setFullYear(startDate.getFullYear() - 1);
+                    } else if (period === 'YTD') {
+                        const year = lastDate.getFullYear();
+                        return sorted.filter(item => item.tanggal >= `${year}-01-01`);
+                    } else {
+                        return sorted;
+                    }
+                    
+                    const startStr = startDate.toISOString().split('T')[0];
+                    return sorted.filter(item => item.tanggal >= startStr);
+                };
+
+                const changePeriod = (period) => {
+                    selectedPeriod.value = period;
+                    renderCharts(filterDataByPeriod(ohlcData.value, period));
                 };
 
                 // Fetch Watchlists from SQLite database
@@ -1806,23 +1855,23 @@
                     }
                 };
 
-                // Render ApexCharts for Candlestick and volume/foreign flow (Light Styled)
+                // Render ApexCharts for Candlestick and volume (Light Styled)
                 const renderCharts = (data) => {
                     if (data.length === 0) return;
 
                     // Formating data for candlestick chart
                     const candleSeriesData = data.map(item => {
                         return {
-                            x: new Date(item.tanggal),
+                            x: item.tanggal,
                             y: [item.open, item.high, item.low, item.close]
                         };
                     });
 
-                    // Format data for foreign net flow chart
-                    const flowSeriesData = data.map(item => {
+                    // Format data for stock volume chart
+                    const volumeSeriesData = data.map(item => {
                         return {
-                            x: new Date(item.tanggal),
-                            y: item.foreign_flow
+                            x: item.tanggal,
+                            y: item.volume
                         };
                     });
 
@@ -1848,12 +1897,18 @@
                             borderColor: '#e2e8f0'
                         },
                         xaxis: {
-                            type: 'datetime',
+                            type: 'category',
+                            tickAmount: 10,
                             axisBorder: {
                                 color: '#e2e8f0'
                             },
                             axisTicks: {
                                 color: '#e2e8f0'
+                            },
+                            labels: {
+                                style: {
+                                    fontSize: '9px'
+                                }
                             }
                         },
                         yaxis: {
@@ -1879,11 +1934,11 @@
                         }
                     };
 
-                    // Option Volume/Flow Chart (Stockbit Light Theme colors)
+                    // Option Volume Chart (Stockbit Light Theme colors)
                     const volumeOptions = {
                         series: [{
-                            name: 'Net Flow (IDR)',
-                            data: flowSeriesData
+                            name: 'Volume',
+                            data: volumeSeriesData
                         }],
                         chart: {
                             type: 'bar',
@@ -1901,21 +1956,23 @@
                             bar: {
                                 colors: {
                                     ranges: [{
-                                        from: -999999999999,
-                                        to: 0,
-                                        color: '#ef4444' // negative red
-                                    }, {
-                                        from: 1,
-                                        to: 999999999999,
-                                        color: '#2563eb' // positive blue
+                                        from: 0,
+                                        to: 99999999999999,
+                                        color: '#3b82f6' // tailwind blue-500
                                     }]
                                 }
                             }
                         },
                         xaxis: {
-                            type: 'datetime',
+                            type: 'category',
+                            tickAmount: 10,
                             axisBorder: {
                                 color: '#e2e8f0'
+                            },
+                            labels: {
+                                style: {
+                                    fontSize: '9px'
+                                }
                             }
                         },
                         yaxis: {
@@ -1987,6 +2044,8 @@
                     fetchLogs,
                     formatNumber,
                     trendingStocks,
+                    selectedPeriod,
+                    changePeriod,
                     fetchTrendingStocksData,
                     forecastData,
                     fetchForecast,
