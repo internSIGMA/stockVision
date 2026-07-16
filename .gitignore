@@ -19,3 +19,5 @@ dist/
 
 # Arsip/tooling eksternal yang tidak ikut proyek
 *-main/
+backend/token_cache.json 
+frontend/.vite 
