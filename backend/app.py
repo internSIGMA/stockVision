@@ -647,7 +647,37 @@ def broker_activity():
 
 @app.route("/stock-info", methods=["GET"])
 def stock_info():
-    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
+
+    symbols = [
+        "BBCA",
+        "BBNI",
+        "BBRI",
+        "BMRI",
+        "BJBR"
+    ]
+
+    try:
+        token = get_token()
+
+        total = 0
+
+        for symbol in symbols:
+
+            raw = fetch_stock_info(token, symbol)
+
+            data = parse_stock_info(raw)
+
+            insert_data_stock_info(data)
+
+            total += 1
+
+        return jsonify({
+            "message": f"{total} saham berhasil disimpan",
+            "symbols": symbols
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def insert_data_ohlc(data):
     # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
