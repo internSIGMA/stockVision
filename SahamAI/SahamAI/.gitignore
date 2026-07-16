@@ -1,7 +1,0 @@
-node_modules
-dist
-*.local
-.DS_Store
-.vscode/*
-!.vscode/extensions.json
-npm-debug.log*

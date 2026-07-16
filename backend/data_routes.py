@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from dotenv import load_dotenv, find_dotenv
 
 # Load env variables
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 data_bp = Blueprint("data_bp", __name__)
 
@@ -42,9 +42,10 @@ def get_historical_ohlc():
     to_date = request.args.get("to")
     
     query = """
-        SELECT symbol, tanggal, open, high, low, close, volume, foreign_buy, foreign_sell, foreign_flow
-        FROM idxsaham.stock_ohlc
-        WHERE symbol = %s
+        SELECT f.symbol, f.tanggal, f.open, f.high, f.low, f.close, f.volume, s.foreign_buy, s.foreign_sell, s.foreign_flow
+        FROM idxsaham.ohlc_forecasting f
+        LEFT JOIN idxsaham.stock_ohlc s ON f.symbol = s.symbol AND f.tanggal = s.tanggal
+        WHERE f.symbol = %s
     """
     params = [symbol]
     
@@ -238,6 +239,43 @@ def get_majorholder_data():
                 "kewarganegaraan": r[13],
                 "broker": r[14],
                 "badge": r[15]
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# ============================================================
+# ENDPOINT: GET FORECAST DATA
+# ============================================================
+@data_bp.route("/api/data/forecast", methods=["GET"])
+def get_stock_forecast():
+    symbol = request.args.get("symbol", "").upper()
+    if not symbol:
+        return jsonify({"error": "Parameter 'symbol' wajib diisi"}), 400
+        
+    query = """
+        SELECT symbol, tanggal, open, high, low, close, volume
+        FROM idxsaham.stock_forecasting
+        WHERE symbol = %s
+        ORDER BY tanggal ASC;
+    """
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(query, (symbol,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        result = []
+        for r in rows:
+            result.append({
+                "symbol": r[0],
+                "tanggal": str(r[1]),
+                "open": decimal_to_float(r[2]),
+                "high": decimal_to_float(r[3]),
+                "low": decimal_to_float(r[4]),
+                "close": decimal_to_float(r[5]),
+                "volume": r[6]
             })
         return jsonify(result)
     except Exception as e:
