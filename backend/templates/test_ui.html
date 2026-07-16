@@ -17,6 +17,8 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- ApexCharts CDN -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Google Sign-In (OAuth) client library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Tailwind Custom Config -->
     <script>
         tailwind.config = {
@@ -346,6 +348,16 @@
                             Sign In
                         </button>
                     </form>
+
+                    <!-- Google Sign-in Option -->
+                    <div class="mt-4">
+                        <div class="relative flex py-2 items-center mb-4">
+                            <div class="flex-grow border-t border-gray-200"></div>
+                            <span class="flex-shrink mx-3 text-[10px] text-slate-400 uppercase tracking-widest font-bold">Or sign in with</span>
+                            <div class="flex-grow border-t border-gray-200"></div>
+                        </div>
+                        <div id="google-signin-btn" class="w-full flex justify-center"></div>
+                    </div>
                 </div>
             </main>
 
@@ -1075,7 +1087,7 @@
 
     <!-- Script Application Vue -->
     <script>
-        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
+        const { createApp, ref, reactive, onMounted, nextTick, computed, watch } = Vue;
 
         createApp({
             setup() {
@@ -1153,8 +1165,76 @@
                     }, 3500);
                 };
 
+                // Google Sign-In verification and login
+                const handleGoogleLogin = async (response) => {
+                    loading.value = true;
+                    try {
+                        const res = await fetch('/users/google-login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ id_token: response.credential })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            throw new Error(data.error || 'Google Login failed');
+                        }
+                        
+                        // Emulate a token addition
+                        data.token = `test-token-jwt-${btoa(data.email)}-${Date.now()}`;
+                        currentUser.value = data;
+                        localStorage.setItem('stockVision_test_user', JSON.stringify(data));
+                        showToast(`Successfully logged in with Google as ${data.name}!`);
+                        
+                        selectTicker(data.default_ticker || 'BBCA');
+                        fetchLogs();
+                        fetchWatchlists();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderGoogleButton = () => {
+                    const btn = document.getElementById("google-signin-btn");
+                    if (!btn) return;
+                    if (typeof google !== 'undefined') {
+                        google.accounts.id.renderButton(
+                            btn,
+                            { theme: "outline", size: "large", width: "384" }
+                        );
+                    } else {
+                        setTimeout(renderGoogleButton, 100);
+                    }
+                };
+
+                // Watch showLogin to render Google Sign-In Button when modal/view opens
+                watch(showLogin, (newVal) => {
+                    if (newVal) {
+                        nextTick(() => {
+                            renderGoogleButton();
+                        });
+                    }
+                });
+
                 // Load User session
                 onMounted(() => {
+                    // Check and initialize Google Identity Services
+                    const checkGsi = setInterval(() => {
+                        if (typeof google !== 'undefined') {
+                            clearInterval(checkGsi);
+                            google.accounts.id.initialize({
+                                client_id: '984699715154-avv957f6q8sncnjglfe00d4ksrg01ifl.apps.googleusercontent.com',
+                                callback: handleGoogleLogin
+                            });
+                            if (showLogin.value) {
+                                renderGoogleButton();
+                            }
+                        }
+                    }, 100);
+
                     const session = localStorage.getItem('stockVision_test_user');
                     if (session) {
                         try {
@@ -1934,7 +2014,9 @@
                     handleSetActiveWatchlist,
                     toggleSymbolInActiveWatchlist,
                     fetchSchedulerStatus,
-                    controlScheduler
+                    controlScheduler,
+                    handleGoogleLogin,
+                    renderGoogleButton
                 };
             }
         }).mount('#app');
