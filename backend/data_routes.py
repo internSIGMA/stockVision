@@ -42,8 +42,8 @@ def get_historical_ohlc():
     to_date = request.args.get("to")
     
     query = """
-        SELECT symbol, tanggal, open, high, low, close, volume, foreign_buy, foreign_sell, foreign_flow
-        FROM idxsaham.stock_ohlc
+        SELECT symbol, tanggal, open, high, low, close, volume
+        FROM idxsaham.ohlc_forecasting
         WHERE symbol = %s
     """
     params = [symbol]
@@ -75,9 +75,9 @@ def get_historical_ohlc():
                 "low": decimal_to_float(r[4]),
                 "close": decimal_to_float(r[5]),
                 "volume": r[6],
-                "foreign_buy": decimal_to_float(r[7]),
-                "foreign_sell": decimal_to_float(r[8]),
-                "foreign_flow": decimal_to_float(r[9])
+                "foreign_buy": None,
+                "foreign_sell": None,
+                "foreign_flow": None
             })
         return jsonify(result)
     except Exception as e:
