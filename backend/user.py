@@ -7,10 +7,13 @@ import random
 import time
 import uuid
 import smtplib
+import requests
+import secrets
 from email.mime.text import MIMEText
 from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+
 
 load_dotenv(find_dotenv(), override=True)
 
@@ -722,6 +725,105 @@ def reset_password_route():
     return jsonify({
         "message": "Kata sandi berhasil direset. Silakan masuk kembali."
     })
+
+
+@user_bp.route("/users/google-login", methods=["POST"])
+def google_login_route():
+    payload = request.get_json(silent=True) or {}
+    id_token = payload.get("id_token")
+    if not id_token:
+        return jsonify({"error": "id_token is required"}), 400
+
+    # Verify token with Google API
+    try:
+        res = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}",
+            timeout=5
+        )
+        if res.status_code != 200:
+            return jsonify({"error": "Invalid Google token"}), 400
+        
+        token_info = res.json()
+    except Exception as e:
+        return jsonify({"error": f"Failed to verify token with Google: {str(e)}"}), 500
+
+    # Check client ID/audience
+    expected_client_id = "984699715154-avv957f6q8sncnjglfe00d4ksrg01ifl.apps.googleusercontent.com"
+    aud = token_info.get("aud")
+    if aud != expected_client_id:
+        return jsonify({"error": "Token audience mismatch"}), 400
+
+    email = token_info.get("email")
+    if not email:
+        return jsonify({"error": "Email not found in token"}), 400
+    
+    email = email.strip().lower()
+    name = token_info.get("name") or token_info.get("given_name") or email.split("@")[0]
+
+    _ensure_users_table()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE email = %s;",
+        (email,),
+    )
+    row = cur.fetchone()
+
+    if row:
+        user_id, email_val, username, name_val, role, default_ticker = row
+        cur.close()
+        conn.close()
+        return jsonify({
+            "id": user_id,
+            "email": email_val,
+            "username": username,
+            "name": name_val,
+            "role": role,
+            "default_ticker": default_ticker
+        })
+    else:
+        # Create a new user since they don't exist
+        # Generate unique username
+        base_username = email.split("@")[0]
+        base_username = "".join(c for c in base_username if c.isalnum() or c in "._")
+        if not base_username:
+            base_username = "user"
+        
+        username = base_username
+        suffix_counter = 1
+        while True:
+            cur.execute("SELECT id FROM idxsaham.users WHERE username = %s;", (username,))
+            if not cur.fetchone():
+                break
+            username = f"{base_username}{suffix_counter}"
+            suffix_counter += 1
+
+        # Generate random password hash (so it's not empty/null)
+        random_pass = secrets.token_hex(16)
+        password_hash = generate_password_hash(random_pass)
+
+        # Insert new user
+        cur.execute(
+            """
+            INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id, email, username, name, role, default_ticker;
+            """,
+            (email, username, password_hash, name, "Trader — Umum", "BBCA")
+        )
+        new_row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "id": new_row[0],
+            "email": new_row[1],
+            "username": new_row[2],
+            "name": new_row[3],
+            "role": new_row[4],
+            "default_ticker": new_row[5]
+        }), 201
 
 
 @user_bp.route("/test-ui")
