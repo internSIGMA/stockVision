@@ -1,4 +1,4 @@
-{% raw %}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -95,10 +95,51 @@
                                 stock<span class="text-brandBlue font-extrabold">vision</span>
                             </span>
                         </div>
+
+                        <!-- Search Bar -->
+                        <div class="hidden md:block relative w-64 lg:w-80">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </span>
+                            <input type="text" placeholder="Search for brand, symbol or username..."
+                                class="w-full bg-slate-50 border border-gray-200 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue transition duration-150"
+                                disabled />
+                        </div>
                     </div>
 
                     <!-- Right: Navigation Menu and User State -->
                     <div class="flex items-center gap-4">
+                        <!-- Pro Subscription Button -->
+                        <button
+                            class="border border-brandBlue text-brandBlue hover:bg-brandBlue/5 text-xs font-semibold px-4 py-1.5 rounded-lg transition duration-150">
+                            Berlangganan Pro
+                        </button>
+
+                        <!-- Chat & Notification Icons -->
+                        <div class="flex items-center gap-3.5 text-slate-500">
+                            <button class="hover:text-brandBlue transition" title="Chats"><svg class="w-5 h-5"
+                                    fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                                    </path>
+                                </svg></button>
+                            <div class="relative">
+                                <button class="hover:text-brandBlue transition" title="Notifications"><svg
+                                        class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+                                        </path>
+                                    </svg></button>
+                                <span
+                                    class="absolute -top-1.5 -right-1.5 bg-brandRed text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-90">3</span>
+                            </div>
+                        </div>
+
                         <!-- User Profile or Login Button -->
                         <div v-if="currentUser" class="flex items-center gap-3 pl-3 border-l border-gray-200">
                             <img :src="currentUser.avatar || 'https://i.pravatar.cc/100?img=1'" alt="avatar"
@@ -393,31 +434,32 @@
                         <!-- Single Integrated Watchlist & Focus Emiten Card -->
                         <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
                             <!-- Watchlist Dropdown Selector Section (Only when not editing) -->
-                            <div v-if="!showInlineEditor" class="space-y-2">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Pilihan Watchlist</span>
-                                    <div class="flex gap-1.5">
-                                        <!-- '+' Add Button -->
-                                        <button @click="startInlineCreate"
-                                            class="bg-brandBlue/5 hover:bg-brandBlue/10 border border-brandBlue/10 hover:border-brandBlue/30 text-brandBlue text-[10px] font-bold w-6 h-6 rounded-md transition flex items-center justify-center"
-                                            title="Buat Watchlist Baru">
-                                            ＋
-                                        </button>
+                            <div v-if="!showInlineEditor">
+                                <span
+                                    class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Pilihan
+                                    Watchlist</span>
+                                <div class="flex gap-1.5">
+                                    <select v-model="activeWatchlistId"
+                                        class="flex-grow bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue font-bold transition">
+                                        <option v-for="wl in watchlists" :key="wl.id" :value="wl.id">{{ wl.name }}
+                                        </option>
+                                        <option v-if="watchlists.length === 0" disabled>No watchlists</option>
+                                    </select>
 
-                                        <!-- 'Edit' Button -->
-                                        <button @click="startInlineEdit"
-                                            class="bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-600 text-[10px] font-bold px-2 h-6 rounded-md transition flex items-center justify-center gap-1"
-                                            title="Edit Watchlist Ini">
-                                            ✏️ Edit
-                                        </button>
-                                    </div>
+                                    <!-- '+' Add Button -->
+                                    <button @click="startInlineCreate"
+                                        class="bg-brandBlue/5 hover:bg-brandBlue/10 border border-brandBlue/10 hover:border-brandBlue/30 text-brandBlue text-xs font-bold w-8 h-8 rounded-lg transition flex items-center justify-center shrink-0"
+                                        title="Buat Watchlist Baru">
+                                        ＋
+                                    </button>
+
+                                    <!-- 'Edit' Button -->
+                                    <button @click="startInlineEdit"
+                                        class="bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-600 text-xs font-bold px-2.5 h-8 rounded-lg transition flex items-center justify-center gap-1 shrink-0"
+                                        title="Edit Watchlist Ini">
+                                        ✏️ Edit
+                                    </button>
                                 </div>
-                                <select v-model="activeWatchlistId"
-                                    class="w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-brandBlue focus:ring-1 focus:ring-brandBlue font-bold transition">
-                                    <option v-for="wl in watchlists" :key="wl.id" :value="wl.id">{{ wl.name }}
-                                    </option>
-                                    <option v-if="watchlists.length === 0" disabled>No watchlists</option>
-                                </select>
                             </div>
 
                             <!-- Header when inline editing -->
@@ -501,6 +543,23 @@
 
                     <!-- Right Main panel: Charts & Tables -->
                     <div class="lg:col-span-3 space-y-6">
+
+                        <!-- Stockbit styled Pro Banner -->
+                        <div
+                            class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                            <div>
+                                <span
+                                    class="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-wide uppercase">stockVision
+                                    Pro Features</span>
+                                <h3 class="text-lg font-bold mt-1.5">Technical & Foreign Flow Session on Web</h3>
+                                <p class="text-xs text-white/80 mt-1">Gunakan analisis data tercatat untuk menentukan
+                                    kapan transaksi dana asing optimal terjadi.</p>
+                            </div>
+                            <span
+                                class="bg-white text-brandBlue text-xs font-bold px-4 py-2 rounded-lg cursor-default shadow-sm shrink-0">Bebas
+                                Akses Analisis</span>
+                        </div>
 
                         <!-- Stock Info Stats Panel -->
                         <div v-if="stockInfo" class="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
@@ -1941,4 +2000,4 @@
     </script>
 </body>
 
-</html>{% endraw %}
+</html>

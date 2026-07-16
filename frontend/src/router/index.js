@@ -1,38 +1,25 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { createRouter, createWebHistory } from 'vue-router';
+
+const StreamPage = () => import('../pages/StreamPage.vue');
+const CrawlLogsPage = () => import('../pages/CrawlLogsPage.vue');
+const AutoSchedulerPage = () => import('../pages/AutoSchedulerPage.vue');
 
 const routes = [
-  {
-    path: '/login',
-    name: 'login',
-    component: () => import('@/views/LoginView.vue'),
-    meta: { guestOnly: true },
-  },
-  {
-    path: '/',
-    component: () => import('@/layout/AppLayout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      // Single-page trading terminal; the in-page tab bar swaps content.
-      { path: '', name: 'dashboard', component: () => import('@/views/DashboardView.vue') },
-    ],
-  },
-  { path: '/:pathMatch(.*)*', redirect: '/' },
-]
+  { path: '/stream', name: 'stream', component: StreamPage },
+  { path: '/crawl-logs', name: 'crawl-logs', component: CrawlLogsPage },
+  { path: '/auto-scheduler', name: 'auto-scheduler', component: AutoSchedulerPage },
+  { path: '/', redirect: '/stream' },
+  // WatchlistManagerPage intentionally has no route — it only opens as a
+  // Dialog/Sheet from the Stream page's watchlist card (see StreamPage.vue).
+  { path: '/:pathMatch(.*)*', redirect: '/stream' },
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-})
+  scrollBehavior() {
+    return { top: 0 };
+  },
+});
 
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-  if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { name: 'dashboard' }
-  }
-})
-
-export default router
+export default router;

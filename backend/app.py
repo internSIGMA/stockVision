@@ -8,10 +8,11 @@ from flask_cors import CORS
 from datetime import datetime, timezone
 import socket
 import os
+import json
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables from .env file (searching upwards if necessary)
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 app = Flask(__name__)
 CORS(app)
@@ -108,19 +109,38 @@ def get_last_trading_day(target_date):
 # ============================================================
 # LOG CRAWL JOB STATUS
 # ============================================================
+def clean_error_message(error_msg):
+    if not error_msg:
+        return None
+    err_str = str(error_msg)
+    if "401" in err_str:
+        return "Akses token kedaluwarsa (Unauthorized)"
+    elif "404" in err_str:
+        return "Akses token kedaluwarsa (Not Found / Sesi Habis)"
+    elif "429" in err_str:
+        return "Terlalu banyak permintaan ke API Stockbit (Rate Limit). Silakan tunggu beberapa menit."
+    elif "500" in err_str or "502" in err_str or "503" in err_str or "504" in err_str:
+        return "Server Stockbit sedang bermasalah / Down."
+    elif "ConnectionError" in err_str or "connection" in err_str.lower():
+        return "Gagal terhubung ke internet / server Stockbit."
+    return err_str
+
+
 def log_crawl_job(job_type, target, tanggal_target, status, records_count=0, error_message=None):
     try:
+        cleaned_msg = clean_error_message(error_message)
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO idxsaham.crawl_logs (job_type, target, tanggal_target, status, records_count, error_message)
             VALUES (%s, %s, %s, %s, %s, %s);
-        """, (job_type, target, tanggal_target, status, records_count, error_message))
+        """, (job_type, target, tanggal_target, status, records_count, cleaned_msg))
         conn.commit()
         cur.close()
         conn.close()
     except Exception as e:
         print("Error logging crawl job status to DB:", e)
+
 
 
 # =========================
@@ -258,6 +278,34 @@ _token_cache = {
     "lock":          threading.Lock(),
 }
 
+TOKEN_CACHE_FILE = os.path.join(os.path.dirname(__file__), "token_cache.json")
+
+def _load_token_cache_from_disk():
+    global _token_cache
+    try:
+        if os.path.exists(TOKEN_CACHE_FILE):
+            with open(TOKEN_CACHE_FILE, "r") as f:
+                data = json.load(f)
+                _token_cache["access_token"] = data.get("access_token")
+                _token_cache["refresh_token"] = data.get("refresh_token")
+                _token_cache["expires_at"] = data.get("expires_at", 0)
+                print(f"[Token Cache] Loaded existing tokens from disk. Expires at: {datetime.fromtimestamp(_token_cache['expires_at'])}")
+    except Exception as e:
+        print(f"[Token Cache] Error loading token cache from disk: {e}")
+
+def _save_token_cache_to_disk():
+    try:
+        data = {
+            "access_token": _token_cache["access_token"],
+            "refresh_token": _token_cache["refresh_token"],
+            "expires_at": _token_cache["expires_at"]
+        }
+        with open(TOKEN_CACHE_FILE, "w") as f:
+            json.dump(data, f)
+            print("[Token Cache] Saved updated tokens to disk.")
+    except Exception as e:
+        print(f"[Token Cache] Error saving token cache to disk: {e}")
+
 def normalize_number(val):
     if val is None:
         return None
@@ -334,8 +382,28 @@ def _do_refresh(refresh_token):
         return None, None, 0
 
 
-def get_token():
+def invalidate_token():
     with _token_cache["lock"]:
+        _token_cache["access_token"]  = None
+        _token_cache["refresh_token"] = None
+        _token_cache["expires_at"]    = 0
+        if os.path.exists(TOKEN_CACHE_FILE):
+            try:
+                os.remove(TOKEN_CACHE_FILE)
+                print("[Token Cache] Invalidated token due to 401 Unauthorized.")
+            except Exception as e:
+                print(f"[Token Cache] Error removing cache file: {e}")
+
+
+def get_token():
+    env_token = os.getenv("STOCKBIT_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+
+    with _token_cache["lock"]:
+        if _token_cache["access_token"] is None and _token_cache["refresh_token"] is None:
+            _load_token_cache_from_disk()
+
         now = time.time()
         if _token_cache["access_token"] and _token_cache["expires_at"] - now > 300:
             return _token_cache["access_token"]
@@ -345,11 +413,13 @@ def get_token():
                 _token_cache["access_token"]  = access
                 _token_cache["refresh_token"] = refresh
                 _token_cache["expires_at"]    = expires_at
+                _save_token_cache_to_disk()
                 return access
         access, refresh, expires_at = _do_login()
         _token_cache["access_token"]  = access
         _token_cache["refresh_token"] = refresh
         _token_cache["expires_at"]    = expires_at
+        _save_token_cache_to_disk()
         return access
 
 
@@ -374,6 +444,8 @@ def fetch_majorholder(token, date_start, date_end, pages):
             headers=headers,
             params={**params_base, "page": page},
         )
+        if resp.status_code == 401:
+            invalidate_token()
         if resp.status_code != 200:
             raise Exception(f"Fetch page {page} gagal ({resp.status_code}): {resp.text}")
         data      = resp.json()
@@ -431,6 +503,8 @@ def fetch_broker_activity(token, broker_code, date_from, date_to, pages,
             headers=headers,
             params={**params_base, "page": page},
         )
+        if resp.status_code == 401:
+            invalidate_token()
         if resp.status_code != 200:
             raise Exception(f"Fetch page {page} gagal ({resp.status_code}): {resp.text}")
 
@@ -471,6 +545,8 @@ def fetch_stock_info(token, symbol):
         f"https://exodus.stockbit.com/emitten/{symbol}/info",
         headers=headers,
     )
+    if resp.status_code == 401:
+        invalidate_token()
     if resp.status_code != 200:
         raise Exception(f"Fetch gagal ({resp.status_code}): {resp.text}")
     return resp.json().get("data", {})
@@ -561,186 +637,17 @@ def force_login():
 
 @app.route("/majorholder", methods=["GET"])
 def majorholder():
-    from datetime import date, timedelta, datetime
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    date_end = request.args.get("date_end")
-    if date_end:
-        date_end = get_last_trading_day(date_end)
-    else:
-        date_end = get_last_trading_day(yesterday_str)
-        
-    date_start = request.args.get("date_start")
-    if date_start:
-        date_start = get_last_trading_day(date_start)
-    else:
-        end_dt = datetime.strptime(date_end, "%Y-%m-%d").date()
-        date_start = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
-        
-    pages      = int(request.args.get("pages", 5))
-    
-    # Check if data already exists locally to avoid duplicate crawls
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT COUNT(*) FROM idxsaham.insider_activity
-            WHERE tanggal >= %s AND tanggal <= %s
-        """, (date_start, date_end))
-        count = cur.fetchone()[0]
-        cur.close()
-        conn.close()
-        if count > 0:
-            log_crawl_job("MAJORHOLDER", "FEED", date_end, "SKIP", count)
-            return jsonify({
-                "message":       f"Data majorholder untuk rentang {date_start} s.d {date_end} sudah ada di DB (skip crawl)",
-                "date_start":    date_start,
-                "date_end":      date_end,
-                "total_records": count,
-            })
-    except Exception as e:
-        print("Error checking local insider_activity:", e)
-        
-    try:
-        token   = get_token()
-        records = fetch_majorholder(token, date_start, date_end, pages)
-        if not records:
-            log_crawl_job("MAJORHOLDER", "FEED", date_end, "FAILED", 0, "Tidak ada data ditemukan")
-            return jsonify({"error": "Tidak ada data ditemukan"}), 404
-        insert_data_insider(records)
-        log_crawl_job("MAJORHOLDER", "FEED", date_end, "SUCCESS", len(records))
-        return jsonify({
-            "message":       f"{len(records)} data berhasil disimpan ke DB",
-            "date_start":    date_start,
-            "date_end":      date_end,
-            "total_records": len(records),
-        })
-    except Exception as e:
-        log_crawl_job("MAJORHOLDER", "FEED", date_end, "FAILED", 0, str(e))
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 
 @app.route("/broker-activity", methods=["GET"])
 def broker_activity():
-    from datetime import date, timedelta
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-
-    broker_code      = request.args.get("broker_code", "XL")
-    
-    date_from        = request.args.get("from")
-    if date_from:
-        date_from = get_last_trading_day(date_from)
-    else:
-        date_from = get_last_trading_day(yesterday_str)
-        
-    date_to          = request.args.get("to")
-    if date_to:
-        date_to = get_last_trading_day(date_to)
-    else:
-        date_to = get_last_trading_day(yesterday_str)
-        
-    pages            = int(request.args.get("pages", 1))
-    transaction_type = request.args.get("transaction_type", "TRANSACTION_TYPE_NET")
-    market_board     = request.args.get("market_board",     "MARKET_TYPE_REGULER")
-    investor_type    = request.args.get("investor_type",    "INVESTOR_TYPE_ALL")
-    
-    # Check if data already exists locally to avoid duplicate crawls
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT COUNT(*) FROM idxsaham.broker_activity
-            WHERE kodebroker = %s AND tanggal >= %s AND tanggal <= %s
-        """, (broker_code, date_from, date_to))
-        count = cur.fetchone()[0]
-        cur.close()
-        conn.close()
-        if count > 0:
-            log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "SKIP", count)
-            return jsonify({
-                "message":      f"Data broker activity untuk {broker_code} tanggal {date_from} s.d {date_to} sudah ada di DB (skip crawl)",
-                "broker_code":  broker_code,
-                "date_from":    date_from,
-                "date_to":      date_to,
-                "total_buy":    count,
-                "total_sell":   0,
-            })
-    except Exception as e:
-        print("Error checking local broker_activity:", e)
-        
-    try:
-        token = get_token()
-        buy_records, sell_records = fetch_broker_activity(
-            token, broker_code, date_from, date_to, pages,
-            transaction_type, market_board, investor_type,
-        )
-        if not buy_records and not sell_records:
-            log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "FAILED", 0, "Tidak ada data ditemukan")
-            return jsonify({"error": "Tidak ada data ditemukan"}), 404
-        all_records = buy_records + sell_records
-        insert_data_brokers(all_records)
-        log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "SUCCESS", len(all_records))
-        return jsonify({
-            "message":      f"{len(all_records)} data berhasil disimpan ke DB",
-            "broker_code":  broker_code,
-            "date_from":    date_from,
-            "date_to":      date_to,
-            "total_buy":    len(buy_records),
-            "total_sell":   len(sell_records),
-        })
-    except Exception as e:
-        log_crawl_job("BROKER_ACTIVITY", broker_code, date_to, "FAILED", 0, str(e))
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 
 @app.route("/stock-info", methods=["GET"])
 def stock_info():
-    symbol = request.args.get("symbol", "").upper()
-    if not symbol:
-        return jsonify({"error": "Parameter 'symbol' wajib diisi, contoh: ?symbol=BBCA"}), 400
-    
-    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
-    if symbol not in allowed_symbols:
-        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Emiten yang didukung hanya: {', '.join(allowed_symbols)}"}), 400
-        
-    # Check if data already exists locally to avoid duplicate crawls
-    try:
-        from datetime import date
-        last_trading = get_last_trading_day(date.today().strftime("%Y-%m-%d"))
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT COUNT(*) FROM idxsaham.stock_info
-            WHERE symbol = %s AND tanggal = %s
-        """, (symbol, last_trading))
-        count = cur.fetchone()[0]
-        cur.close()
-        conn.close()
-        if count > 0:
-            log_crawl_job("STOCK_INFO", symbol, last_trading, "SKIP", 1)
-            return jsonify({
-                "message": f"Data stock info {symbol} tanggal {last_trading} sudah ada di DB (skip crawl)",
-                "symbol":  symbol,
-                "tanggal": last_trading,
-            })
-    except Exception as e:
-        print("Error checking local stock_info:", e)
-        
-    try:
-        token = get_token()
-        raw   = fetch_stock_info(token, symbol)
-        data  = parse_stock_info(raw)
-        insert_data_stock_info(data)
-        log_crawl_job("STOCK_INFO", symbol, data.get("tanggal") or last_trading, "SUCCESS", 1)
-        return jsonify({
-            "message": f"Data stock info {symbol} berhasil disimpan ke DB",
-            "symbol":  symbol,
-            "tanggal": data.get("tanggal"),
-            "harga":   data.get("harga"),
-        })
-    except Exception as e:
-        log_crawl_job("STOCK_INFO", symbol, last_trading, "FAILED", 0, str(e))
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 def insert_data_ohlc(data):
     # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
@@ -794,105 +701,90 @@ def insert_data_ohlc(data):
     cur.close()
     conn.close()
 
+def insert_data_ohlc(data):
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.stock_ohlc (
+        symbol VARCHAR(10) NOT NULL,
+        tanggal DATE NOT NULL,
+        open NUMERIC(15, 2) NOT NULL,
+        high NUMERIC(15, 2) NOT NULL,
+        low NUMERIC(15, 2) NOT NULL,
+        close NUMERIC(15, 2) NOT NULL,
+        volume BIGINT NOT NULL,
+        foreign_buy NUMERIC(20, 2),
+        foreign_sell NUMERIC(20, 2),
+        foreign_flow NUMERIC(20, 2),
+        CONSTRAINT pk_stock_ohlc PRIMARY KEY (symbol, tanggal)
+    );
+    """
+    insert_query = """
+    INSERT INTO idxsaham.stock_ohlc (
+        symbol, tanggal, open, high, low, close, volume, foreign_buy, foreign_sell, foreign_flow
+    )
+    VALUES (
+        %(symbol)s, %(tanggal)s, %(open)s, %(high)s, %(low)s, %(close)s, %(volume)s, %(foreignbuy)s, %(foreignsell)s, %(foreignflow)s
+    )
+    ON CONFLICT (symbol, tanggal)
+    DO UPDATE SET
+        open = EXCLUDED.open,
+        high = EXCLUDED.high,
+        low = EXCLUDED.low,
+        close = EXCLUDED.close,
+        volume = EXCLUDED.volume,
+        foreign_buy = EXCLUDED.foreign_buy,
+        foreign_sell = EXCLUDED.foreign_sell,
+        foreign_flow = EXCLUDED.foreign_flow;
+    """
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(create_table_query) 
+    execute_batch(cur, insert_query, data)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def fetch_ohlc(token, symbol, from_date, to_date):
+    headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
+    url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
+    resp = requests.get(
+        url,
+        headers=headers,
+        params={"from": from_date, "to": to_date, "limit": 0}
+    )
+    if resp.status_code == 401:
+        invalidate_token()
+    if resp.status_code != 200:
+        raise Exception(f"Fetch OHLC {symbol} gagal ({resp.status_code}): {resp.text}")
+    
+    json_data = resp.json()
+    chart_data = json_data.get("data", {}).get("chartbit", [])
+    
+    records = []
+    for item in chart_data:
+        item_date = item.get("date")
+        if item_date and (to_date <= item_date <= from_date):
+            records.append({
+                "symbol": symbol,
+                "tanggal": item_date,
+                "open": normalize_number(item.get("open")),
+                "high": normalize_number(item.get("high")),
+                "low": normalize_number(item.get("low")),
+                "close": normalize_number(item.get("close")),
+                "volume": normalize_number(item.get("volume")),
+                "foreignbuy": normalize_number(item.get("foreignbuy")),
+                "foreignsell": normalize_number(item.get("foreignsell")),
+                "foreignflow": normalize_number(item.get("foreignflow"))
+            })
+    return records
+
+
 # ============================================================
 # ENDPOINT OHLC (CHARTBIT API)
 # ============================================================
 @app.route("/ohlc", methods=["GET"])
 def get_ohlc():
-    from datetime import date, timedelta, datetime
-    yesterday_str = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    symbol = request.args.get("symbol", "BBRI").upper()
-    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
-    if symbol not in allowed_symbols:
-        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Emiten yang didukung hanya: {', '.join(allowed_symbols)}"}), 400
-    
-    f = request.args.get("from")
-    if f:
-        f = get_last_trading_day(f)
-    else:
-        f = get_last_trading_day(yesterday_str)
-        
-    t = request.args.get("to")
-    if t:
-        t = get_last_trading_day(t)
-    else:
-        from_dt = datetime.strptime(f, "%Y-%m-%d").date()
-        t = (from_dt - timedelta(days=365)).strftime("%Y-%m-%d")
-        
-    # Check if data already exists locally to avoid duplicate crawls
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT COUNT(*) FROM idxsaham.stock_ohlc
-            WHERE symbol = %s AND tanggal = %s
-        """, (symbol, f))
-        count = cur.fetchone()[0]
-        cur.close()
-        conn.close()
-        if count > 0:
-            log_crawl_job("OHLC", symbol, f, "SKIP", count)
-            return jsonify({
-                "message": f"Data OHLC & Foreign Flow untuk {symbol} tanggal {f} sudah ada di DB (skip crawl)",
-                "symbol": symbol,
-                "total_data": count
-            })
-    except Exception as e:
-        print("Error checking local stock_ohlc:", e)
-        
-    try:
-        token = get_token()
-        headers = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
-        
-        # Endpoint Chartbit
-        url = f"https://exodus.stockbit.com/chartbit/{symbol}/price/daily"
-        
-        resp = requests.get(
-            url,
-            headers=headers,
-            params={"from": f, "to": t, "limit": 0}
-        )
-        
-        if resp.status_code != 200:
-            log_crawl_job("OHLC", symbol, f, "FAILED", 0, f"Gagal fetch OHLC: {resp.text}")
-            return jsonify({"error": f"Gagal fetch OHLC: {resp.text}"}), resp.status_code
-            
-        json_data = resp.json()
-        chart_data = json_data.get("data", {}).get("chartbit", [])
-        
-        if not chart_data:
-            log_crawl_job("OHLC", symbol, f, "FAILED", 0, "Tidak ada data OHLC (array chartbit kosong)")
-            return jsonify({"error": "Tidak ada data OHLC (array chartbit kosong)"}), 404
-            
-        records = []
-        for item in chart_data:
-            item_date = item.get("date")
-            if item_date and (t <= item_date <= f):
-                records.append({
-                    "symbol": symbol,
-                    "tanggal": item_date,
-                    "open": normalize_number(item.get("open")),
-                    "high": normalize_number(item.get("high")),
-                    "low": normalize_number(item.get("low")),
-                    "close": normalize_number(item.get("close")),
-                    "volume": normalize_number(item.get("volume")),
-                    "foreignbuy": normalize_number(item.get("foreignbuy")),
-                    "foreignsell": normalize_number(item.get("foreignsell")),
-                    "foreignflow": normalize_number(item.get("foreignflow"))
-                })
-        # Simpan ke Database
-        insert_data_ohlc(records)
-        log_crawl_job("OHLC", symbol, f, "SUCCESS", len(records))
-        
-        return jsonify({
-            "message": f"Berhasil menyimpan {len(records)} hari data OHLC & Foreign Flow untuk {symbol}",
-            "symbol": symbol,
-            "total_data": len(records)
-        })
-    except Exception as e:
-        log_crawl_job("OHLC", symbol, f, "FAILED", 0, str(e))
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 
 # ============================================================
@@ -985,6 +877,8 @@ def fetch_orderbook(token, symbol):
         params={"symbol": symbol}  # Mengirimkan kode saham (misal: BBCA)
     )
     
+    if resp.status_code == 401:
+        invalidate_token()
     if resp.status_code != 200:
         raise Exception(f"Fetch orderbook {symbol} gagal ({resp.status_code}): {resp.text}")
         
@@ -1031,95 +925,17 @@ def insert_data_orderbook(data):
 # ============================================================
 @app.route("/orderbook/batch", methods=["GET"])
 def orderbook_batch():
-    target_symbols = ["BBRI", "BBNI", "BBCA", "BMRI", "BJBR"]
-    all_records = []
-    errors = {}
-
-    try:
-        token = get_token()
-        
-        for symbol in target_symbols:
-            try:
-                # Wajib ada jeda agar IP/Akun aman dari blokir
-                time.sleep(1.5) 
-                
-                raw_data = fetch_orderbook(token, symbol)
-                
-                # --- PERBAIKAN DI SINI ---
-                # Langsung ambil dari raw_data, tidak perlu mencari key symbol (BBCA) lagi
-                created_str = raw_data.get("created")
-                
-                if not created_str:
-                    print(f"[DEBUG] {symbol} dilewati karena 'created' tidak ditemukan.")
-                    continue
-                    
-                # Memisahkan tanggal (YYYY-MM-DD) dari waktu lengkapnya
-                tanggal_saja = created_str.split(" ")[0]
-                
-                items = raw_data.get("item", [])
-                if not items:
-                    print(f"[DEBUG] {symbol} dilewati karena 'item' kosong.")
-                    continue
-                    
-                order_info = items[0]
-                bids = order_info.get("bid", [])
-                offers = order_info.get("offer", [])
-                # -------------------------
-                
-                # Memproses data BID (Antrean Beli)
-                for idx, b in enumerate(bids):
-                    price = normalize_number(b.get("price"))
-                    vol_shares = normalize_number(b.get("volume"))
-                    vol_lot = vol_shares // 100 if vol_shares else 0
-                    
-                    all_records.append({
-                        "symbol": symbol,
-                        "tanggal": tanggal_saja,
-                        "waktu_update": created_str,
-                        "tipe": "BID",
-                        "lapis": idx + 1,
-                        "harga": price,
-                        "volume_lot": vol_lot
-                    })
-                    
-                # Memproses data OFFER (Antrean Jual)
-                for idx, o in enumerate(offers):
-                    price = normalize_number(o.get("price"))
-                    vol_shares = normalize_number(o.get("volume"))
-                    vol_lot = vol_shares // 100 if vol_shares else 0
-                    
-                    all_records.append({
-                        "symbol": symbol,
-                        "tanggal": tanggal_saja,
-                        "waktu_update": created_str,
-                        "tipe": "OFFER",
-                        "lapis": idx + 1,
-                        "harga": price,
-                        "volume_lot": vol_lot
-                    })
-                    
-                log_crawl_job("ORDERBOOK", symbol, tanggal_saja, "SUCCESS", len(bids) + len(offers))
-                
-            except Exception as e:
-                errors[symbol] = str(e)
-                log_crawl_job("ORDERBOOK", symbol, None, "FAILED", 0, str(e))
-        
-        # Simpan ke PostgreSQL jika ada data yang berhasil diproses
-        if all_records:
-            insert_data_orderbook(all_records)
-            
-        return jsonify({
-            "message": f"Berhasil menyimpan {len(all_records)} baris data antrean ke database.",
-            "total_records_inserted": len(all_records),
-            "errors": errors if errors else None
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 if __name__ == "__main__":
     # Auto-start scheduler saat app boot
-    print("\n[App] Starting auto-crawl scheduler...")
-    start_scheduler()
-    print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
+    # Di Flask debug mode, reloader menjalankan server dua kali.
+    # Kita hanya ingin scheduler jalan sekali di process worker utama (WERKZEUG_RUN_MAIN=true).
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        print("\n[App] Starting auto-crawl scheduler...")
+        start_scheduler()
+        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
+    else:
+        print("\n[App] Flask starting parent process (skipping scheduler start for parent)...")
+        
     app.run(host="0.0.0.0", port=8080, debug=True)
