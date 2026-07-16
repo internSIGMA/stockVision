@@ -1,0 +1,42 @@
+name: SonarQube Code Quality Analysis
+
+on:
+  push:
+    branches:
+      - main
+      - bintang
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sonar-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Trigger SonarScanner via SSH on GCP VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_IP }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          port: 22
+          script: |
+            # 1. Masuk ke direktori proyek
+            cd ${{ secrets.GCP_PROJECT_PATH }}
+            
+            # 2. Ambil perubahan terbaru dari branch yang memicu workflow
+            git fetch origin ${{ github.head_ref || github.ref_name }}
+            git reset --hard origin/${{ github.head_ref || github.ref_name }}
+            
+            # 3. Jalankan scanner kontainer di dalam VM (terkoneksi ke network sonarqube)
+            docker run --rm \
+              --network sonar-network \
+              -v "$(pwd):/usr/src" \
+              sonarsource/sonar-scanner-cli \
+              -Dsonar.host.url="http://sonarqube_server:9000" \
+              -Dsonar.token="${{ secrets.SONAR_TOKEN }}"
+
