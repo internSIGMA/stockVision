@@ -1,10 +1,30 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { login as loginRequest } from '@/services/authService'
+import {
+  loginUser,
+  getWatchlists,
+  createWatchlist,
+  updateWatchlist,
+  updateUser,
+  isSupported,
+  SUPPORTED_TICKERS,
+} from '@/api/StockVision'
+import { useMarketStore } from '@/stores/market'
 
-const STORAGE_KEY = 'fullmoon.auth'
+const STORAGE_KEY = 'stockvision.auth'
 
-function loadPersisted() {
+/**
+ * Watchlist awal untuk user yang belum punya satu pun di DB, dipilih dari
+ * emiten utamanya. Emiten di luar peta ini cukup jadi watchlist berisi
+ * dirinya sendiri.
+ */
+const SEED_WATCHLISTS = {
+  BBCA: ['BBCA', 'BBRI', 'BMRI'],
+  BBNI: ['BBNI', 'BJBR'],
+}
+
+/** Sesi bertahan di localStorage; JSON rusak diperlakukan seperti belum login. */
+function readPersisted() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : null
@@ -14,44 +34,150 @@ function loadPersisted() {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const persisted = loadPersisted()
+  const persisted = readPersisted()
 
   const user = ref(persisted?.user ?? null)
-  const token = ref(persisted?.token ?? null)
+  const watchlists = ref([])
+  const activeWatchlistId = ref(null)
   const loading = ref(false)
 
-  const isAuthenticated = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!user.value)
 
-  async function login(credentials, remember = true) {
+  const activeWatchlist = computed(
+    () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
+  )
+
+  /**
+   * Emiten yang benar-benar bisa ditampilkan. Backend menolak emiten di luar
+   * SUPPORTED_TICKERS, jadi simbol lain disaring keluar di sini — dan kalau
+   * tidak tersisa apa pun, jatuh ke seluruh daftar yang didukung supaya
+   * halaman tidak pernah kosong total.
+   */
+  const watchlist = computed(() => {
+    const symbols = (activeWatchlist.value?.symbols || []).filter(isSupported)
+    if (!symbols.length) return SUPPORTED_TICKERS
+
+    const utama = user.value?.defaultTicker
+    return utama && isSupported(utama) && !symbols.includes(utama) ? [utama, ...symbols] : symbols
+  })
+
+  /** Simbol yang disimpan user tapi ditolak backend — dipakai untuk memberi tahu. */
+  const watchlistTidakDidukung = computed(() =>
+    (activeWatchlist.value?.symbols || []).filter((s) => !isSupported(s)),
+  )
+
+  const emitenUtama = computed(() => user.value?.defaultTicker || watchlist.value[0] || 'BBCA')
+
+  function persist() {
+    if (user.value) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: user.value }))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }
+
+  /** Backend memakai snake_case; sisa aplikasi memakai camelCase. */
+  function mapUser(raw) {
+    return {
+      id: raw.id,
+      email: raw.email,
+      username: raw.username,
+      name: raw.name,
+      role: raw.role,
+      defaultTicker: raw.default_ticker || 'BBCA',
+    }
+  }
+
+  async function login(email, password) {
     loading.value = true
     try {
-      const { token: t, user: u } = await loginRequest(credentials)
-      token.value = t
-      user.value = u
-      if (remember) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: t, user: u }))
-      }
-      // Load watchlists upon successful login
-      import('@/stores/market').then(({ useMarketStore }) => {
-        const market = useMarketStore()
-        market.fetchWatchlists()
-      })
-      return u
+      const raw = await loginUser(email, password)
+      user.value = mapUser(raw)
+      persist()
+      await fetchWatchlists()
+      await ensureWatchlist()
+      useMarketStore().resetTicker(user.value.defaultTicker)
+      return user.value
     } finally {
       loading.value = false
     }
   }
 
   function logout() {
-    token.value = null
     user.value = null
-    localStorage.removeItem(STORAGE_KEY)
-    // Clear watchlists upon logout
-    import('@/stores/market').then(({ useMarketStore }) => {
-      const market = useMarketStore()
-      market.clearWatchlists()
-    })
+    watchlists.value = []
+    activeWatchlistId.value = null
+    useMarketStore().resetTicker(null)
+    persist()
   }
 
-  return { user, token, loading, isAuthenticated, login, logout }
+  async function fetchWatchlists() {
+    if (!user.value) return
+    const list = await getWatchlists(user.value.id)
+    watchlists.value = list || []
+    if (!activeWatchlistId.value && watchlists.value.length) {
+      activeWatchlistId.value = watchlists.value[0].id
+    }
+  }
+
+  async function ensureWatchlist() {
+    if (!user.value || watchlists.value.length) return
+    const utama = user.value.defaultTicker
+    const symbols = SEED_WATCHLISTS[utama] || [utama]
+    const created = await createWatchlist(user.value.id, { name: 'Watchlist Saya', symbols })
+    watchlists.value = [created]
+    activeWatchlistId.value = created.id
+  }
+
+  function selectWatchlist(id) {
+    activeWatchlistId.value = id
+  }
+
+  async function saveWatchlist(symbols) {
+    if (!user.value) return
+
+    const active = activeWatchlist.value
+    if (active) {
+      const updated = await updateWatchlist(user.value.id, active.id, { symbols })
+      const i = watchlists.value.findIndex((w) => w.id === active.id)
+      if (i !== -1) watchlists.value[i] = updated
+    } else {
+      const created = await createWatchlist(user.value.id, { name: 'Watchlist', symbols })
+      watchlists.value.push(created)
+      activeWatchlistId.value = created.id
+    }
+  }
+
+  async function setEmitenUtama(ticker) {
+    if (!user.value) return
+    await updateUser(user.value.id, { default_ticker: ticker })
+    user.value = { ...user.value, defaultTicker: ticker }
+    persist()
+  }
+
+  /** Dipanggil saat boot: sesi ada di localStorage, tapi watchlist tidak. */
+  async function restore() {
+    if (!user.value || watchlists.value.length) return
+    await fetchWatchlists()
+  }
+
+  return {
+    user,
+    watchlists,
+    activeWatchlistId,
+    activeWatchlist,
+    watchlist,
+    watchlistTidakDidukung,
+    emitenUtama,
+    loading,
+    isLoggedIn,
+    login,
+    logout,
+    fetchWatchlists,
+    ensureWatchlist,
+    selectWatchlist,
+    saveWatchlist,
+    setEmitenUtama,
+    restore,
+  }
 })

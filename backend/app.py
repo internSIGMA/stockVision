@@ -647,37 +647,7 @@ def broker_activity():
 
 @app.route("/stock-info", methods=["GET"])
 def stock_info():
-
-    symbols = [
-        "BBCA",
-        "BBNI",
-        "BBRI",
-        "BMRI",
-        "BJBR"
-    ]
-
-    try:
-        token = get_token()
-
-        total = 0
-
-        for symbol in symbols:
-
-            raw = fetch_stock_info(token, symbol)
-
-            data = parse_stock_info(raw)
-
-            insert_data_stock_info(data)
-
-            total += 1
-
-        return jsonify({
-            "message": f"{total} saham berhasil disimpan",
-            "symbols": symbols
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 def insert_data_ohlc(data):
     # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
@@ -957,6 +927,51 @@ def insert_data_orderbook(data):
 def orderbook_batch():
     return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
+
+# ============================================================
+# ENDPOINT UPDATE ACCESS TOKEN (BOOKMARKLET)
+# ============================================================
+@app.route("/api/update-token", methods=["POST"])
+def update_token():
+    try:
+        data = request.get_json()
+        if not data or "token" not in data:
+            return jsonify({"error": "Token is required"}), 400
+        
+        new_token = data["token"]
+        if not new_token.startswith("eyJhbGciOi"):
+            return jsonify({"error": "Invalid token format"}), 400
+        
+        # Decode expiry from JWT payload
+        import base64
+        expires_at = 0
+        try:
+            parts = new_token.split(".")
+            if len(parts) >= 2:
+                payload_b64 = parts[1]
+                payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+                payload_json = base64.b64decode(payload_b64).decode("utf-8")
+                payload = json.loads(payload_json)
+                expires_at = payload.get("exp", 0)
+        except Exception as e:
+            print("[JWT Decoder] Error decoding expiry:", e)
+        
+        # Save to dynamic token cache
+        with _token_cache["lock"]:
+            if _token_cache["access_token"] is None and _token_cache["refresh_token"] is None:
+                _load_token_cache_from_disk()
+            
+            _token_cache["access_token"] = new_token
+            _token_cache["expires_at"] = expires_at
+            _save_token_cache_to_disk()
+        
+        # Log successful update in DB crawl logs
+        log_crawl_job("AUTH_MANUAL_UPDATE", USERNAME, None, "SUCCESS", 1, "Token diperbarui via bookmarklet")
+        
+        return jsonify({"message": "Token updated successfully", "status": "success"})
+    except Exception as e:
+        print("[Token Updater] Error updating token:", e)
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     # Auto-start scheduler saat app boot
     # Di Flask debug mode, reloader menjalankan server dua kali.
