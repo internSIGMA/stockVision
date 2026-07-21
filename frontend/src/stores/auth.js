@@ -78,13 +78,29 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** Backend memakai snake_case; sisa aplikasi memakai camelCase. */
   function mapUser(raw) {
-    return {
-      id: raw.id,
-      email: raw.email,
-      username: raw.username,
-      name: raw.name,
-      role: raw.role,
-      defaultTicker: raw.default_ticker || 'BBCA',
+  return {
+    id: raw.id,
+    email: raw.email ?? '',
+    username: raw.username ?? '',
+    name: raw.name ?? raw.username ?? 'User',
+    role: raw.role,
+
+    defaultTicker:
+      raw.default_ticker ??
+      raw.defaultTicker ??
+      'BBCA',
+
+    phone: raw.phone ?? '',
+
+    avatar:
+      raw.avatar ??
+      raw.avatar_url ??
+      '',
+
+    emailNotification:
+      raw.email_notification ??
+      raw.emailNotification ??
+      true,
     }
   }
 
@@ -148,11 +164,87 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function setEmitenUtama(ticker) {
-    if (!user.value) return
-    await updateUser(user.value.id, { default_ticker: ticker })
-    user.value = { ...user.value, defaultTicker: ticker }
+    async function updateProfile(profileData) {
+    if (!user.value) {
+      throw new Error('User belum login.')
+    }
+
+    const payload = {}
+
+    if (profileData.name !== undefined) {
+      payload.name = profileData.name.trim()
+    }
+
+    if (profileData.username !== undefined) {
+      payload.username = profileData.username.trim()
+    }
+
+    if (profileData.email !== undefined) {
+      payload.email = profileData.email.trim()
+    }
+
+    if (profileData.phone !== undefined) {
+      payload.phone = profileData.phone.trim()
+    }
+
+    if (profileData.avatar !== undefined) {
+      payload.avatar = profileData.avatar
+    }
+
+    if (profileData.emailNotification !== undefined) {
+      payload.email_notification = profileData.emailNotification
+    }
+
+    if (profileData.defaultTicker !== undefined) {
+      const ticker = profileData.defaultTicker.trim().toUpperCase()
+
+    if (!isSupported(ticker)) {
+      throw new Error(`Ticker ${ticker} belum didukung.`)
+    }
+
+    payload.default_ticker = ticker
+    }
+
+    const updatedRaw = await updateUser(user.value.id, payload)
+
+    /*
+    * Digunakan sebagai cadangan jika backend hanya mengembalikan
+    * sebagian data user atau tidak mengembalikan body.
+    */
+    const currentRaw = {
+      id: user.value.id,
+      email: user.value.email,
+      username: user.value.username,
+      name: user.value.name,
+      role: user.value.role,
+      default_ticker: user.value.defaultTicker,
+      phone: user.value.phone,
+      avatar: user.value.avatar,
+      email_notification: user.value.emailNotification,
+    }
+
+    user.value = mapUser({
+      ...currentRaw,
+      ...payload,
+      ...(updatedRaw || {}),
+    })
+
     persist()
+
+    if (payload.default_ticker) {
+      useMarketStore().resetTicker(user.value.defaultTicker)
+    }
+
+    return user.value
+  }
+
+
+    async function setEmitenUtama(ticker) {
+      if (!user.value) return
+
+    return updateProfile({
+      defaultTicker: ticker,
+    })
   }
 
   /** Dipanggil saat boot: sesi ada di localStorage, tapi watchlist tidak. */
@@ -177,6 +269,7 @@ export const useAuthStore = defineStore('auth', () => {
     ensureWatchlist,
     selectWatchlist,
     saveWatchlist,
+    updateProfile,
     setEmitenUtama,
     restore,
   }
