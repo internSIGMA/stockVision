@@ -1,244 +1,291 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Plus, Settings, Building2, Star, Users } from 'lucide-vue-next';
-import { useMarketStore } from '../store/market.js';
-import { useAuthStore } from '../store/auth.js';
-import { useEmitenData } from '../composables/useEmitenData.js';
+import { computed, ref } from 'vue'
+import { useEmitenData } from '@/composables/useEmitenData'
+import EmitenHeader from '@/components/layout/EmitenHeader.vue'
+import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
+import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
+import PromoBanner from '@/components/stream/PromoBanner.vue'
+import TechnicalSummary from '@/components/stream/TechnicalSummary.vue'
+import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
+import InsiderTable from '@/components/stream/InsiderTable.vue'
+import HistoricalTable from '@/components/stream/HistoricalTable.vue'
+import CandlestickChart from '@/components/charts/CandlestickChart.vue'
+import ForeignFlowChart from '@/components/charts/ForeignFlowChart.vue'
+import ForecastChart from '@/components/charts/ForecastChart.vue'
+import StatCard from '@/components/ui/StatCard.vue'
+import StatusPill from '@/components/ui/StatusPill.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import { Button } from '@/components/ui/button'
+import { useForecastData, HORIZON_PILIHAN } from '@/composables/useForecastData'
+import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
-import EmitenHeader from '../components/EmitenHeader.vue';
-import StatCard from '../components/StatCard.vue';
-import StatusPill from '../components/StatusPill.vue';
-import EmptyState from '../components/EmptyState.vue';
-import CandlestickChart from '../components/CandlestickChart.vue';
-import ForeignFlowChart from '../components/ForeignFlowChart.vue';
-import Sheet from '../components/ui/Sheet.vue';
-import WatchlistManagerPage from './WatchlistManagerPage.vue';
+/**
+ * Satu halaman scroll panjang: semua section berbagi ticker aktif yang sama
+ * (market.selectedTicker), jadi cukup satu kali fetch untuk seluruh Stream.
+ */
+const { ticker, summary, ohlc, insider, broker, loading, error, reload } = useEmitenData({
+  summary: true,
+  ohlc: true,
+  insider: true,
+  broker: true,
+})
 
-const market = useMarketStore();
-const auth = useAuthStore();
-const sheetOpen = ref(false);
+const strip = ref(null)
+const candle = ref(null)
 
-const { ohlc, summary, insider, broker, fundamental, technical } = useEmitenData(
-  () => market.selectedTicker,
-  { ohlc: true, summary: true, insider: true, broker: true, fundamental: true, technical: true, days: 90 }
-);
-
-const dailyRecords = computed(() => [...ohlc.value].reverse().slice(0, 60));
-
-function fmtRp(n) {
-  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+function segarkan() {
+  reload()
+  strip.value?.reload()
 }
-function fmtNum(n) {
-  return Math.round(n).toLocaleString('id-ID');
+
+const statusPasar = computed(() => summary.value?.status_pasar || null)
+
+/** Volume dari snapshot; jatuh ke baris OHLC terakhir bila snapshot belum ada. */
+const volume = computed(
+  () => summary.value?.volume ?? (ohlc.value.length ? ohlc.value[ohlc.value.length - 1].volume : null),
+)
+
+// Forecasting berdiri di composable sendiri: gagalnya endpoint proyeksi tidak
+// boleh menjatuhkan chart & tabel yang lain.
+const {
+  horizon,
+  data: forecast,
+  points: titikProyeksi,
+  hasData: adaProyeksi,
+  hasBand,
+  terakhir: proyeksiAkhir,
+  perubahanPersen: proyeksiPersen,
+  confidenceLabel,
+  isPlaceholder,
+  isLoading: forecastLoading,
+  error: forecastError,
+  setHorizon,
+} = useForecastData({ ohlc })
+
+const TREN_CLASS = {
+  NAIK: 'text-up',
+  TURUN: 'text-down',
 }
-const marketStatus = computed(() => {
-  const h = new Date().getHours();
-  return h >= 9 && h < 16 ? 'OPEN' : 'CLOSED';
-});
+
+const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-muted-foreground')
 </script>
 
 <template>
-  <div>
-    <EmitenHeader :ticker="market.selectedTicker" />
+  <div class="flex flex-col">
+    <EmitenHeader @crawled="segarkan" />
 
-    <div class="grid-2 section-gap">
-      <!-- LEFT: watchlist & focus emiten -->
-      <div class="card card-pad">
-        <div class="wl-select-row">
-          <select class="wl-select">
-            <option>Daftar Pantau Utama</option>
-          </select>
-          <button class="icon-btn" title="Tambah watchlist baru"><Plus :size="15" /></button>
-          <button class="icon-btn" title="Kelola watchlist" @click="sheetOpen = true"><Settings :size="15" /></button>
+    <div class="flex flex-col gap-4 p-4">
+      <!-- 1 — Trending -->
+      <TrendingStocksStrip ref="strip" />
+
+      <!-- 2 — Watchlist + promo & statistik -->
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
+        <WatchlistPanel />
+
+        <div class="flex min-w-0 flex-col gap-4">
+          <PromoBanner />
+
+          <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatCard
+              label="Last Price"
+              :value="formatNumber(summary?.harga)"
+              :change="summary?.perubahan_persen ?? null"
+              :sub="summary?.perubahan != null ? `${summary.perubahan > 0 ? '+' : ''}${formatNumber(summary.perubahan)}` : null"
+              :loading="loading"
+            />
+            <StatCard
+              label="Best Bid"
+              :value="formatNumber(summary?.bid_price)"
+              :sub="summary?.bid_volume != null ? `${formatCompact(summary.bid_volume)} lot` : null"
+              :loading="loading"
+            />
+            <StatCard
+              label="Best Offer"
+              :value="formatNumber(summary?.offer_price)"
+              :sub="summary?.offer_volume != null ? `${formatCompact(summary.offer_volume)} lot` : null"
+              :loading="loading"
+            />
+            <StatCard
+              label="Volume"
+              :value="formatCompact(volume)"
+              :sub="summary?.rata_rata != null ? `Avg ${formatNumber(summary.rata_rata)}` : null"
+              :loading="loading"
+            >
+              <template #badge>
+                <StatusPill v-if="statusPasar" :label="statusPasar" />
+              </template>
+            </StatCard>
+          </div>
         </div>
+      </div>
 
-        <div class="card-title" style="margin-bottom: 2px;"><Building2 :size="15" /> Focus Emiten</div>
-        <div class="card-sub" style="margin-bottom: 10px;">
-          Emiten dalam daftar pantau kamu — klik untuk ganti fokus, klik bintang untuk menandai emiten utama.
+      <!-- Snapshot harga bisa 404 kalau emiten belum pernah di-crawl; chart & tabel tetap jalan. -->
+      <p
+        v-if="error && !loading"
+        class="rounded-lg border-[0.5px] border-[var(--color-down)]/30 bg-[var(--color-down-bg)] px-3.5 py-2 text-[11px] text-[var(--color-down-ink)]"
+        role="status"
+      >
+        {{ error }}
+      </p>
+
+      <!-- 3 — Candlestick -->
+      <section class="rounded-lg border-[0.5px] border-border bg-card">
+        <header class="flex items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+          <div class="min-w-0">
+            <h2 class="text-[13px] font-medium">
+              Historical Candlestick — <span class="tabular">{{ ticker ?? '—' }}</span>
+            </h2>
+            <p class="mt-0.5 text-[10px] text-muted-foreground">
+              Data OHLC tersimpan di database lokal, diperbarui lewat crawler.
+            </p>
+          </div>
+
+          <div class="ml-auto flex shrink-0 items-center gap-2">
+            <span
+              v-if="ohlc.length"
+              class="tabular rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+            >
+              {{ ohlc.length }} trading days
+            </span>
+            <Button
+              v-if="ohlc.length"
+              variant="ghost"
+              size="sm"
+              class="h-6 px-2 text-[10px]"
+              @click="candle?.resetZoom()"
+            >
+              Reset zoom
+            </Button>
+          </div>
+        </header>
+
+        <div v-if="loading" class="h-[340px] animate-pulse bg-muted/50" />
+
+        <EmptyState
+          v-else-if="!ohlc.length"
+          title="Belum ada data candlestick"
+          description="Emiten ini belum pernah di-crawl. Jalankan Trigger Crawler di atas untuk mengambil histori harganya."
+        />
+
+        <div v-else class="p-2">
+          <CandlestickChart ref="candle" :rows="ohlc" />
         </div>
+      </section>
 
-        <div
-          v-for="t in auth.user.watchlist"
-          :key="t"
-          class="wl-item"
-          :class="{ active: t === market.selectedTicker }"
-          @click="market.setTicker(t)"
-        >
-          <span class="mono item-name">{{ t }}</span>
-          <button
-            class="star-btn"
-            :class="{ fav: t === auth.user.emitenUtama }"
-            :aria-label="`Tandai ${t} sebagai emiten utama`"
-            @click.stop="auth.setEmitenUtama(t)"
+      <!-- 4 — Forecasting -->
+      <section class="rounded-lg border-[0.5px] border-border bg-card">
+        <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+          <div class="min-w-0">
+            <h2 class="text-[13px] font-medium">
+              Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
+            </h2>
+            <p class="mt-0.5 text-[10px] text-muted-foreground">
+              Proyeksi harga berdasarkan model time-series.
+            </p>
+          </div>
+
+          <div class="ml-auto flex shrink-0 items-center gap-1">
+            <Button
+              v-for="h in HORIZON_PILIHAN"
+              :key="h"
+              variant="ghost"
+              size="sm"
+              class="tabular h-6 px-2 text-[10px]"
+              :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'"
+              :aria-pressed="h === horizon"
+              @click="setHorizon(h)"
+            >
+              {{ h }} Hari
+            </Button>
+          </div>
+        </header>
+
+        <div v-if="forecastLoading || loading" class="h-[320px] animate-pulse bg-muted/50" />
+
+        <EmptyState
+          v-else-if="forecastError || !adaProyeksi"
+          title="Data forecasting belum tersedia untuk emiten ini"
+          :description="forecastError || 'Proyeksi muncul setelah emiten ini punya histori harga yang cukup.'"
+        />
+
+        <div v-else class="flex flex-col gap-3.5 p-3.5">
+          <!-- Angka tiruan tidak boleh lewat tanpa penanda yang terlihat. -->
+          <p
+            v-if="isPlaceholder"
+            class="rounded-lg border-[0.5px] border-[var(--color-skip)]/30 bg-[var(--color-skip-bg)] px-3.5 py-2 text-[11px] text-[var(--color-skip)]"
+            role="status"
           >
-            <Star :size="16" :fill="t === auth.user.emitenUtama ? 'currentColor' : 'none'" />
-          </button>
-        </div>
-      </div>
+            <span class="font-medium">Data contoh.</span>
+            Endpoint forecasting backend belum tersedia — angka di bawah adalah placeholder untuk
+            keperluan tampilan, bukan proyeksi sungguhan.
+          </p>
 
-      <!-- RIGHT: promo banner + 4 stat cards -->
-      <div>
-        <div class="promo-banner">
-          <div>
-            <span class="promo-badge">STOCKVISION PRO FEATURES</span>
-            <div class="promo-title">Analisis mendalam, sinyal lebih cepat</div>
-            <div class="promo-desc">Buka indikator lanjutan dan peringatan real-time untuk seluruh watchlist kamu.</div>
+          <ForecastChart :rows="ohlc" :points="titikProyeksi" :show-band="hasBand" />
+
+          <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatCard
+              label="Proyeksi Harga Penutupan"
+              :value="formatNumber(proyeksiAkhir?.prediksi)"
+              :sub="proyeksiAkhir ? formatDate(proyeksiAkhir.tanggal) : null"
+            />
+            <StatCard
+              label="Arah Tren"
+              :value="forecast?.trend ?? '—'"
+              :change="proyeksiPersen"
+              :value-class="trenClass"
+            />
+            <StatCard
+              label="Confidence Level"
+              :value="forecast?.confidence != null ? `${forecast.confidence}%` : '—'"
+              :sub="confidenceLabel"
+            />
+            <StatCard
+              label="Model"
+              :value="forecast?.model ?? '—'"
+              :sub="`Horizon ${horizon} hari`"
+            />
           </div>
-          <button class="btn promo-cta">Upgrade</button>
-        </div>
 
-        <div v-if="summary" class="grid-4" style="margin-top: 12px;">
-          <StatCard
-            label="Last Price & Change"
-            :value="fmtRp(summary.price)"
-            :sub="(summary.change >= 0 ? '+' : '') + fmtNum(summary.change) + ' (' + summary.change_pct.toFixed(2) + '%)'"
-          />
-          <StatCard label="Best Bid" :value="fmtRp(summary.price - 5)" sub="Lot: 120" />
-          <StatCard label="Best Offer" :value="fmtRp(summary.price + 5)" sub="Lot: 85" />
-          <StatCard
-            label="Volume & Market Status"
-            :value="fmtNum(summary.volume)"
-            :flag="marketStatus"
-            :flag-tone="marketStatus === 'OPEN' ? 'up' : 'muted'"
-          />
+          <p class="text-[11px] italic leading-relaxed text-muted-foreground">
+            Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
+            rekomendasi investasi.
+          </p>
         </div>
+      </section>
+
+      <!-- 5 — Foreign flow -->
+      <section class="rounded-lg border-[0.5px] border-border bg-card">
+        <header class="border-b-[0.5px] border-border px-3.5 py-2.5">
+          <h2 class="text-[13px] font-medium">Foreign Flow Activity (IDR)</h2>
+          <p class="mt-0.5 text-[10px] text-muted-foreground">
+            Selisih beli dan jual asing per hari, dalam miliar rupiah.
+          </p>
+        </header>
+
+        <div v-if="loading" class="h-[300px] animate-pulse bg-muted/50" />
+
+        <EmptyState
+          v-else-if="!ohlc.length"
+          title="Belum ada data foreign flow"
+          description="Foreign flow ikut terambil bersama histori OHLC."
+        />
+
+        <div v-else class="p-3.5">
+          <ForeignFlowChart :rows="ohlc" />
+        </div>
+      </section>
+
+      <!-- 6 — Technical + Analysis/Broker -->
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <TechnicalSummary :rows="ohlc" :loading="loading" />
+        <AnalysisBrokerCard :ohlc="ohlc" :broker="broker" :loading="loading" />
+      </div>
+
+      <!-- 7 — Insider + Historical -->
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <InsiderTable :rows="insider" :loading="loading" />
+        <HistoricalTable :rows="ohlc" :loading="loading" :ticker="ticker ?? ''" />
       </div>
     </div>
-
-    <div class="card card-pad section-gap">
-      <div class="card-head">
-        <div>
-          <div class="card-title">Historical Candlestick — {{ market.selectedTicker }}</div>
-          <div class="card-sub">ApexCharts dengan data real-time terambil dari database local.</div>
-        </div>
-        <span class="badge">{{ ohlc.length }} trading days</span>
-      </div>
-      <CandlestickChart v-if="ohlc.length" :rows="ohlc" />
-    </div>
-
-    <div class="card card-pad section-gap">
-      <div class="card-head">
-        <div class="card-title">Foreign Flow Activity (IDR)</div>
-      </div>
-      <ForeignFlowChart v-if="ohlc.length" :rows="ohlc" />
-    </div>
-
-    <div class="grid-2b section-gap">
-      <div class="card card-pad">
-        <div class="card-title" style="margin-bottom: 10px;">Technical</div>
-        <div v-for="t in technical" :key="t.label" class="tech-row">
-          <span class="lbl">{{ t.label }}</span>
-          <span class="val mono">{{ t.value }} <span class="sig">· {{ t.sig }}</span></span>
-        </div>
-      </div>
-
-      <div class="card card-pad">
-        <div class="card-title" style="margin-bottom: 6px;">Analysis & Broker Summary</div>
-        <div v-if="fundamental" class="card-sub">
-          Fundamental ringkas: PER {{ fundamental.per }}x · PBV {{ fundamental.pbv }}x
-          · Dividend Yield {{ fundamental.dividend_yield }}% · rating konsensus {{ fundamental.consensus }}.
-        </div>
-        <template v-if="broker">
-          <div class="broker-list-title">Top Buy</div>
-          <div v-for="b in broker.top_buy" :key="'buy' + b.code" class="broker-row">
-            <span class="code">{{ b.code }}</span><span class="val mono up-text">{{ fmtRp(b.value) }}</span>
-          </div>
-          <div class="broker-list-title">Top Sell</div>
-          <div v-for="b in broker.top_sell" :key="'sell' + b.code" class="broker-row">
-            <span class="code">{{ b.code }}</span><span class="val mono down-text">{{ fmtRp(b.value) }}</span>
-          </div>
-        </template>
-        <span class="see-all">Lihat semua →</span>
-      </div>
-    </div>
-
-    <div class="grid-2b section-gap">
-      <div class="card card-pad">
-        <div class="card-head">
-          <div class="card-title"><Users :size="15" /> Insider Transactions <span class="badge">Global Activity</span></div>
-          <span class="badge">{{ insider.length }} recent trades</span>
-        </div>
-        <div v-if="insider.length" class="table-wrap">
-          <table>
-            <thead>
-              <tr><th scope="col">Date</th><th scope="col">Ticker</th><th scope="col">Insider Name</th><th scope="col">Action</th><th scope="col">Shares</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="(r, i) in insider" :key="i">
-                <td class="td-mono">{{ r.date }}</td>
-                <td style="font-weight: 700;">{{ r.ticker }}</td>
-                <td>{{ r.insider_name }}</td>
-                <td><StatusPill :status="r.action" /></td>
-                <td class="td-mono">{{ fmtNum(r.shares) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <EmptyState v-else text="Belum ada transaksi insider." />
-      </div>
-
-      <div class="card card-pad">
-        <div class="card-head"><div class="card-title">📋 Historical Records</div></div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th scope="col">Date</th><th scope="col">Open</th><th scope="col">High</th><th scope="col">Low</th><th scope="col">Close</th><th scope="col">Net Flow</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="(r, i) in dailyRecords" :key="i">
-                <td class="td-mono">{{ r.date }}</td>
-                <td class="td-mono">{{ fmtNum(r.open) }}</td>
-                <td class="td-mono">{{ fmtNum(r.high) }}</td>
-                <td class="td-mono">{{ fmtNum(r.low) }}</td>
-                <td class="td-close">{{ fmtNum(r.close) }}</td>
-                <td class="td-mono" :class="r.foreign_flow >= 0 ? 'up-text' : 'down-text'">{{ (r.foreign_flow / 1e9).toFixed(1) }}B</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <Sheet :open="sheetOpen" title="Kelola Watchlist" @close="sheetOpen = false">
-      <WatchlistManagerPage @done="sheetOpen = false" />
-    </Sheet>
   </div>
 </template>
-
-<style scoped>
-.wl-select-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.wl-select {
-  flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--paper); color: var(--ink); font-weight: 600; font-size: 13px;
-}
-.wl-item {
-  display: flex; align-items: center; justify-content: space-between; padding: 9px 10px; border-radius: 8px;
-  cursor: pointer; border: 1px solid transparent;
-}
-.wl-item:hover { background: var(--surface-sunken); }
-.wl-item.active { background: var(--primary-bg); border-color: color-mix(in srgb, var(--primary) 25%, transparent); }
-.item-name { font-weight: 700; font-size: 13.5px; }
-.star-btn { background: none; border: none; cursor: pointer; padding: 2px; display: flex; color: var(--border-strong); }
-.star-btn.fav { color: var(--skip); }
-
-.promo-banner {
-  border-radius: var(--radius); padding: 18px 20px; color: #fff; position: relative; overflow: hidden;
-  background: linear-gradient(135deg, #1E2A6E 0%, #2A52E0 55%, #5B7FF0 100%);
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 96px;
-}
-.promo-badge { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; background: rgba(255, 255, 255, .16); padding: 3px 9px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
-.promo-title { font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
-.promo-desc { font-size: 12px; opacity: .85; margin-top: 3px; max-width: 340px; }
-.promo-cta { background: #fff; color: var(--primary); border: none; flex: none; }
-
-.tech-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-.tech-row:last-child { border-bottom: none; }
-.tech-row .lbl { color: var(--ink-muted); font-weight: 600; }
-.tech-row .sig { color: var(--ink-muted); font-weight: 500; }
-
-.broker-list-title { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); margin: 10px 0 6px; }
-.broker-row { display: flex; justify-content: space-between; font-size: 12.5px; padding: 5px 0; border-bottom: 1px dashed var(--border); }
-.broker-row:last-child { border-bottom: none; }
-.broker-row .code { font-weight: 700; }
-.see-all { font-size: 11.5px; font-weight: 600; color: var(--primary); cursor: pointer; margin-top: 6px; display: inline-block; }
-</style>
