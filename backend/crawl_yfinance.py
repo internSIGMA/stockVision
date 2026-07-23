@@ -21,7 +21,7 @@ DB_CONFIG = {
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-def create_table_if_not_exists():
+def create_table_ohlcv():
     query = """
     CREATE TABLE IF NOT EXISTS idxsaham.ohlc_forecasting (
         symbol VARCHAR(10),
@@ -43,7 +43,7 @@ def create_table_if_not_exists():
     conn.close()
     print("[yfinance Crawler] Tabel 'idxsaham.ohlc_forecasting' siap.")
 
-def crawl_stock_data(symbol):
+def crawl_ohlcv(symbol):
     ticker_symbol = f"{symbol}.JK"
     print(f"[yfinance Crawler] Mengunduh data historis 5 tahun untuk {ticker_symbol}...")
     
@@ -73,7 +73,7 @@ def crawl_stock_data(symbol):
         })
     return records
 
-def insert_to_db(records):
+def insert_ohlcv(records):
     if not records:
         return
         
@@ -102,13 +102,14 @@ def insert_to_db(records):
     conn.close()
     print(f"[yfinance Crawler] Berhasil menyimpan {len(records)} data untuk {records[0]['symbol']}.")
 
+
 def main():
     print("="*60)
     print("CRAWLER DATA HISTORIS YFINANCE (5 TAHUN)")
     print("="*60)
     
     try:
-        create_table_if_not_exists()
+        create_table_ohlcv()
     except Exception as e:
         print("[yfinance Crawler] ERROR: Gagal membuat tabel:", e)
         return
@@ -117,13 +118,19 @@ def main():
     total_records = 0
     
     for symbol in symbols:
+
         try:
-            records = crawl_stock_data(symbol)
+
+            # OHLCV
+            records = crawl_ohlcv(symbol)
+
             if records:
-                insert_to_db(records)
-                total_records += len(records)
+
+                insert_ohlcv(records)
+
         except Exception as e:
-            print(f"[yfinance Crawler] ERROR saat memproses {symbol}:", e)
+
+            print(f"{symbol} ERROR :", e)
             
     print("\n" + "="*60)
     print(f"[SUKSES] Crawling selesai! Total data dimasukkan: {total_records} baris.")
