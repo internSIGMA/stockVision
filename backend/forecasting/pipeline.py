@@ -1,8 +1,6 @@
 from .database import (
     load_stock_data,
-    refresh_forecast,
-    truncate_forecast,
-    insert_forecast
+    refresh_forecast
 )
 
 from .trainer import (
@@ -16,7 +14,6 @@ from .forecasting import (
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 def run_pipeline():
 
@@ -58,3 +55,6 @@ def run_pipeline():
         logger.exception("Forecast pipeline failed!")
 
         return False
+    
+if __name__ == "__main__":
+    run_pipeline()
