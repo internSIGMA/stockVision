@@ -38,19 +38,20 @@ def _ensure_users_table():
     cur = conn.cursor()
     cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
     cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS idxsaham.users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) NOT NULL UNIQUE,
-            username VARCHAR(100) NOT NULL UNIQUE,
-            password VARCHAR(255) NOT NULL,
-            name VARCHAR(255),
-            role VARCHAR(255),
-            default_ticker VARCHAR(20),
-            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    )
+    """
+    CREATE TABLE IF NOT EXISTS idxsaham.users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(255),
+        access_role VARCHAR(20) NOT NULL DEFAULT 'user',
+        default_ticker VARCHAR(20),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+)
     conn.commit()
 
     # Check if table is empty
@@ -441,24 +442,51 @@ def login_user(payload):
 
     email = str(payload.get("email") or "").strip().lower()
     password = str(payload.get("password") or "")
+
     if not email or not password:
         raise ValueError("email and password are required")
 
     _ensure_users_table()
+
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, password FROM idxsaham.users WHERE email = %s;",
+        """
+        SELECT
+            id,
+            email,
+            username,
+            name,
+            role,
+            access_role,
+            default_ticker,
+            password
+        FROM idxsaham.users
+        WHERE email = %s;
+        """,
         (email,),
     )
+
     row = cur.fetchone()
+
     cur.close()
     conn.close()
 
     if not row:
         return None
 
-    user_id, email_value, username, name, role, default_ticker, stored_hash = row
+    (
+        user_id,
+        email_value,
+        username,
+        name,
+        role,
+        access_role,
+        default_ticker,
+        stored_hash,
+    ) = row
+
     if not check_password_hash(stored_hash, password):
         return None
 
@@ -468,6 +496,7 @@ def login_user(payload):
         "username": username,
         "name": name,
         "role": role,
+        "access_role": access_role,
         "default_ticker": default_ticker,
     }
 

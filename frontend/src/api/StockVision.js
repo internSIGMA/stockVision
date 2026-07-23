@@ -196,8 +196,79 @@ export function triggerSchedulerManual() {
 // ============================================================
 
 /** → { id, email, username, name, role, default_ticker } | 401 */
-export function loginUser(email, password) {
-  return api.post('/users/login', { email, password })
+export async function loginUser(email, password) {
+  const baseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://127.0.0.1:8080'
+
+  const response = await fetch(`${baseUrl}/users/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  })
+
+  let data = {}
+
+  try {
+    data = await response.json()
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      data.message ||
+      'Login gagal. Periksa email dan kata sandi.',
+    )
+  }
+
+  return data
+}
+
+/**
+ * Login menggunakan Google Identity Services.
+ *
+ * idToken berasal dari response.credential milik Google.
+ * → { id, email, username, name, role, access_role, default_ticker }
+ */
+export async function loginWithGoogle(idToken) {
+  const baseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://127.0.0.1:8080'
+
+  const response = await fetch(`${baseUrl}/users/google-login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id_token: idToken,
+    }),
+  })
+
+  let data = {}
+
+  try {
+    data = await response.json()
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      data.message ||
+      'Login dengan Google gagal.',
+    )
+  }
+
+  return data
 }
 
 // ------------------------------------------------------------
