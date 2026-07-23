@@ -20,12 +20,8 @@ def append_prediction(stock, prediction):
     new_row["high"] = prediction["high"]
     new_row["low"] = prediction["low"]
     new_row["close"] = prediction["close"]
-
     new_row["volume"] = prediction["volume"]
-    new_row["foreign_buy"] = prediction["foreign_buy"]
-    new_row["foreign_sell"] = prediction["foreign_sell"]
-    new_row["foreign_flow"] = prediction["foreign_flow"]
-
+    
     stock = pd.concat(
         [
             stock,
@@ -65,12 +61,6 @@ def forecast_next_days(stock, models, horizon=7):
             "close": pred["close"],
 
             "volume": pred["volume"],
-
-            "foreign_buy": pred["foreign_buy"],
-
-            "foreign_sell": pred["foreign_sell"],
-
-            "foreign_flow": (pred["foreign_buy"] - pred["foreign_sell"])
         })
 
         stock = append_prediction(

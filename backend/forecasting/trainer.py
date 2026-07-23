@@ -1,6 +1,6 @@
-import joblib
 import pandas as pd
 import numpy as np
+import json
 
 import lightgbm as lgb
 
@@ -15,7 +15,7 @@ from sklearn.metrics import (
     r2_score
 )
 
-from .config import MODEL_DIR, TARGETS
+from .config import TARGETS
 
 from .feature_engineering import (
     feature_cols,
@@ -24,7 +24,13 @@ from .feature_engineering import (
 
 from .logger import logger
 
-from .model_manager import load_best_params
+from .config import PARAM_FILE
+
+def load_best_params():
+
+    with open(PARAM_FILE, "r") as f:
+
+        return json.load(f)
 
 BEST_PARAMS = load_best_params()
 
@@ -141,17 +147,6 @@ def train_model(symbol, stock_df, target_col):
     final_model.fit(
         X,
         y
-    )
-
-    model_path = MODEL_DIR / symbol
-    model_path.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    joblib.dump(
-        final_model,
-        model_path / f"{target_col}.pkl"
     )
 
     return (
