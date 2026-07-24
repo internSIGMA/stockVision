@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   loginUser,
+  loginWithGoogle,
   getWatchlists,
   createWatchlist,
   updateWatchlist,
@@ -42,6 +43,14 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isLoggedIn = computed(() => !!user.value)
+
+  const accessRole = computed(() => {
+  return String(user.value?.accessRole || 'user').toLowerCase()
+})
+
+const isAdmin = computed(() => {
+  return accessRole.value === 'admin'
+})
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
@@ -85,6 +94,11 @@ export const useAuthStore = defineStore('auth', () => {
     name: raw.name ?? raw.username ?? 'User',
     role: raw.role,
 
+    accessRole:
+      raw.access_role ??
+      raw.accessRole ??
+      'user',
+
     defaultTicker:
       raw.default_ticker ??
       raw.defaultTicker ??
@@ -118,6 +132,27 @@ export const useAuthStore = defineStore('auth', () => {
       loading.value = false
     }
   }
+
+  async function googleLogin(idToken) {
+  loading.value = true
+
+  try {
+    const raw = await loginWithGoogle(idToken)
+
+    user.value = mapUser(raw)
+
+    persist()
+
+    await fetchWatchlists()
+    await ensureWatchlist()
+
+    useMarketStore().resetTicker(user.value.defaultTicker)
+
+    return user.value
+  } finally {
+    loading.value = false
+  }
+}
 
   function logout() {
     user.value = null
@@ -262,8 +297,11 @@ export const useAuthStore = defineStore('auth', () => {
     watchlistTidakDidukung,
     emitenUtama,
     loading,
+    accessRole,
+    isAdmin,
     isLoggedIn,
     login,
+    googleLogin,
     logout,
     fetchWatchlists,
     ensureWatchlist,
