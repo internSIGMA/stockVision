@@ -1,13 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
+import AccountSettingsModal from '@/components/AccountSettingsModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const market = useMarketStore()
+
 const menuOpen = ref(false)
+const settingsOpen = ref(false)
+
+const initials = computed(() => {
+  const name = auth.user?.name || auth.user?.username || 'User'
+  return name.charAt(0).toUpperCase()
+})
+
+function openSettings() {
+  menuOpen.value = false
+  settingsOpen.value = true
+}
 
 function logout() {
   auth.logout()
@@ -21,7 +34,7 @@ function logout() {
       <span class="mark">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#04211e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 4-6 5 4" /></svg>
       </span>
-      <span class="name">SahamScope</span>
+      <span class="name">SahamScope TEST</span>
     </RouterLink>
 
     <div class="right">
@@ -41,23 +54,89 @@ function logout() {
         <span class="badge-dot"></span>
       </button>
 
-      <div class="profile" @click="menuOpen = !menuOpen">
-        <img :src="auth.user?.avatar" :alt="auth.user?.name" />
-        <div class="who-inline">
-          <strong>{{ auth.user?.name }}</strong>
-          <span>{{ auth.user?.role }}</span>
-        </div>
-        <transition name="pop">
-          <div v-if="menuOpen" class="dropdown" @click.stop>
-            <div class="who">
-              <strong>{{ auth.user?.name }}</strong>
-              <span>{{ auth.user?.email }}</span>
-            </div>
-            <button @click="logout">Keluar</button>
-          </div>
-        </transition>
-      </div>
+    <div class="profile-wrapper">
+  <button
+    type="button"
+    class="profile"
+    @click.stop="menuOpen = !menuOpen"
+  >
+    <img
+      v-if="auth.user?.avatar"
+      :src="auth.user.avatar"
+      :alt="auth.user?.name || 'Foto profil'"
+    />
+
+    <span v-else class="avatar-placeholder">
+      {{ initials }}
+    </span>
+
+    <div class="who-inline">
+      <strong>
+        {{ auth.user?.name || auth.user?.username || 'User' }}
+      </strong>
+
+      <span>
+        {{ auth.user?.defaultTicker || 'BBCA' }}
+      </span>
     </div>
+
+    <span
+      class="profile-arrow"
+      :class="{ rotate: menuOpen }"
+    >
+      ▾
+    </span>
+  </button>
+
+  <transition name="pop">
+    <div
+      v-if="menuOpen"
+      class="dropdown"
+      @click.stop
+    >
+      <div class="who">
+        <strong>
+          {{ auth.user?.name || auth.user?.username || 'User' }}
+        </strong>
+
+        <span>
+          {{ auth.user?.email || 'Email belum tersedia' }}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="manage-button"
+        @click="openSettings"
+      >
+        <span>⚙</span>
+
+        <div>
+          <strong>Kelola akun</strong>
+          <small>Profil dan pengaturan user</small>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="logout-button"
+        @click="logout"
+      >
+        <span>↪</span>
+
+        <div>
+          <strong>Keluar</strong>
+          <small>Keluar dari StockVision</small>
+        </div>
+      </button>
+    </div>
+  </transition>
+</div>
+    </div>
+    <AccountSettingsModal
+  :open="settingsOpen"
+  @close="settingsOpen = false"
+/>
   </header>
 </template>
 

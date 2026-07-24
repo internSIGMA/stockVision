@@ -42,9 +42,10 @@ def get_historical_ohlc():
     to_date = request.args.get("to")
     
     query = """
-        SELECT symbol, tanggal, open, high, low, close, volume
-        FROM idxsaham.ohlc_forecasting
-        WHERE symbol = %s
+        SELECT f.symbol, f.tanggal, f.open, f.high, f.low, f.close, f.volume, s.foreign_buy, s.foreign_sell, s.foreign_flow
+        FROM idxsaham.ohlc_forecasting f
+        LEFT JOIN idxsaham.stock_ohlc s ON f.symbol = s.symbol AND f.tanggal = s.tanggal
+        WHERE f.symbol = %s
     """
     params = [symbol]
     
@@ -75,9 +76,9 @@ def get_historical_ohlc():
                 "low": decimal_to_float(r[4]),
                 "close": decimal_to_float(r[5]),
                 "volume": r[6],
-                "foreign_buy": None,
-                "foreign_sell": None,
-                "foreign_flow": None
+                "foreign_buy": decimal_to_float(r[7]),
+                "foreign_sell": decimal_to_float(r[8]),
+                "foreign_flow": decimal_to_float(r[9])
             })
         return jsonify(result)
     except Exception as e:
@@ -242,7 +243,6 @@ def get_majorholder_data():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 # ============================================================
 # ENDPOINT: GET FORECAST DATA
 # ============================================================

@@ -23,6 +23,9 @@ app.register_blueprint(data_bp)
 from user import user_bp
 app.register_blueprint(user_bp)
 
+from prescriptive.routes import prescriptive_bp
+app.register_blueprint(prescriptive_bp)
+
 from scheduler import (
     start_scheduler, stop_scheduler, pause_scheduler,
     resume_scheduler, trigger_now, get_scheduler_status
@@ -396,6 +399,10 @@ def invalidate_token():
 
 
 def get_token():
+    env_token = os.getenv("STOCKBIT_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+
     with _token_cache["lock"]:
         if _token_cache["access_token"] is None and _token_cache["refresh_token"] is None:
             _load_token_cache_from_disk()
@@ -643,37 +650,7 @@ def broker_activity():
 
 @app.route("/stock-info", methods=["GET"])
 def stock_info():
-
-    symbols = [
-        "BBCA",
-        "BBNI",
-        "BBRI",
-        "BMRI",
-        "BJBR"
-    ]
-
-    try:
-        token = get_token()
-
-        total = 0
-
-        for symbol in symbols:
-
-            raw = fetch_stock_info(token, symbol)
-
-            data = parse_stock_info(raw)
-
-            insert_data_stock_info(data)
-
-            total += 1
-
-        return jsonify({
-            "message": f"{total} saham berhasil disimpan",
-            "symbols": symbols
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Manual crawling is disabled. Automated crawling is active via the Auto Scheduler."}), 403
 
 def insert_data_ohlc(data):
     # Pastikan tabelnya memiliki struktur yang sesuai dengan data baru
@@ -998,8 +975,6 @@ def update_token():
     except Exception as e:
         print("[Token Updater] Error updating token:", e)
         return jsonify({"error": str(e)}), 500
-
-
 if __name__ == "__main__":
     # Auto-start scheduler saat app boot
     # Di Flask debug mode, reloader menjalankan server dua kali.

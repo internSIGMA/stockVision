@@ -1,33 +1,34 @@
-import { ref, onBeforeUnmount } from 'vue';
+import { onUnmounted, unref, watch } from 'vue'
 
 /**
- * Runs `callback` on an interval. Used for things like Crawl Logs
- * auto-refresh or the Auto Scheduler's live clock.
+ * Jalankan fetchFn setiap intervalMs selama `enabled` bernilai true.
  *
- *   const { active, start, stop, toggle } = useAutoRefresh(reload, 30000)
+ * @param {Function} fetchFn   fungsi yang dipanggil tiap tick
+ * @param {number}   intervalMs jeda antar pemanggilan
+ * @param {import('vue').Ref<boolean>} enabled saklar on/off
  */
-export function useAutoRefresh(callback, intervalMs = 30000, { immediate = false } = {}) {
-  const active = ref(false);
-  let handle = null;
-
-  function start() {
-    if (active.value) return;
-    active.value = true;
-    if (immediate) callback();
-    handle = setInterval(callback, intervalMs);
-  }
+export function useAutoRefresh(fetchFn, intervalMs, enabled) {
+  let timer = null
 
   function stop() {
-    active.value = false;
-    if (handle) clearInterval(handle);
-    handle = null;
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
   }
 
-  function toggle() {
-    active.value ? stop() : start();
+  function start() {
+    stop()
+    timer = setInterval(() => fetchFn(), intervalMs)
   }
 
-  onBeforeUnmount(stop);
+  watch(
+    () => unref(enabled),
+    (on) => (on ? start() : stop()),
+    { immediate: true },
+  )
 
-  return { active, start, stop, toggle };
+  onUnmounted(stop)
+
+  return { start, stop }
 }

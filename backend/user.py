@@ -14,7 +14,6 @@ from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 
-
 load_dotenv(find_dotenv(), override=True)
 
 # In-memory stores for password reset mechanism
@@ -824,8 +823,6 @@ def google_login_route():
             "role": new_row[4],
             "default_ticker": new_row[5]
         }), 201
-
-
 @user_bp.route("/test-ui")
 def test_ui():
     return render_template("test_ui.html")

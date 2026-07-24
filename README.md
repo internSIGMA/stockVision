@@ -1,151 +1,185 @@
-# StockVision - SahamAI 📈
+# StockVision 📈
 
-SahamAI adalah bagian dari ekosistem **StockVision**, sebuah backend service berbasis **Flask (Python)** dan database **PostgreSQL** yang dirancang untuk melakukan scraping, pemrosesan data, dan penyediaan API analisis aktivitas broker saham di Bursa Efek Indonesia (IDX).
-
-Aplikasi ini mengintegrasikan data dari Stockbit dan RTI untuk merekam data perdagangan, kalender transaksi, data broker, transaksi insider, dan antrian bid/offer saham harian.
+Dashboard pasar saham Indonesia (IDX). Backend **Flask + PostgreSQL** melakukan crawling dan menyediakan API; frontend **Vue 3 + Vite** menampilkannya sebagai satu halaman *stream* yang panjang.
 
 ---
 
-## 🛠️ Tech Stack & Prasyarat
-Sebelum memulai, pastikan lingkungan pengembangan Anda memiliki:
-- **Python 3.10+**
-- **PostgreSQL 14+**
-- **pip** (Python package installer)
-- **Google Chrome** (untuk Selenium pada scripts tertentu)
+## Tech Stack
+
+**Backend** — Flask 3, psycopg2 (PostgreSQL), SQLite (watchlist), APScheduler-style worker manual, python-dotenv
+**Frontend** — Vue 3, Vite 6, Pinia, Vue Router, Tailwind CSS v4, shadcn-vue (reka-ui), Chart.js, lightweight-charts, Lenis, vue-sonner
+
+Font: **Archivo** (heading/UI) dan **Spline Sans Mono** (semua angka & data tabular).
 
 ---
 
-## 📂 Struktur Proyek
-```text
-stockVision/
-├── .gitignore               # Daftar file/folder yang dikecualikan dari Git (env, venv, cache)
-├── README.md                # Dokumentasi utama proyek (file ini)
-├── SOP_GITHUB.md            # Panduan Standar Operasional Prosedur (SOP) Git & GitHub
-├── frontend/                # === APLIKASI FRONTEND (VUE / VITE) ===
-│   ├── src/                 # Kode sumber Vue (views, components, stores)
-│   ├── public/              # Aset statis frontend
-│   ├── package.json         # Dependencies Node.js
-│   ├── vite.config.js       # Konfigurasi build Vite
-│   └── index.html           # Entrypoint HTML
-└── backend/                 # === APLIKASI BACKEND (PYTHON / FLASK) ===
-    ├── app.py               # Endpoint API utama Flask & worker
-    ├── db/                  # Modul database PostgreSQL
-    │   ├── database.sql     # Skema DDL Database
-    │   └── trading_date.py  # Script generator kalender trading bursa
-    ├── scrapers/            # Script scraper & data gathering
-    │   ├── bid_offer.py     # Scraper Bid/Offer saham dari RTI
-    │   ├── idx_stock.py     # Script pengolahan & export data IDX ke Excel
-    │   └── stock.py         # Script Selenium untuk bypass login cookie Stockbit
-    └── utils/               # Helper & logik bantuan
-        ├── helo.py          # Script testing sederhana
-        └── url              # Daftar URL API referensi
-```
+## Prasyarat
+
+- **Python 3.11+**
+- **Node.js 20+**
+- Akses ke database PostgreSQL StockVision (kredensial ada di `.env`, lihat di bawah)
 
 ---
 
-## 🚀 Setup & Instalasi Lokal
+## Setup
 
-### 1. Kloning Repositori
-```bash
-git clone https://github.com/internSIGMA/stockVision.git
-cd stockVision
-```
+### 1. Konfigurasi environment
 
-### 2. Buat Virtual Environment & Aktifkan
-Sangat disarankan menggunakan virtual environment agar dependencies tidak bentrok dengan library global sistem Anda.
+Buat file `.env` di root proyek (file ini **tidak** ikut di-commit — lihat `.gitignore`):
 
-*   **Windows (PowerShell/CMD):**
-    ```powershell
-    python -m venv venv
-    .\venv\Scripts\activate
-    ```
-*   **macOS / Linux:**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-
-### 3. Instal Dependencies
-Instal semua modul yang diperlukan:
-```bash
-pip install flask requests psycopg2 pandas openpyxl selenium webdriver-manager beautifulsoup4 python-dotenv
-```
-
-### 4. Setup Database PostgreSQL
-1. Buat database baru di PostgreSQL Anda (misalnya dengan nama `stockVision`).
-2. Jalankan query SQL yang ada di dalam file [database.sql](file:///c:/Project/stockVision/stockVision/SahamAI/SahamAI/database.sql) pada database tersebut untuk membuat schema `idxsaham` beserta table dan index yang diperlukan.
-
-### 5. Konfigurasi Variabel Lingkungan (`.env`)
-**⚠️ PERINGATAN KEAMANAN:** Jangan pernah melakukan hardcode password/credentials ke dalam file Python (`app.py` atau `idx_stock.py`). 
-
-Buat file `.env` di dalam folder `SahamAI/SahamAI/` dengan format berikut:
 ```env
-# Database Configuration
-DB_HOST=localhost
+# Database
+DB_HOST=<host-postgres>
 DB_PORT=5432
 DB_NAME=stockVision
-DB_USER=postgres
-DB_PASSWORD=PasswordDatabaseAnda
+DB_USER=<user>
+DB_PASSWORD=<password>
 
-# Stockbit Credentials
-STOCKBIT_USERNAME=UsernameStockbitAnda
-STOCKBIT_PASSWORD=PasswordStockbitAnda
-STOCKBIT_PLAYER_ID=PlayerIdStockbitAnda
+# Kredensial Stockbit (untuk crawler)
+STOCKBIT_USERNAME=<username>
+STOCKBIT_PASSWORD=<password>
+STOCKBIT_PLAYER_ID=<player-id>
 ```
 
-Kemudian, di dalam file python, muat variabel tersebut menggunakan `python-dotenv`:
-```python
-import os
-from dotenv import load_dotenv
+### 2. Backend (port 8080)
 
-load_dotenv()
+```bash
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # macOS / Linux
 
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST"),
-    "database": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "port": int(os.getenv("DB_PORT", 5432)),
-}
+pip install -r backend/requirements.txt
+
+cd backend
+python app.py
 ```
 
----
+Backend jalan di `http://localhost:8080`. Saat start pertama, tabel `idxsaham.users` dibuat otomatis lengkap dengan akun demo.
 
-## 🏃 Menjalankan Aplikasi
+### 3. Frontend (port 5173)
 
-### 💻 1. Menjalankan Server Flask (Backend)
-Aktifkan virtual environment dan jalankan file `app.py` di dalam folder `backend`:
-
-*   **Windows (PowerShell):**
-    ```powershell
-    .\venv\Scripts\python backend/app.py
-    ```
-*   **macOS / Linux:**
-    ```bash
-    ./venv/bin/python backend/app.py
-    ```
-Secara default, API server akan berjalan di `http://127.0.0.1:8080/`.
-
-### 🖥️ 2. Menjalankan Vue/Vite (Frontend)
-Jalankan dev server dari dalam folder `frontend`:
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
-Secara default, frontend akan berjalan di `http://localhost:5173/`.
 
-### 🗄️ 3. Menjalankan Scripts Pendukung (Database / Scrapers)
-Jalankan script pendukung menggunakan interpreter virtual environment:
-*   **Mengisi Kalender Trading:**
-    ```bash
-    .\venv\Scripts\python backend/db/trading_date.py
-    ```
-*   **Mengekstrak Data IDX ke Excel:**
-    ```bash
-    .\venv\Scripts\python backend/scrapers/idx_stock.py
-    ```
+Frontend jalan di `http://localhost:5173` dan menembak backend lewat `VITE_API_URL` (lihat `frontend/.env`, default `http://localhost:8080`).
+
+Build produksi: `npm run build`.
 
 ---
 
-## 🛡️ Standar Operasional Prosedur (SOP) GitHub
-Pastikan Anda membaca dan mematuhi panduan di [SOP_GITHUB.md](file:///c:/Project/stockVision/stockVision/SOP_GITHUB.md) sebelum melakukan commit dan push kode Anda ke GitHub untuk menghindari kebocoran kredensial dan menjaga kualitas kode tim.
+## Akun demo
+
+Disemai otomatis oleh backend ke tabel `idxsaham.users`:
+
+| Email | Password | Watchlist |
+|---|---|---|
+| `fariz@sahamscope.id` | `password123` | BBCA · BMRI |
+| `dewi@sahamscope.id` | `password123` | BBNI · BBCA · BBRI · BMRI |
+
+---
+
+## Emiten yang didukung
+
+Backend **menolak emiten di luar daftar ini dengan HTTP 400**:
+
+```
+BBCA · BBNI · BBRI · BMRI · BJBR
+```
+
+---
+
+## Struktur proyek
+
+```text
+stockVision/
+├── .env                      # kredensial — TIDAK di-commit
+├── backend/
+│   ├── app.py                # entrypoint Flask + worker crawler
+│   ├── data_routes.py        # /api/data/* — baca dari PostgreSQL
+│   ├── user.py               # user, watchlist, login, reset password
+│   ├── scheduler.py          # penjadwal crawling otomatis
+│   ├── db/database.sql       # skema DDL
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── api/              # kontrak API (StockVision.js) + instance axios
+    │   ├── components/
+    │   │   ├── charts/       # CandlestickChart, ForeignFlowChart, ForecastChart
+    │   │   ├── stream/       # kartu-kartu penyusun halaman Stream
+    │   │   └── ui/           # shadcn-vue + StatCard, EmptyState, StatusPill
+    │   ├── composables/      # useEmitenData, useForecastData, useAuthReset, …
+    │   ├── pages/            # StreamPage, LoginPage, ForgotPasswordPage, …
+    │   ├── stores/           # Pinia: auth, market
+    │   └── utils/            # format, technicalIndicators, export
+    └── vite.config.js
+```
+
+---
+
+## API
+
+### Data pasar (baca dari PostgreSQL)
+
+| Endpoint | Keterangan |
+|---|---|
+| `GET /api/data/stock-info?symbol=` | Snapshot harga terakhir |
+| `GET /api/data/ohlc?symbol=` | Histori OHLC + foreign flow (urut tanggal ASC) |
+| `GET /api/data/majorholder?symbol=` | Transaksi insider |
+| `GET /api/data/broker-activity?symbol=` | Aktivitas broker |
+
+### Crawl (menembak Stockbit, lalu simpan ke DB)
+
+`GET /stock-info` · `GET /ohlc` · `GET /majorholder` · `GET /broker-activity` · `GET /crawl-status`
+
+> Endpoint crawl memakai **GET**, bukan POST, dan bisa memakan waktu lama.
+
+### Scheduler
+
+`GET /scheduler/status` · `POST /scheduler/{start,stop,pause,resume,trigger}`
+
+### User & watchlist
+
+| Endpoint | Keterangan |
+|---|---|
+| `POST /users/login` | `{ email, password }` |
+| `GET /users/{id}/watchlists` | Daftar watchlist |
+| `POST /users/{id}/watchlists` | Buat watchlist |
+| `PUT /users/{id}/watchlists/{wid}` | Ubah watchlist |
+| `PUT /users/{id}` | Ubah user (mis. `default_ticker`) |
+
+### Reset password
+
+Alur tiga langkah, kode berlaku **5 menit**:
+
+| Endpoint | Payload | Balasan |
+|---|---|---|
+| `POST /users/reset-password/send-code` | `{ email }` | `{ message, simulated, debug_code? }` |
+| `POST /users/reset-password/verify-code` | `{ email, code }` | `{ message, token }` |
+| `POST /users/reset-password/reset` | `{ token, password }` | `{ message }` |
+
+Kode verifikasi = **6 karakter alfanumerik huruf besar**. Password baru minimal **6 karakter**.
+
+---
+
+## Fitur frontend
+
+- **Stream** — satu halaman scroll: trending, watchlist, statistik harga, candlestick, forecasting, foreign flow, ringkasan teknikal, insider, dan histori.
+- **Crawl Logs** — riwayat eksekusi crawler.
+- **Auto Scheduler** — kendali penjadwal crawling.
+- **Login + Reset Password** — alur 3 langkah (email → kode → password baru).
+- **Dark mode** dan **smooth scroll** (Lenis, otomatis nonaktif bila pengguna meminta *reduced motion*).
+
+---
+
+## Catatan & keterbatasan
+
+Dua hal yang perlu diketahui sebelum menilai tampilan aplikasi:
+
+**1. Endpoint forecasting belum ada.** Backend belum menyediakan `/api/data/forecast`. Selama itu 404, kartu *Forecasting* di Stream menampilkan **data placeholder** — ditandai jelas dengan banner *"Data contoh"*, dan kolom Model berbunyi `Placeholder`. Angka-angkanya **bukan proyeksi sungguhan** dan tidak boleh dipakai sebagai dasar keputusan. Titik sambungnya ada di `frontend/src/composables/useForecastData.js`; begitu backend siap, cukup arahkan `getForecast()` ke path yang benar.
+
+**2. SMTP belum dikonfigurasi.** Endpoint `send-code` membalas `simulated: true` dan menitipkan kodenya lewat `debug_code`, supaya alur reset password tetap bisa diuji tanpa email sungguhan. Halaman reset menampilkan kode itu di banner *"Mode simulasi"*. Banner tersebut hilang sendiri begitu SMTP aktif.
+
+Kode reset disimpan **di memori proses Flask**, jadi me-restart backend akan membatalkan semua kode yang sedang beredar.
