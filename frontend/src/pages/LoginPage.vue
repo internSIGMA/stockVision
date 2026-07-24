@@ -1,11 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useGoogleSignIn } from '@/composables/useGoogleSignIn'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -16,30 +13,6 @@ const email = ref(route.query.email || '')
 const password = ref('')
 const remember = ref(true)
 const error = ref('')
-const demoLoading = ref(null)
-
-// Akun yang disemai backend di tabel idxsaham.users.
-// Subtitle = watchlist nyata dari DB SETELAH disaring ke emiten yang didukung
-// backend (GOTO, ASII, TLKM, ANTM, PTBA ditolak dengan HTTP 400).
-const AKUN_DEMO = [
-  {
-    id: 'fariz',
-    nama: 'Fariz',
-    email: 'fariz@sahamscope.id',
-    password: 'password123',
-    watchlist: 'BBCA · BMRI',
-  },
-  {
-    id: 'dewi',
-    nama: 'Dewi',
-    email: 'dewi@sahamscope.id',
-    password: 'password123',
-    watchlist: 'BBNI · BBCA · BBRI · BMRI',
-  },
-]
-
-// Tinggi batang grafik preview — ilustrasi statis, bukan data pasar sungguhan.
-const BATANG_PREVIEW = [38, 52, 45, 64, 58, 76, 68, 88]
 
 function lanjut() {
   router.push(route.query.redirect || '/stream')
@@ -60,145 +33,225 @@ async function onSubmit() {
   }
 }
 
-async function loginDemo(akun) {
+const { siap: googleSiap, error: googleError, pasang } = useGoogleSignIn(async (credential) => {
   error.value = ''
-  demoLoading.value = akun.id
   try {
-    await auth.login(akun.email, akun.password)
+    await auth.loginWithGoogle(credential)
     lanjut()
   } catch (err) {
     error.value = pesanError(err)
-  } finally {
-    demoLoading.value = null
   }
+})
+
+const wadahGoogle = ref(null)
+
+onMounted(() => pasang(wadahGoogle.value, wadahGoogle.value?.offsetWidth))
+
+/** Klik hanya sampai ke sini kalau tombol asli Google gagal dipasang. */
+function googleTidakSiap() {
+  error.value = googleError.value || 'Google Sign-In belum siap, coba beberapa saat lagi.'
+}
+
+// ---- Ilustrasi grafik di panel kiri (statis, bukan data pasar sungguhan) ----
+
+const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const SERI_HARGA = [6, 14, 22, 20, 30, 27, 40, 52, 48, 66, 80, 95]
+const SERI_RATA = [5, 9, 13, 17, 21, 24, 27, 31, 34, 37, 40, 44]
+
+const LEBAR = 340
+const ATAS = 8
+const BAWAH = 104
+const SISI = 6
+
+/** Nilai 0–100 dipetakan ke koordinat SVG, sumbu Y dibalik. */
+function titik(seri) {
+  const jarak = (LEBAR - SISI * 2) / (seri.length - 1)
+  return seri
+    .map((v, i) => {
+      const x = SISI + i * jarak
+      const y = BAWAH - (v / 100) * (BAWAH - ATAS)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
 }
 </script>
 
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex min-h-screen bg-[#1c1c1c]">
     <!-- KIRI — preview aplikasi (disembunyikan di mobile) -->
     <section
-      class="hidden w-1/2 flex-col justify-between bg-primary p-12 text-primary-foreground md:flex"
+      class="hidden w-1/2 flex-col justify-center gap-12 bg-[#e9e9e9] px-14 py-12 text-[#171717] md:flex"
     >
       <header>
-        <p class="text-[20px] font-medium">◆ StockVision</p>
-        <p class="mt-1 text-[13px] opacity-70">Dashboard Pasar Saham Indonesia</p>
+        <p class="text-[15px] font-semibold">◆StockVision</p>
+        <p class="tabular mt-1 text-[11px] text-[#171717]/45">Dashboard Pasar Saham Indonesia</p>
       </header>
 
-      <div class="rounded-xl bg-white/10 p-5">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl font-bold">BBCA</span>
-          <span class="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide">
-            IDX
-          </span>
+      <div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-[22px] font-bold tracking-tight">BBCA</span>
+          <span class="tabular text-[10px] uppercase text-[#171717]/40">IDX</span>
         </div>
 
-        <p class="tabular mt-3 text-[32px] font-bold leading-none">9.875</p>
-        <p class="tabular mt-1.5 text-[13px] font-medium text-[#4ade80]">+125 (+1,28%)</p>
+        <p class="tabular mt-2 text-[40px] font-bold leading-none tracking-[0.06em]">9.875</p>
+        <p class="tabular mt-2 text-[13px] font-medium text-[#16a34a]">+125 (+1,28)</p>
 
-        <div class="mt-5 flex h-16 items-end gap-1.5" aria-hidden="true">
-          <div
-            v-for="(tinggi, i) in BATANG_PREVIEW"
-            :key="i"
-            class="flex-1 rounded-sm bg-current"
-            :style="{ height: `${tinggi}%`, opacity: 0.25 + i * 0.075 }"
-          ></div>
-        </div>
-
-        <div class="mt-4 flex gap-1">
-          <span
-            v-for="(tf, i) in ['1D', '1W', '1M', '3M']"
-            :key="tf"
-            class="tabular rounded px-2 py-1 text-[11px]"
-            :class="i === 0 ? 'bg-white/20 font-medium' : 'opacity-50'"
+        <!-- Ilustrasi: garis harga (biru) di atas garis rata-rata (hijau). -->
+        <figure class="mt-8" aria-label="Ilustrasi pergerakan harga sepanjang tahun">
+          <svg
+            :viewBox="`0 0 ${LEBAR} 112`"
+            class="h-[120px] w-full"
+            fill="none"
+            preserveAspectRatio="none"
+            aria-hidden="true"
           >
-            {{ tf }}
-          </span>
-        </div>
+            <polyline
+              :points="titik(SERI_HARGA)"
+              stroke="#3b6fd4"
+              stroke-width="1.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
+            <polyline
+              :points="titik(SERI_RATA)"
+              stroke="#1f8a4c"
+              stroke-width="1.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+
+          <div class="h-px w-full bg-[#171717]/25"></div>
+
+          <figcaption class="tabular mt-2 flex justify-between text-[9px] text-[#171717]/45">
+            <span v-for="bulan in BULAN" :key="bulan">{{ bulan }}</span>
+          </figcaption>
+        </figure>
       </div>
 
-      <p class="max-w-md text-[13px] leading-relaxed opacity-70">
-        Pantau data OHLC, foreign flow, insider transaction, dan jalankan crawling data saham
+      <p class="max-w-md text-[12px] leading-relaxed text-[#171717]/50">
+        Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan crawling data saham
         Indonesia secara real-time.
       </p>
     </section>
 
     <!-- KANAN — form login -->
-    <section class="flex w-full flex-col justify-center bg-background p-12 md:w-1/2">
-      <div class="mx-auto w-full max-w-sm">
-        <h1 class="text-[22px] font-medium">Masuk ke StockVision</h1>
-        <p class="mt-1 text-[13px] text-muted-foreground">
-          Gunakan akun demo di bawah untuk mencoba
-        </p>
+    <section class="flex w-full items-center justify-center px-6 py-12 md:w-1/2">
+      <div class="w-full max-w-[320px]">
+        <h1 class="text-[24px] font-semibold text-white">Masuk ke StockVision</h1>
+        <p class="mt-1 text-[11px] text-white/40">Gunakan akun demo untuk mencoba</p>
 
-        <form class="mt-8 flex flex-col gap-4" @submit.prevent="onSubmit">
+        <form class="mt-9 flex flex-col gap-4" @submit.prevent="onSubmit">
           <div class="space-y-2">
-            <Label for="email">Email</Label>
-            <Input
+            <label for="email" class="block text-[12px] font-medium text-white/85">Email</label>
+            <input
               id="email"
               v-model="email"
               type="email"
               autocomplete="email"
               placeholder="email@contoh.com"
               required
+              class="h-10 w-full rounded-md border border-white/10 bg-[#2b2b2b] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/30"
             />
           </div>
 
           <div class="space-y-2">
-            <Label for="password">Password</Label>
-            <Input
+            <label for="password" class="block text-[12px] font-medium text-white/85">
+              Password
+            </label>
+            <input
               id="password"
               v-model="password"
               type="password"
               autocomplete="current-password"
               placeholder="••••••••"
               required
+              class="h-10 w-full rounded-md border border-white/10 bg-[#2b2b2b] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/30"
             />
           </div>
 
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <Checkbox id="remember" v-model="remember" />
-              <Label for="remember" class="text-[12px] font-normal">Ingat saya</Label>
-            </div>
+            <label class="flex cursor-pointer items-center gap-2 text-[12px] text-white/70">
+              <input
+                v-model="remember"
+                type="checkbox"
+                class="size-3.5 cursor-pointer accent-white"
+              />
+              ingat saya
+            </label>
+
             <RouterLink
               to="/forgot-password"
-              class="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+              class="text-[12px] text-white/40 transition-colors hover:text-white/80"
             >
-              Lupa password?
+              Lupa Password?
             </RouterLink>
           </div>
 
-          <p v-if="error" role="alert" class="text-down text-[12px]">{{ error }}</p>
+          <p v-if="error" role="alert" class="text-[12px] text-[#f87171]">{{ error }}</p>
 
-          <Button type="submit" class="w-full" :disabled="auth.loading">
-            {{ auth.loading && !demoLoading ? 'Memverifikasi...' : 'Masuk' }}
-          </Button>
+          <button
+            type="submit"
+            :disabled="auth.loading"
+            class="h-10 w-full rounded-md bg-white text-[13px] font-semibold text-[#171717] transition-colors hover:bg-white/90 disabled:opacity-60"
+          >
+            {{ auth.loading ? 'Memverifikasi...' : 'Masuk' }}
+          </button>
         </form>
 
-        <div class="my-6 flex items-center gap-3">
-          <span class="h-px flex-1 bg-border"></span>
-          <span class="text-[11px] text-muted-foreground">atau coba akun demo</span>
-          <span class="h-px flex-1 bg-border"></span>
+        <div class="my-7 flex items-center gap-3">
+          <span class="h-px flex-1 bg-white/12"></span>
+          <span class="text-[10px] font-medium tracking-[0.14em] text-white/35">
+            OR SIGN IN WITH
+          </span>
+          <span class="h-px flex-1 bg-white/12"></span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <Button
-            v-for="akun in AKUN_DEMO"
-            :key="akun.id"
-            variant="outline"
-            class="h-auto flex-col items-start gap-0.5 py-2.5"
+        <div class="relative">
+          <button
+            type="button"
             :disabled="auth.loading"
-            @click="loginDemo(akun)"
+            class="flex h-10 w-full items-center justify-center gap-2.5 rounded-md bg-white text-[13px] font-medium text-[#171717] transition-colors hover:bg-white/90 disabled:opacity-60"
+            @click="googleTidakSiap"
           >
-            <span class="text-[13px] font-medium">
-              {{ demoLoading === akun.id ? 'Masuk...' : `Login sebagai ${akun.nama}` }}
-            </span>
-            <span class="tabular text-[10px] font-normal text-muted-foreground">
-              {{ akun.watchlist }}
-            </span>
-          </Button>
+            <svg class="size-[18px]" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            Login With Google
+          </button>
+
+          <!-- Tombol asli Google ditumpuk transparan di atas tombol bergaya kita:
+               popup-nya hanya boleh dibuka dari elemen milik Google sendiri. -->
+          <div
+            ref="wadahGoogle"
+            class="absolute inset-0 overflow-hidden opacity-0 [&>div]:!w-full"
+            :class="googleSiap ? '' : 'pointer-events-none'"
+          ></div>
         </div>
+
+        <p class="mt-7 text-center text-[12px] text-white/40">
+          Belum punya akun?
+          <RouterLink to="/register" class="text-white/80 transition-colors hover:text-white">
+            Daftar
+          </RouterLink>
+        </p>
       </div>
     </section>
   </div>

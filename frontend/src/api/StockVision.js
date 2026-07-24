@@ -91,52 +91,32 @@ export function getBrokerActivity(ticker, params = {}) {
  * → { symbol, model, horizon, confidence, trend,
  *     predictions: [{ tanggal, prediksi, lower, upper }] }
  */
-export function getForecast(ticker, params = {}) {
-  return api.get('/api/data/forecast', { params: { symbol: ticker, ...params } })
+export function getForecast(symbol, days) {
+  // `days` ikut dikirim untuk berjaga-jaga, tapi handler backend sekarang hanya
+  // membaca `symbol` dan mengembalikan seluruh isi tabel stock_forecasting.
+  const params = { symbol }
+  if (days != null) params.days = days
+
+  return api.get('/api/data/forecast', { params })
 }
 
 // ============================================================
-// CRAWL (memicu crawler, lalu simpan ke DB)
+// TRIGGER CRAWL MANUAL
 // ============================================================
 
-export function crawlStockInfo(ticker) {
-  return api.get('/stock-info', { params: { symbol: ticker }, timeout: CRAWL_TIMEOUT })
-}
-
-export function crawlOhlc(ticker, params = {}) {
-  return api.get('/ohlc', { params: { symbol: ticker, ...params }, timeout: CRAWL_TIMEOUT })
-}
-
-/** Majorholder di-crawl per rentang tanggal untuk seluruh pasar, bukan per emiten. */
-export function crawlMajorholder(params = {}) {
-  return api.get('/majorholder', { params, timeout: CRAWL_TIMEOUT })
-}
-
-export function crawlBrokerActivity(params = {}) {
-  return api.get('/broker-activity', { params, timeout: CRAWL_TIMEOUT })
-}
-
-/** Crawl satu emiten: snapshot harga + histori OHLC. */
-export function triggerCrawl(ticker) {
-  return Promise.all([crawlStockInfo(ticker), crawlOhlc(ticker)])
-}
+/** Tipe crawl manual yang punya route di backend. */
+export const CRAWL_TYPES = ['stock-info', 'ohlc', 'broker-activity', 'majorholder']
 
 /**
- * Crawl banyak emiten. Dijalankan berurutan agar tidak membanjiri crawler,
- * dan tidak berhenti saat satu emiten gagal.
- * → [{ ticker, ok, error }]
+ * Memicu crawl manual satu tipe: GET /{type}, bukan POST.
+ *
+ * PERINGATAN: keempat route ini (plus /orderbook/batch) sekarang dimatikan
+ * backend — semuanya membalas HTTP 403 "Manual crawling is disabled", jadi
+ * pemanggilnya SELALU gagal sampai backend membukanya kembali. Jalur crawl
+ * yang masih hidup adalah triggerSchedulerNow() lewat /scheduler/trigger.
  */
-export async function triggerCrawlAll(tickers = SUPPORTED_TICKERS) {
-  const results = []
-  for (const ticker of tickers) {
-    try {
-      await triggerCrawl(ticker)
-      results.push({ ticker, ok: true, error: null })
-    } catch (err) {
-      results.push({ ticker, ok: false, error: err.message })
-    }
-  }
-  return results
+export function triggerCrawl(type, params = {}) {
+  return api.get(`/${type}`, { params, timeout: CRAWL_TIMEOUT })
 }
 
 /**
@@ -187,8 +167,39 @@ export function toggleScheduler(enabled) {
   return enabled ? startScheduler() : stopScheduler()
 }
 
-export function triggerSchedulerManual() {
+export function triggerSchedulerNow() {
   return api.post('/scheduler/trigger', null, { timeout: CRAWL_TIMEOUT })
+}
+
+// ============================================================
+// STATUS BACKEND & TOKEN STOCKBIT
+// ============================================================
+
+/**
+ * Denyut nadi backend sekaligus kondisi token Stockbit yang dipakai crawler.
+ * → { status: 'ok', token_status: 'valid' | 'expired' | 'no_token',
+ *     token_expires_in: '3j 12m' | null }
+ */
+export function getHealth() {
+  return api.get('/health')
+}
+
+/**
+ * Login ulang ke Stockbit memakai kredensial di .env backend, lalu menyimpan
+ * token baru di cache. Menembak layanan eksternal, jadi bisa lama.
+ * → { message, token_expires_in } | 500
+ */
+export function refreshStockbitToken() {
+  return api.get('/auth/login', { timeout: CRAWL_TIMEOUT })
+}
+
+/**
+ * Menitipkan access token Stockbit hasil bookmarklet. Backend membaca klaim
+ * `exp` dari JWT-nya untuk menentukan masa berlaku.
+ * → { message, status } | 400 kalau token tidak diawali 'eyJhbGciOi'
+ */
+export function updateStockbitToken(token) {
+  return api.post('/api/update-token', { token })
 }
 
 // ============================================================
@@ -198,6 +209,16 @@ export function triggerSchedulerManual() {
 /** → { id, email, username, name, role, default_ticker } | 401 */
 export function loginUser(email, password) {
   return api.post('/users/login', { email, password })
+}
+
+/**
+ * Tukar ID token Google dengan sesi StockVision. Backend memverifikasi token
+ * ke oauth2.googleapis.com, lalu membuat user baru kalau emailnya belum ada.
+ * Bentuk balasannya sama persis dengan /users/login.
+ * → { id, email, username, name, role, default_ticker } | 400
+ */
+export function googleLogin(idToken) {
+  return api.post('/users/google-login', { id_token: idToken })
 }
 
 // ------------------------------------------------------------
@@ -229,9 +250,68 @@ export function resetPassword({ token, password }) {
   return api.post('/users/reset-password/reset', { token, password })
 }
 
+/**
+ * Daftarkan akun baru. `email`, `username`, dan `password` wajib; sisanya opsional.
+ * → { id, email, username, name, role, default_ticker } (201)
+ *
+ * Catatan: backend melempar ValueError tanpa penangan, jadi field wajib yang
+ * kosong keluar sebagai HTTP 500 — bukan 400. Validasi di form yang menjaganya.
+ */
+export function registerUser(payload) {
+  return api.post('/users', payload)
+}
+
+/** → [{ id, email, username, name, role, default_ticker }] — tanpa filter role. */
+export function getUsers() {
+  return api.get('/users')
+}
+
+/** → { id, email, username, name, role, default_ticker } | 404 */
+export function getProfile(userId) {
+  return api.get(`/users/${userId}`)
+}
+
+/** Menghapus akun beserta watchlist-nya. → { id, deleted: true } | 404 */
+export function deleteUser(userId) {
+  return api.delete(`/users/${userId}`)
+}
+
 /** → [{ id, name, symbols: [...] }] */
 export function getWatchlists(userId) {
   return api.get(`/users/${userId}/watchlists`)
+}
+
+/** Satu watchlist beserta simbolnya. → { id, name, symbols: [...] } | 404 */
+export function getWatchlist(userId, watchlistId) {
+  return api.get(`/users/${userId}/watchlists/${watchlistId}`)
+}
+
+// ------------------------------------------------------------
+// FAVORIT
+//
+// Backend TIDAK punya route /users/{id}/favorites — dites langsung, balasannya
+// HTTP 404. Padanan yang benar-benar ada adalah watchlist, jadi kedua fungsi
+// di bawah memetakan "favorit" ke simbol milik watchlist pertama user.
+// ------------------------------------------------------------
+
+/** → ['BBCA', 'BBRI', ...] — kosong kalau user belum punya watchlist. */
+export async function getFavorites(userId) {
+  const list = await getWatchlists(userId)
+  return list?.[0]?.symbols ?? []
+}
+
+/**
+ * Menimpa daftar favorit. Watchlist dibuatkan lebih dulu kalau user belum
+ * punya satu pun, karena PUT butuh id yang sudah ada.
+ * → { id, name, symbols: [...] }
+ */
+export async function updateFavorites(userId, favorites) {
+  const list = await getWatchlists(userId)
+  const target = list?.[0]
+
+  return target
+    ? updateWatchlist(userId, target.id, { symbols: favorites })
+    : createWatchlist(userId, { name: 'Watchlist Saya', symbols: favorites })
 }
 
 export function updateWatchlist(userId, watchlistId, payload) {

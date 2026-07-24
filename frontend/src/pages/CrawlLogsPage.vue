@@ -4,12 +4,9 @@ import { ClipboardList, RefreshCw } from '@lucide/vue'
 import { getCrawlLogs, SUPPORTED_TICKERS } from '@/api/StockVision'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { formatNumber } from '@/utils/format'
-import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -105,8 +102,6 @@ function target(log) {
 
 <template>
   <div class="flex flex-col gap-4 p-4">
-    <TrendingStocksStrip />
-
     <section class="rounded-lg border-[0.5px] border-border bg-card">
       <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-3">
         <div class="flex items-center gap-2">
@@ -120,11 +115,6 @@ function target(log) {
         </div>
 
         <div class="ml-auto flex items-center gap-3">
-          <div class="flex items-center gap-1.5">
-            <Switch id="auto-refresh" v-model="autoRefresh" />
-            <Label for="auto-refresh" class="text-[11px] text-muted-foreground">Auto 5s</Label>
-          </div>
-
           <Button variant="outline" size="sm" :disabled="memuatUlang" @click="muat({ manual: true })">
             <RefreshCw class="size-3.5" :class="{ 'animate-spin': memuatUlang }" />
             Refresh Logs

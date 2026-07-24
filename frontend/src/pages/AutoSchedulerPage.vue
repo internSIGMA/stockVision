@@ -1,19 +1,10 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import {
-  CalendarClock,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  RefreshCw,
-  Target,
-  Timer,
-  Zap,
-} from '@lucide/vue'
+import { CalendarClock, Clock, Loader2, RefreshCw, Target, Zap } from '@lucide/vue'
 import {
   getSchedulerStatus,
   toggleScheduler,
-  triggerSchedulerManual,
+  triggerSchedulerNow,
 } from '@/api/StockVision'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useNotify } from '@/composables/useNotify'
@@ -104,7 +95,7 @@ async function picuManual() {
 
   memicu.value = true
   try {
-    await triggerSchedulerManual()
+    await triggerSchedulerNow()
     notify.success('Crawl manual selesai')
     await muat()
   } catch (err) {
@@ -161,8 +152,8 @@ function nilai(row, ...keys) {
     </EmptyState>
 
     <template v-else>
-      <!-- 4 stat card -->
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <!-- 3 stat card -->
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <!-- Status + Start/Stop -->
         <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
           <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
@@ -177,7 +168,7 @@ function nilai(row, ...keys) {
           </p>
 
           <Button
-            :variant="berjalan ? 'outline' : 'default'"
+            :variant="berjalan ? 'destructive' : 'default'"
             size="sm"
             class="mt-3 w-full"
             :disabled="mengubah"
@@ -187,30 +178,29 @@ function nilai(row, ...keys) {
           </Button>
         </div>
 
-        <!-- Hari trading -->
+        <!-- Sesi bursa: hari trading + status buka/tutup + jam & waktu berjalan -->
         <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Hari Trading</p>
-          <p
-            class="mt-1.5 text-[19px] font-semibold leading-none"
-            :class="hariTrading ? 'text-up' : 'text-muted-foreground'"
-          >
-            {{ hariTrading ? 'YA' : 'TIDAK' }}
-          </p>
-          <p class="tabular mt-2 text-[11px] text-muted-foreground">
-            Jam Bursa: {{ market?.market_hours || '—' }}
-          </p>
-        </div>
+          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Sesi Bursa</p>
 
-        <!-- Jam bursa + jam berjalan -->
-        <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Jam Bursa</p>
-          <div class="mt-1.5">
+          <div class="mt-1.5 flex items-center gap-2">
+            <span
+              class="text-[19px] font-semibold leading-none"
+              :class="hariTrading ? 'text-up' : 'text-muted-foreground'"
+            >
+              {{ hariTrading ? 'YA' : 'TIDAK' }}
+            </span>
+            <span class="text-[11px] text-muted-foreground">hari trading</span>
             <StatusPill
+              class="ml-auto"
               :label="jamBursaBuka ? 'BUKA' : 'TUTUP'"
               :tone="jamBursaBuka ? 'up' : 'neutral'"
             />
           </div>
-          <p class="tabular mt-2 text-[11px] text-muted-foreground" role="status">
+
+          <p class="tabular mt-2 text-[11px] text-muted-foreground">
+            Jam Bursa: {{ market?.market_hours || '—' }}
+          </p>
+          <p class="tabular mt-0.5 text-[11px] text-muted-foreground" role="status">
             {{ waktuWib }} WIB
           </p>
         </div>
@@ -243,41 +233,8 @@ function nilai(row, ...keys) {
         </div>
       </div>
 
-      <!-- 3 card info -->
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div class="flex items-center gap-3 rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <Timer class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <div class="min-w-0">
-            <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Interval</p>
-            <p class="tabular mt-0.5 truncate text-[13px] font-medium">
-              {{ scheduler?.interval_minutes != null ? `${scheduler.interval_minutes} menit` : '—' }}
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <CalendarClock class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <div class="min-w-0">
-            <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Next Run</p>
-            <p class="tabular mt-0.5 truncate text-[13px] font-medium">
-              {{ scheduler?.next_run || 'Tidak dijadwalkan' }}
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <CheckCircle2 class="size-4 shrink-0 text-up" aria-hidden="true" />
-          <div class="min-w-0">
-            <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Last Result</p>
-            <p class="mt-0.5 truncate text-[13px] font-medium">
-              {{ scheduler?.last_result || 'Belum pernah berjalan' }}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <!-- Manual trigger + target emiten -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
         <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
           <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
             <Zap class="size-3.5 text-muted-foreground" aria-hidden="true" />

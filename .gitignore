@@ -21,3 +21,5 @@ dist/
 *-main/
 backend/token_cache.json 
 frontend/.vite
+backend/watchlist.db
+SahamAI/

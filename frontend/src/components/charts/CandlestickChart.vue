@@ -28,6 +28,8 @@ function tema() {
       textColor: text,
       fontFamily: "'Spline Sans Mono', monospace",
       fontSize: 10,
+      // lightweight-charts v5 menempelkan logo TradingView di pojok chart secara default.
+      attributionLogo: false,
     },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     rightPriceScale: { borderColor: grid },

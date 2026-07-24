@@ -2,9 +2,14 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   loginUser,
+  googleLogin,
+  registerUser,
+  getProfile,
+  deleteUser,
   getWatchlists,
   createWatchlist,
   updateWatchlist,
+  deleteWatchlist,
   updateUser,
   isSupported,
   SUPPORTED_TICKERS,
@@ -88,19 +93,58 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Dipakai bersama login password dan login Google — bedanya cuma sumber user. */
+  async function mulaiSesi(raw) {
+    user.value = mapUser(raw)
+    persist()
+    await fetchWatchlists()
+    await ensureWatchlist()
+    useMarketStore().resetTicker(user.value.defaultTicker)
+    return user.value
+  }
+
   async function login(email, password) {
     loading.value = true
     try {
-      const raw = await loginUser(email, password)
-      user.value = mapUser(raw)
-      persist()
-      await fetchWatchlists()
-      await ensureWatchlist()
-      useMarketStore().resetTicker(user.value.defaultTicker)
-      return user.value
+      return await mulaiSesi(await loginUser(email, password))
     } finally {
       loading.value = false
     }
+  }
+
+  /** idToken berasal dari Google Identity Services di halaman login. */
+  async function loginWithGoogle(idToken) {
+    loading.value = true
+    try {
+      return await mulaiSesi(await googleLogin(idToken))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Daftar lalu langsung masuk — POST /users sudah mengembalikan user penuh. */
+  async function register(payload) {
+    loading.value = true
+    try {
+      return await mulaiSesi(await registerUser(payload))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Ambil ulang profil dari DB; sesi di localStorage bisa tertinggal versi lama. */
+  async function refreshUser() {
+    if (!user.value) return null
+    user.value = mapUser(await getProfile(user.value.id))
+    persist()
+    return user.value
+  }
+
+  /** Menghapus akun sekaligus watchlist-nya di backend, lalu mengakhiri sesi. */
+  async function hapusAkun() {
+    if (!user.value) return
+    await deleteUser(user.value.id)
+    logout()
   }
 
   function logout() {
@@ -148,11 +192,35 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Watchlist terakhir tidak dihapus: Stream tidak punya sumber emiten lain. */
+  async function hapusWatchlist(watchlistId) {
+    if (!user.value || watchlists.value.length <= 1) return
+
+    await deleteWatchlist(user.value.id, watchlistId)
+    watchlists.value = watchlists.value.filter((w) => w.id !== watchlistId)
+
+    if (activeWatchlistId.value === watchlistId) {
+      activeWatchlistId.value = watchlists.value[0]?.id ?? null
+    }
+  }
+
   async function setEmitenUtama(ticker) {
     if (!user.value) return
     await updateUser(user.value.id, { default_ticker: ticker })
     user.value = { ...user.value, defaultTicker: ticker }
     persist()
+  }
+
+  /**
+   * Menyimpan perubahan profil. `payload` hanya boleh berisi field yang didukung
+   * backend: name, username, email, default_ticker, role, password. Field lain
+   * (mis. nomor telepon) diurus sebagai preferensi lokal di luar store ini.
+   */
+  async function updateProfile(payload) {
+    if (!user.value) return null
+    user.value = mapUser(await updateUser(user.value.id, payload))
+    persist()
+    return user.value
   }
 
   /** Dipanggil saat boot: sesi ada di localStorage, tapi watchlist tidak. */
@@ -172,12 +240,18 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isLoggedIn,
     login,
+    loginWithGoogle,
+    register,
+    refreshUser,
+    hapusAkun,
+    hapusWatchlist,
     logout,
     fetchWatchlists,
     ensureWatchlist,
     selectWatchlist,
     saveWatchlist,
     setEmitenUtama,
+    updateProfile,
     restore,
   }
 })

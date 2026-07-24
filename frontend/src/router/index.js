@@ -8,10 +8,24 @@ import { useAuthStore } from '@/stores/auth'
  */
 const routes = [
   {
+    path: '/',
+    name: 'landing',
+    component: () => import('@/pages/LandingPage.vue'),
+    meta: { layout: 'none' },
+  },
+  // Tanpa guestOnly: dari landing, tombol Login harus selalu membuka halaman
+  // login — bukan melempar sesi yang masih hidup langsung ke Stream.
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/pages/LoginPage.vue'),
-    meta: { layout: 'none', guestOnly: true },
+    meta: { layout: 'none' },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/pages/RegisterPage.vue'),
+    meta: { layout: 'none' },
   },
   {
     path: '/forgot-password',
@@ -19,7 +33,6 @@ const routes = [
     component: () => import('@/pages/ForgotPasswordPage.vue'),
     meta: { layout: 'none', guestOnly: true },
   },
-  { path: '/', redirect: '/stream' },
   {
     path: '/stream',
     name: 'stream',
