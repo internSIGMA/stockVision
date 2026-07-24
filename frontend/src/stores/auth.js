@@ -45,12 +45,12 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!user.value)
 
   const accessRole = computed(() => {
-  return String(user.value?.accessRole || 'user').toLowerCase()
-})
+    return String(user.value?.accessRole || 'user').toLowerCase()
+  })
 
-const isAdmin = computed(() => {
-  return accessRole.value === 'admin'
-})
+  const isAdmin = computed(() => {
+    return accessRole.value === 'admin'
+  })
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
