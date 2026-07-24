@@ -41,6 +41,9 @@ const routes = [
     redirect: '/stream',
   },
 
+  /**
+   * Stream dapat diakses admin maupun user biasa.
+   */
   {
     path: '/stream',
     name: 'stream',
@@ -50,21 +53,29 @@ const routes = [
     },
   },
 
+  /**
+   * Hanya admin yang dapat membuka Crawl Logs.
+   */
   {
     path: '/crawl-logs',
     name: 'crawl-logs',
     component: () => import('@/pages/CrawlLogsPage.vue'),
     meta: {
       requiresAuth: true,
+      requiresAdmin: true,
     },
   },
 
+  /**
+   * Hanya admin yang dapat membuka Auto Scheduler.
+   */
   {
     path: '/auto-scheduler',
     name: 'auto-scheduler',
     component: () => import('@/pages/AutoSchedulerPage.vue'),
     meta: {
       requiresAuth: true,
+      requiresAdmin: true,
     },
   },
 
@@ -78,6 +89,7 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+
   scrollBehavior: () => ({
     top: 0,
   }),
@@ -86,6 +98,9 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
+  /**
+   * User yang belum login diarahkan ke halaman login.
+   */
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return {
       name: 'login',
@@ -95,6 +110,22 @@ router.beforeEach((to) => {
     }
   }
 
+  /**
+   * User biasa tidak boleh membuka halaman khusus admin.
+   * Contohnya Dewi akan dikembalikan ke Stream.
+   */
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return {
+      name: 'stream',
+      query: {
+        accessDenied: 'true',
+      },
+    }
+  }
+
+  /**
+   * User yang sudah login tidak dapat kembali ke login/register.
+   */
   if (to.meta.guestOnly && auth.isLoggedIn) {
     return {
       name: 'stream',

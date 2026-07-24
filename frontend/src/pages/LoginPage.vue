@@ -1,358 +1,780 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+} from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-const email = ref(route.query.email || '')
+const email = ref('')
 const password = ref('')
 const remember = ref(true)
+
 const error = ref('')
-const demoLoading = ref(null)
+const showPassword = ref(false)
 
-// Akun demo
-const AKUN_DEMO = [
-  {
-    id: 'fariz',
-    nama: 'Fariz',
-    email: 'fariz@sahamscope.id',
-    password: 'password123',
-    watchlist: 'BBCA · BMRI',
-  },
-  {
-    id: 'dewi',
-    nama: 'Dewi',
-    email: 'dewi@sahamscope.id',
-    password: 'password123',
-    watchlist: 'BBNI · BBCA · BBRI · BMRI',
-  },
-]
+const googleButtonRef = ref(null)
+const googleLoading = ref(false)
+const googleError = ref('')
 
-// Pilihan time range chart
-const DAFTAR_TIME_RANGE = ['1D', '1W', '1Y']
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-const timeRangeAktif = ref('1D')
-
-// Data ini hanya ilustrasi preview halaman login
-const DATA_PREVIEW = {
-  '1D': {
-    harga: '9.875',
-    perubahan: '+125 (+1,28%)',
-    naik: true,
-    batang: [38, 52, 45, 64, 58, 76, 68, 88],
-  },
-
-  '1W': {
-    harga: '9.725',
-    perubahan: '+275 (+2,91%)',
-    naik: true,
-    batang: [55, 42, 60, 48, 66, 72, 64, 81],
-  },
-
-  '1Y': {
-    harga: '9.875',
-    perubahan: '+1.425 (+16,86%)',
-    naik: true,
-    batang: [30, 38, 45, 52, 48, 66, 74, 88],
-  },
-}
-
-const dataChartAktif = computed(() => {
-  return DATA_PREVIEW[timeRangeAktif.value]
+const sedangLogin = computed(() => {
+  return auth.loading || googleLoading.value
 })
 
-function pilihTimeRange(timeRange) {
-  timeRangeAktif.value = timeRange
-}
-
-function lanjut() {
-  const tujuan = route.query.redirect || '/stream'
-  router.push(tujuan)
-}
-
 function pesanError(err) {
-  if (err.message === 'invalid credentials') {
-    return 'Email atau kata sandi salah.'
-  }
+  return (
+    err?.response?.data?.error ||
+    err?.response?.data?.message ||
+    err?.message ||
+    'Login gagal. Periksa email dan kata sandi.'
+  )
+}
 
-  return err.message || 'Terjadi kesalahan saat masuk.'
+async function lanjut() {
+  const redirect =
+    typeof route.query.redirect === 'string'
+      ? route.query.redirect
+      : '/stream'
+
+  await router.replace(redirect)
 }
 
 async function onSubmit() {
   error.value = ''
+  googleError.value = ''
+
+  if (!email.value.trim()) {
+    error.value = 'Email wajib diisi.'
+    return
+  }
+
+  if (!password.value) {
+    error.value = 'Kata sandi wajib diisi.'
+    return
+  }
 
   try {
-    await auth.login(email.value, password.value, remember.value)
-    lanjut()
+    await auth.login(
+      email.value.trim(),
+      password.value,
+      remember.value,
+    )
+
+    await lanjut()
   } catch (err) {
     error.value = pesanError(err)
   }
 }
 
-async function loginDemo(akun) {
+async function handleGoogleCredential(response) {
   error.value = ''
-  demoLoading.value = akun.id
+  googleError.value = ''
+
+  if (!response?.credential) {
+    googleError.value =
+      'Token autentikasi Google tidak ditemukan.'
+    return
+  }
+
+  googleLoading.value = true
 
   try {
-    await auth.login(akun.email, akun.password, true)
-    lanjut()
+    await auth.googleLogin(response.credential)
+    await lanjut()
   } catch (err) {
-    error.value = pesanError(err)
+    googleError.value = pesanError(err)
   } finally {
-    demoLoading.value = null
+    googleLoading.value = false
   }
 }
+
+async function renderGoogleButton(attempt = 0) {
+  await nextTick()
+
+  if (!GOOGLE_CLIENT_ID) {
+    googleError.value =
+      'VITE_GOOGLE_CLIENT_ID belum diatur di file frontend/.env.'
+    return
+  }
+
+  if (!googleButtonRef.value) {
+    return
+  }
+
+  if (!window.google?.accounts?.id) {
+    if (attempt >= 20) {
+      googleError.value =
+        'Layanan Google Login gagal dimuat. Periksa koneksi internet.'
+      return
+    }
+
+    window.setTimeout(() => {
+      renderGoogleButton(attempt + 1)
+    }, 300)
+
+    return
+  }
+
+  googleButtonRef.value.innerHTML = ''
+
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  })
+
+  const containerWidth =
+    googleButtonRef.value.clientWidth || 440
+
+  const buttonWidth = Math.min(
+    Math.max(containerWidth, 240),
+    440,
+  )
+
+  window.google.accounts.id.renderButton(
+    googleButtonRef.value,
+    {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+      width: buttonWidth,
+      locale: 'id',
+    },
+  )
+}
+
+onMounted(() => {
+  renderGoogleButton()
+})
+
+onBeforeUnmount(() => {
+  window.google?.accounts?.id?.cancel()
+})
 </script>
 
 <template>
-  <div class="flex min-h-screen">
-    <!-- BAGIAN KIRI -->
-    <section
-      class="hidden w-1/2 flex-col justify-between bg-primary p-12 text-primary-foreground md:flex"
-    >
-      <header>
-        <p class="text-[20px] font-medium">
-          ◆ StockVision
-        </p>
-
-        <p class="mt-1 text-[13px] opacity-70">
-          Dashboard Pasar Saham Indonesia
-        </p>
-      </header>
-
-      <!-- Preview kartu saham -->
-      <div class="rounded-xl bg-white/10 p-5">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl font-bold">
-            BBCA
-          </span>
-
-          <span
-            class="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide"
-          >
-            IDX
-          </span>
+  <main class="login-page">
+    <!-- Panel kiri -->
+    <section class="brand-panel">
+      <div class="brand-header">
+        <div class="brand-title">
+          <span class="brand-symbol">◆</span>
+          <span>StockVision</span>
         </div>
 
-        <!-- Harga berubah sesuai time range -->
-        <p class="tabular mt-3 text-[32px] font-bold leading-none">
-          {{ dataChartAktif.harga }}
-        </p>
+        <p>Dashboard Pasar Saham Indonesia</p>
+      </div>
 
-        <!-- Persentase berubah sesuai time range -->
-        <p
-          class="tabular mt-1.5 text-[13px] font-medium"
-          :class="
-            dataChartAktif.naik
-              ? 'text-[#4ade80]'
-              : 'text-[#f87171]'
-          "
-        >
-          {{ dataChartAktif.perubahan }}
-        </p>
-
-        <!-- Grafik preview -->
-        <div
-          class="mt-5 flex h-16 items-end gap-1.5"
-          aria-label="Grafik preview saham BBCA"
-        >
-          <div
-            v-for="(tinggi, index) in dataChartAktif.batang"
-            :key="`${timeRangeAktif}-${index}`"
-            class="chart-bar flex-1 rounded-sm bg-current"
-            :style="{
-              height: `${tinggi}%`,
-              opacity: 0.25 + index * 0.075,
-            }"
-          ></div>
+      <div class="market-card">
+        <div class="market-name">
+          <strong>BBCA</strong>
+          <span>IDX</span>
         </div>
 
-        <!-- Tombol time range -->
-        <div class="mt-4 flex gap-1">
-          <button
-            v-for="timeRange in DAFTAR_TIME_RANGE"
-            :key="timeRange"
-            type="button"
-            class="tabular rounded px-2 py-1 text-[11px] transition-all duration-200"
-            :class="
-              timeRangeAktif === timeRange
-                ? 'bg-white/20 font-medium text-white'
-                : 'opacity-50 hover:bg-white/10 hover:opacity-80'
-            "
-            @click="pilihTimeRange(timeRange)"
-          >
-            {{ timeRange }}
-          </button>
+        <div class="market-price">9.875</div>
+
+        <div class="market-change">
+          +125&nbsp;&nbsp;(+1,28%)
+        </div>
+
+        <div class="chart-area">
+          <div class="chart-bar bar-1"></div>
+          <div class="chart-bar bar-2"></div>
+          <div class="chart-bar bar-3"></div>
+          <div class="chart-bar bar-4"></div>
+          <div class="chart-bar bar-5"></div>
+          <div class="chart-bar bar-6"></div>
+          <div class="chart-bar bar-7"></div>
+          <div class="chart-bar bar-8"></div>
+        </div>
+
+        <div class="chart-periods">
+          <span class="active">1D</span>
+          <span>1W</span>
+          <span>1Y</span>
         </div>
       </div>
 
-      <p class="max-w-md text-[13px] leading-relaxed opacity-70">
-        Pantau data OHLC, foreign flow, insider transaction, dan jalankan
-        crawling data saham Indonesia secara real-time.
+      <p class="brand-description">
+        Pantau data OHLC, foreign flow, insider transaction,
+        dan jalankan crawling data saham Indonesia secara
+        real-time.
       </p>
     </section>
 
-    <!-- BAGIAN KANAN -->
-    <section
-      class="flex w-full flex-col justify-center bg-background p-6 sm:p-12 md:w-1/2"
-    >
-      <div class="mx-auto w-full max-w-sm">
-        <h1 class="text-[22px] font-medium">
-          Masuk ke StockVision
-        </h1>
+    <!-- Panel kanan -->
+    <section class="form-panel">
+      <div class="form-wrapper">
+        <header class="form-header">
+          <h1>Masuk ke StockVision</h1>
 
-        <p class="mt-1 text-[13px] text-muted-foreground">
-          Masukkan email dan kata sandi untuk melanjutkan
-        </p>
+          <p>
+            Masukkan email dan kata sandi untuk melanjutkan
+          </p>
+        </header>
 
         <form
-          class="mt-8 flex flex-col gap-4"
+          class="login-form"
           @submit.prevent="onSubmit"
         >
-          <!-- Email -->
-          <div class="space-y-2">
-            <Label for="email">
-              Email
-            </Label>
+          <div class="field-group">
+            <label for="email">Email</label>
 
-            <Input
+            <input
               id="email"
               v-model="email"
               type="email"
               autocomplete="email"
               placeholder="email@contoh.com"
-              required
+              :disabled="sedangLogin"
             />
           </div>
 
-          <!-- Password -->
-          <div class="space-y-2">
-            <Label for="password">
-              Password
-            </Label>
+          <div class="field-group">
+            <label for="password">Password</label>
 
-            <Input
-              id="password"
-              v-model="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <!-- Ingat saya dan lupa password -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                v-model="remember"
+            <div class="password-wrapper">
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
+                placeholder="Masukkan kata sandi"
+                :disabled="sedangLogin"
               />
 
-              <Label
-                for="remember"
-                class="cursor-pointer text-[12px] font-normal"
+              <button
+                type="button"
+                class="password-toggle"
+                :aria-label="
+                  showPassword
+                    ? 'Sembunyikan kata sandi'
+                    : 'Tampilkan kata sandi'
+                "
+                @click="showPassword = !showPassword"
               >
-                Ingat saya
-              </Label>
+                {{ showPassword ? 'Sembunyikan' : 'Lihat' }}
+              </button>
             </div>
+          </div>
+
+          <div class="form-options">
+            <label class="remember-option">
+              <input
+                v-model="remember"
+                type="checkbox"
+                :disabled="sedangLogin"
+              />
+
+              <span>Ingat saya</span>
+            </label>
 
             <RouterLink
               to="/forgot-password"
-              class="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+              class="forgot-link"
             >
               Lupa password?
             </RouterLink>
           </div>
 
-          <!-- Error -->
           <p
             v-if="error"
-            role="alert"
-            class="text-down text-[12px]"
+            class="error-message"
           >
             {{ error }}
           </p>
 
-          <!-- Tombol login -->
-          <Button
+          <button
             type="submit"
-            class="w-full"
-            :disabled="auth.loading"
+            class="submit-button"
+            :disabled="sedangLogin"
           >
-            {{
-              auth.loading && !demoLoading
-                ? 'Memverifikasi...'
-                : 'Masuk'
-            }}
-          </Button>
-
-          <!-- Create account -->
-          <p class="text-center text-[12px] text-muted-foreground">
-            Belum punya akun?
-
-            <RouterLink
-              to="/register"
-              class="ml-1 font-medium text-foreground transition-colors hover:underline"
-            >
-              Buat akun
-            </RouterLink>
-          </p>
+            {{ auth.loading ? 'Memproses...' : 'Masuk' }}
+          </button>
         </form>
 
-        <!-- Pemisah akun demo -->
-        <div class="my-6 flex items-center gap-3">
-          <span class="h-px flex-1 bg-border"></span>
+        <div class="register-row">
+          <span>Belum punya akun?</span>
 
-          <span class="text-[11px] text-muted-foreground">
-            atau coba akun demo
-          </span>
-
-          <span class="h-px flex-1 bg-border"></span>
+          <RouterLink to="/register">
+            Buat akun
+          </RouterLink>
         </div>
 
-        <!-- Akun demo -->
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Button
-            v-for="akun in AKUN_DEMO"
-            :key="akun.id"
-            type="button"
-            variant="outline"
-            class="h-auto flex-col items-start gap-0.5 py-2.5"
-            :disabled="auth.loading"
-            @click="loginDemo(akun)"
-          >
-            <span class="text-[13px] font-medium">
-              {{
-                demoLoading === akun.id
-                  ? 'Masuk...'
-                  : `Login sebagai ${akun.nama}`
-              }}
-            </span>
+        <!-- Pemisah Google Login -->
+        <div class="divider">
+          <span></span>
 
-            <span
-              class="tabular text-[10px] font-normal text-muted-foreground"
-            >
-              {{ akun.watchlist }}
-            </span>
-          </Button>
+          <p>ATAU MASUK DENGAN</p>
+
+          <span></span>
+        </div>
+
+        <!-- Tombol Google resmi -->
+        <div class="google-login-area">
+          <div
+            ref="googleButtonRef"
+            class="google-button"
+          ></div>
+
+          <p
+            v-if="googleLoading"
+            class="google-loading"
+          >
+            Memverifikasi akun Google...
+          </p>
+
+          <p
+            v-if="googleError"
+            class="error-message google-error"
+          >
+            {{ googleError }}
+          </p>
         </div>
       </div>
     </section>
-  </div>
+  </main>
 </template>
 
 <style scoped>
+* {
+  box-sizing: border-box;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(480px, 1fr);
+  background: #ffffff;
+  font-family:
+    Archivo,
+    Arial,
+    sans-serif;
+}
+
+.brand-panel {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 58px 66px 50px;
+  background: #171717;
+  color: #ffffff;
+}
+
+.brand-header {
+  margin-bottom: 40px;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.brand-symbol {
+  font-size: 16px;
+}
+
+.brand-header p {
+  margin: 10px 0 0;
+  color: #b8b8b8;
+  font-size: 14px;
+}
+
+.market-card {
+  width: 100%;
+  max-width: 720px;
+  margin: auto 0;
+  padding: 30px 28px 24px;
+  border-radius: 18px;
+  background: #303030;
+}
+
+.market-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.market-name strong {
+  font-size: 28px;
+}
+
+.market-name span {
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: #505050;
+  color: #d3d3d3;
+  font-size: 11px;
+}
+
+.market-price {
+  margin-top: 16px;
+  font-family:
+    'Spline Sans Mono',
+    monospace;
+  font-size: 40px;
+  font-weight: 600;
+}
+
+.market-change {
+  margin-top: 6px;
+  color: #28d17c;
+  font-family:
+    'Spline Sans Mono',
+    monospace;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.chart-area {
+  height: 110px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+
 .chart-bar {
+  flex: 1;
+  min-width: 25px;
+  border-radius: 7px;
+  background: #9d9d9d;
+}
+
+.bar-1 {
+  height: 31%;
+}
+
+.bar-2 {
+  height: 43%;
+}
+
+.bar-3 {
+  height: 36%;
+}
+
+.bar-4 {
+  height: 52%;
+}
+
+.bar-5 {
+  height: 47%;
+}
+
+.bar-6 {
+  height: 61%;
+}
+
+.bar-7 {
+  height: 55%;
+}
+
+.bar-8 {
+  height: 70%;
+  background: #c4c4c4;
+}
+
+.chart-periods {
+  display: flex;
+  gap: 18px;
+  margin-top: 18px;
+  color: #a7a7a7;
+  font-size: 12px;
+}
+
+.chart-periods span {
+  padding: 6px 8px;
+}
+
+.chart-periods .active {
+  border-radius: 5px;
+  background: #606060;
+  color: #ffffff;
+}
+
+.brand-description {
+  max-width: 640px;
+  margin: 40px 0 0;
+  color: #c5c5c5;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.form-panel {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: #ffffff;
+}
+
+.form-wrapper {
+  width: 100%;
+  max-width: 440px;
+}
+
+.form-header h1 {
+  margin: 0;
+  color: #111111;
+  font-size: 27px;
+  line-height: 1.25;
+}
+
+.form-header p {
+  margin: 10px 0 0;
+  color: #777777;
+  font-size: 14px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-group label {
+  color: #111111;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field-group input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #dedede;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
   transition:
-    height 0.35s ease,
-    opacity 0.35s ease;
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.field-group input:focus {
+  border-color: #222222;
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 7%);
+}
+
+.field-group input:disabled {
+  cursor: not-allowed;
+  background: #f4f4f4;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 82px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: #666666;
+  font-size: 12px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.remember-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #222222;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.remember-option input {
+  width: 17px;
+  height: 17px;
+  accent-color: #171717;
+}
+
+.forgot-link {
+  color: #777777;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  color: #111111;
+}
+
+.error-message {
+  margin: 0;
+  color: #dc2626;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.submit-button {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #171717;
+  border-radius: 8px;
+  background: #171717;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    opacity 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #292929;
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.register-row {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 20px;
+  color: #777777;
+  font-size: 13px;
+}
+
+.register-row a {
+  color: #111111;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 34px 0 24px;
+}
+
+.divider span {
+  height: 1px;
+  flex: 1;
+  background: #dfdfdf;
+}
+
+.divider p {
+  margin: 0;
+  color: #777777;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.google-login-area {
+  width: 100%;
+}
+
+.google-button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.google-button :deep(div) {
+  max-width: 100%;
+}
+
+.google-loading {
+  margin: 12px 0 0;
+  color: #777777;
+  text-align: center;
+  font-size: 12px;
+}
+
+.google-error {
+  margin-top: 12px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    display: none;
+  }
+
+  .form-panel {
+    min-height: 100vh;
+    padding: 36px 22px;
+  }
+
+  .form-wrapper {
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-panel {
+    padding: 28px 18px;
+  }
+
+  .form-header h1 {
+    font-size: 25px;
+  }
+
+  .form-options {
+    align-items: flex-start;
+  }
+
+  .divider {
+    gap: 10px;
+  }
+
+  .divider p {
+    font-size: 10px;
+  }
 }
 </style>
