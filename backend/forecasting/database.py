@@ -40,7 +40,7 @@ def load_stock_data():
 
     SELECT *
 
-    FROM idxsaham.stock_ohlc
+    FROM idxsaham.ohlc_forecasting
 
     ORDER BY symbol,tanggal
 
@@ -109,7 +109,7 @@ def get_symbols():
 
     SELECT DISTINCT symbol
 
-    FROM idxsaham.stock_ohlc
+    FROM idxsaham.ohlc_forecasting
 
     ORDER BY symbol
 

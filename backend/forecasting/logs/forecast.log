@@ -1,0 +1,440 @@
+2026-07-14 14:27:10,282 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:27:10,282 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:27:10,510 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:27:10,510 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:27:10,569 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:27:12,680 | ERROR | forecasting.pipeline | Forecast pipeline failed!
+Traceback (most recent call last):
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\pipeline.py", line 32, in run_pipeline
+    all_models, all_stock_data = train_all_models(df)
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\trainer.py", line 176, in train_all_models
+    model, _, _, _ = train_model(
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\trainer.py", line 124, in train_model
+    metrics_df["Symbol"] = symbol
+UnboundLocalError: local variable 'metrics_df' referenced before assignment
+2026-07-14 14:34:50,732 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:34:50,732 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:34:51,025 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:34:51,025 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:34:51,052 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:34:53,622 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 14:34:54,296 | INFO | forecast | Training BBCA - LOW
+2026-07-14 14:34:55,327 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 14:34:56,617 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 14:34:57,236 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 14:34:57,752 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 14:34:58,186 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 14:34:58,948 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 14:34:59,735 | INFO | forecast | Training BBNI - LOW
+2026-07-14 14:35:00,313 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 14:35:01,758 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 14:35:02,183 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 14:35:02,812 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 14:35:03,369 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 14:35:04,452 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 14:35:05,074 | INFO | forecast | Training BBRI - LOW
+2026-07-14 14:35:06,050 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 14:35:06,510 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 14:35:06,981 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 14:35:07,389 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 14:35:08,077 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 14:35:08,626 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 14:35:09,326 | INFO | forecast | Training BJBR - LOW
+2026-07-14 14:35:10,059 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 14:35:10,783 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 14:35:11,371 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 14:35:11,854 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 14:35:12,314 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 14:35:13,044 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 14:35:13,964 | INFO | forecast | Training BMRI - LOW
+2026-07-14 14:35:14,682 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 14:35:15,313 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 14:35:15,868 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 14:35:16,197 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 14:35:16,722 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 14:35:16,722 | ERROR | forecasting.pipeline | Forecast pipeline failed!
+Traceback (most recent call last):
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\pipeline.py", line 35, in run_pipeline
+    forecast_df = forecast_all_stocks(
+TypeError: forecast_all_stocks() missing 1 required positional argument: 'symbols'
+2026-07-14 14:37:02,006 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:37:02,006 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:37:02,192 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:37:02,192 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:37:02,224 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:37:04,843 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 14:37:05,472 | INFO | forecast | Training BBCA - LOW
+2026-07-14 14:37:06,395 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 14:37:07,359 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 14:37:07,859 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 14:37:08,320 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 14:37:08,755 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 14:37:09,573 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 14:37:10,310 | INFO | forecast | Training BBNI - LOW
+2026-07-14 14:37:10,879 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 14:37:12,186 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 14:37:12,640 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 14:37:13,057 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 14:37:13,538 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 14:37:14,705 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 14:37:15,353 | INFO | forecast | Training BBRI - LOW
+2026-07-14 14:37:16,239 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 14:37:16,654 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 14:37:17,082 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 14:37:17,428 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 14:37:17,982 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 14:37:18,555 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 14:37:19,247 | INFO | forecast | Training BJBR - LOW
+2026-07-14 14:37:19,844 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 14:37:20,612 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 14:37:21,273 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 14:37:21,755 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 14:37:22,167 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 14:37:22,898 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 14:37:23,803 | INFO | forecast | Training BMRI - LOW
+2026-07-14 14:37:24,588 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 14:37:25,212 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 14:37:25,715 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 14:37:26,027 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 14:37:26,585 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 14:37:26,585 | ERROR | forecasting.pipeline | Forecast pipeline failed!
+Traceback (most recent call last):
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\pipeline.py", line 35, in run_pipeline
+    forecast_df = forecast_all_stocks(
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\forecasting.py", line 92, in forecast_all_stocks
+    forecast = forecast_next_days(
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\forecasting.py", line 47, in forecast_next_days
+    last = stock.iloc[-1].copy()
+AttributeError: 'dict' object has no attribute 'iloc'
+2026-07-14 14:48:10,837 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:48:10,837 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:48:12,767 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:48:12,767 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:48:12,803 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:48:15,413 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 14:48:16,063 | INFO | forecast | Training BBCA - LOW
+2026-07-14 14:48:17,024 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 14:48:18,068 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 14:48:18,778 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 14:48:19,349 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 14:48:19,795 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 14:48:20,634 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 14:48:21,383 | INFO | forecast | Training BBNI - LOW
+2026-07-14 14:48:21,933 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 14:48:23,169 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 14:48:23,604 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 14:48:24,055 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 14:48:24,528 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 14:48:25,609 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 14:48:26,229 | INFO | forecast | Training BBRI - LOW
+2026-07-14 14:48:27,178 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 14:48:27,643 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 14:48:28,122 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 14:48:28,505 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 14:48:29,124 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 14:48:29,730 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 14:48:30,383 | INFO | forecast | Training BJBR - LOW
+2026-07-14 14:48:31,027 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 14:48:31,795 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 14:48:32,432 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 14:48:32,908 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 14:48:33,344 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 14:48:34,060 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 14:48:34,953 | INFO | forecast | Training BMRI - LOW
+2026-07-14 14:48:35,690 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 14:48:36,309 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 14:48:36,809 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 14:48:37,119 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 14:48:37,636 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 14:48:38,077 | INFO | forecasting.pipeline | Generated 7 forecast rows.
+2026-07-14 14:48:38,078 | INFO | forecasting.pipeline | Refreshing forecast table...
+2026-07-14 14:48:38,211 | ERROR | forecasting.pipeline | Forecast pipeline failed!
+Traceback (most recent call last):
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedTable: relation "idxsaham.stock_forecast" does not exist
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\pipeline.py", line 46, in run_pipeline
+    truncate_forecast()
+  File "C:\ADITT\KP Telsig\stockVision\backend\forecasting\database.py", line 69, in truncate_forecast
+    conn.execute(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "C:\ADITT\KP Telsig\stockVision\venv\lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "idxsaham.stock_forecast" does not exist
+
+[SQL: TRUNCATE TABLE idxsaham.stock_forecast]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-07-14 14:49:16,437 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:49:16,437 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:49:19,343 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:49:19,343 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:49:19,386 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:49:21,774 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 14:49:22,459 | INFO | forecast | Training BBCA - LOW
+2026-07-14 14:49:23,393 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 14:49:24,376 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 14:49:24,889 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 14:49:25,354 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 14:49:25,783 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 14:49:26,633 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 14:49:27,393 | INFO | forecast | Training BBNI - LOW
+2026-07-14 14:49:27,992 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 14:49:29,244 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 14:49:29,702 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 14:49:30,126 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 14:49:30,688 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 14:49:31,740 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 14:49:32,355 | INFO | forecast | Training BBRI - LOW
+2026-07-14 14:49:33,224 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 14:49:33,673 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 14:49:34,112 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 14:49:34,475 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 14:49:35,013 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 14:49:35,630 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 14:49:36,276 | INFO | forecast | Training BJBR - LOW
+2026-07-14 14:49:36,861 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 14:49:37,596 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 14:49:38,195 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 14:49:38,692 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 14:49:39,113 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 14:49:39,849 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 14:49:40,744 | INFO | forecast | Training BMRI - LOW
+2026-07-14 14:49:41,493 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 14:49:42,171 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 14:49:42,682 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 14:49:42,996 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 14:49:43,513 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 14:49:43,910 | INFO | forecasting.pipeline | Generated 7 forecast rows.
+2026-07-14 14:49:43,911 | INFO | forecasting.pipeline | Refreshing forecast table...
+2026-07-14 14:49:44,215 | INFO | forecasting.pipeline | Forecast saved successfully.
+2026-07-14 14:49:44,215 | INFO | forecasting.pipeline | ========== Forecast Pipeline Finished ==========
+2026-07-14 14:59:46,395 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 14:59:46,395 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 14:59:46,800 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 14:59:46,800 | INFO | forecasting.pipeline | Training models...
+2026-07-14 14:59:46,832 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 14:59:49,524 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 14:59:50,183 | INFO | forecast | Training BBCA - LOW
+2026-07-14 14:59:51,174 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 14:59:52,176 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 14:59:52,702 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 14:59:53,253 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 14:59:53,724 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 14:59:54,517 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 14:59:55,314 | INFO | forecast | Training BBNI - LOW
+2026-07-14 14:59:55,909 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 14:59:57,369 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 14:59:57,814 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 14:59:58,284 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 14:59:58,834 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 14:59:59,954 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 15:00:00,622 | INFO | forecast | Training BBRI - LOW
+2026-07-14 15:00:01,513 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 15:00:01,957 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 15:00:02,453 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 15:00:02,817 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 15:00:03,405 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 15:00:04,040 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 15:00:04,768 | INFO | forecast | Training BJBR - LOW
+2026-07-14 15:00:05,397 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 15:00:06,192 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 15:00:06,848 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 15:00:07,352 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 15:00:07,787 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 15:00:08,491 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 15:00:09,488 | INFO | forecast | Training BMRI - LOW
+2026-07-14 15:00:10,236 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 15:00:10,867 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 15:00:11,374 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 15:00:11,705 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 15:00:12,267 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 15:00:13,684 | INFO | forecasting.pipeline | Generated 35 forecast rows.
+2026-07-14 15:00:13,684 | INFO | forecasting.pipeline | Refreshing forecast table...
+2026-07-14 15:00:13,823 | INFO | forecasting.pipeline | Forecast saved successfully.
+2026-07-14 15:00:13,823 | INFO | forecasting.pipeline | ========== Forecast Pipeline Finished ==========
+2026-07-14 15:02:35,270 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 15:02:35,271 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 15:02:35,602 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 15:02:35,602 | INFO | forecasting.pipeline | Training models...
+2026-07-14 15:02:35,632 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 15:02:38,134 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 15:02:38,812 | INFO | forecast | Training BBCA - LOW
+2026-07-14 15:02:39,812 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 15:02:41,084 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 15:02:41,817 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 15:02:42,352 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 15:02:42,813 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 15:02:43,625 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 15:02:44,423 | INFO | forecast | Training BBNI - LOW
+2026-07-14 15:02:45,011 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 15:02:46,371 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 15:02:46,872 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 15:02:47,347 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 15:02:47,839 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 15:02:48,906 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 15:02:49,558 | INFO | forecast | Training BBRI - LOW
+2026-07-14 15:02:50,454 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 15:02:50,916 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 15:02:51,429 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 15:02:51,793 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 15:02:52,413 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 15:02:52,982 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 15:02:53,692 | INFO | forecast | Training BJBR - LOW
+2026-07-14 15:02:54,336 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 15:02:55,075 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 15:02:55,679 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 15:02:56,189 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 15:02:56,691 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 15:02:57,396 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 15:02:58,343 | INFO | forecast | Training BMRI - LOW
+2026-07-14 15:02:59,064 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 15:02:59,696 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 15:03:00,206 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 15:03:00,537 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 15:03:01,149 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 15:03:02,647 | INFO | forecasting.pipeline | Generated 35 forecast rows.
+2026-07-14 15:03:02,647 | INFO | forecasting.pipeline | Refreshing forecast table...
+2026-07-14 15:03:02,694 | INFO | forecasting.pipeline | Forecast shape: (35, 10)
+2026-07-14 15:03:02,694 | INFO | forecasting.pipeline | 
+     tanggal         open         high          low  ...   foreign_buy  foreign_sell  foreign_flow  symbol
+0 2026-07-14  6166.520075  6221.560258  6029.287428  ...  5.872084e+11  6.417825e+11 -5.457410e+10    BBCA
+1 2026-07-15  6123.929504  6187.250611  5983.229887  ...  6.611617e+11  7.019176e+11 -4.075588e+10    BBCA
+2 2026-07-16  6037.089390  6363.967084  6014.767392  ...  5.804379e+11  6.610215e+11 -8.058360e+10    BBCA
+3 2026-07-17  6219.749104  6562.772839  5923.924688  ...  1.079812e+12  3.063681e+11  7.734441e+11    BBCA
+4 2026-07-20  6411.564742  6701.361641  6201.679101  ...  1.172454e+12  7.912874e+11  3.811665e+11    BBCA
+
+[5 rows x 10 columns]
+2026-07-14 15:03:02,789 | INFO | forecasting.pipeline | Forecast saved successfully.
+2026-07-14 15:03:02,790 | INFO | forecasting.pipeline | ========== Forecast Pipeline Finished ==========
+2026-07-14 15:26:55,902 | INFO | forecasting.pipeline | ========== Forecast Pipeline Started ==========
+2026-07-14 15:26:55,902 | INFO | forecasting.pipeline | Loading stock data...
+2026-07-14 15:26:56,333 | INFO | forecasting.pipeline | Loaded 1230 rows.
+2026-07-14 15:26:56,333 | INFO | forecasting.pipeline | Training models...
+2026-07-14 15:26:56,390 | INFO | forecast | Training BBCA - OPEN
+2026-07-14 15:26:59,052 | INFO | forecast | Training BBCA - HIGH
+2026-07-14 15:26:59,789 | INFO | forecast | Training BBCA - LOW
+2026-07-14 15:27:01,273 | INFO | forecast | Training BBCA - CLOSE
+2026-07-14 15:27:02,481 | INFO | forecast | Training BBCA - VOLUME
+2026-07-14 15:27:03,046 | INFO | forecast | Training BBCA - FOREIGN_BUY
+2026-07-14 15:27:03,596 | INFO | forecast | Training BBCA - FOREIGN_SELL
+2026-07-14 15:27:04,060 | INFO | forecast | Training BBNI - OPEN
+2026-07-14 15:27:04,889 | INFO | forecast | Training BBNI - HIGH
+2026-07-14 15:27:05,705 | INFO | forecast | Training BBNI - LOW
+2026-07-14 15:27:06,281 | INFO | forecast | Training BBNI - CLOSE
+2026-07-14 15:27:07,682 | INFO | forecast | Training BBNI - VOLUME
+2026-07-14 15:27:08,176 | INFO | forecast | Training BBNI - FOREIGN_BUY
+2026-07-14 15:27:08,619 | INFO | forecast | Training BBNI - FOREIGN_SELL
+2026-07-14 15:27:09,102 | INFO | forecast | Training BBRI - OPEN
+2026-07-14 15:27:10,241 | INFO | forecast | Training BBRI - HIGH
+2026-07-14 15:27:10,894 | INFO | forecast | Training BBRI - LOW
+2026-07-14 15:27:11,798 | INFO | forecast | Training BBRI - CLOSE
+2026-07-14 15:27:12,325 | INFO | forecast | Training BBRI - VOLUME
+2026-07-14 15:27:12,793 | INFO | forecast | Training BBRI - FOREIGN_BUY
+2026-07-14 15:27:13,157 | INFO | forecast | Training BBRI - FOREIGN_SELL
+2026-07-14 15:27:13,724 | INFO | forecast | Training BJBR - OPEN
+2026-07-14 15:27:14,292 | INFO | forecast | Training BJBR - HIGH
+2026-07-14 15:27:14,975 | INFO | forecast | Training BJBR - LOW
+2026-07-14 15:27:15,617 | INFO | forecast | Training BJBR - CLOSE
+2026-07-14 15:27:16,398 | INFO | forecast | Training BJBR - VOLUME
+2026-07-14 15:27:17,025 | INFO | forecast | Training BJBR - FOREIGN_BUY
+2026-07-14 15:27:17,576 | INFO | forecast | Training BJBR - FOREIGN_SELL
+2026-07-14 15:27:18,043 | INFO | forecast | Training BMRI - OPEN
+2026-07-14 15:27:18,775 | INFO | forecast | Training BMRI - HIGH
+2026-07-14 15:27:19,703 | INFO | forecast | Training BMRI - LOW
+2026-07-14 15:27:20,424 | INFO | forecast | Training BMRI - CLOSE
+2026-07-14 15:27:21,063 | INFO | forecast | Training BMRI - VOLUME
+2026-07-14 15:27:21,611 | INFO | forecast | Training BMRI - FOREIGN_BUY
+2026-07-14 15:27:21,938 | INFO | forecast | Training BMRI - FOREIGN_SELL
+2026-07-14 15:27:22,513 | INFO | forecasting.pipeline | Generating forecast...
+2026-07-14 15:27:24,090 | INFO | forecasting.pipeline | Generated 35 forecast rows.
+2026-07-14 15:27:24,090 | INFO | forecasting.pipeline | Refreshing forecast table...
+2026-07-14 15:27:25,192 | INFO | forecasting.pipeline | Forecast saved successfully.
+2026-07-14 15:27:25,192 | INFO | forecasting.pipeline | ========== Forecast Pipeline Finished ==========
+2026-07-23 10:03:36,616 | INFO | __main__ | ========== Forecast Pipeline Started ==========
+2026-07-23 10:03:36,624 | INFO | __main__ | Loading stock data...
+2026-07-23 10:03:38,151 | INFO | __main__ | Loaded 6015 rows.
+2026-07-23 10:03:38,151 | INFO | __main__ | Training models...
+2026-07-23 10:03:38,221 | INFO | forecast | Training BBCA - OPEN
+2026-07-23 10:03:40,851 | INFO | forecast | Training BBCA - HIGH
+2026-07-23 10:03:41,363 | INFO | forecast | Training BBCA - LOW
+2026-07-23 10:03:41,849 | INFO | forecast | Training BBCA - CLOSE
+2026-07-23 10:03:42,294 | INFO | forecast | Training BBCA - VOLUME
+2026-07-23 10:03:42,810 | INFO | forecast | Training BBNI - OPEN
+2026-07-23 10:03:43,310 | INFO | forecast | Training BBNI - HIGH
+2026-07-23 10:03:43,833 | INFO | forecast | Training BBNI - LOW
+2026-07-23 10:03:44,298 | INFO | forecast | Training BBNI - CLOSE
+2026-07-23 10:03:44,773 | INFO | forecast | Training BBNI - VOLUME
+2026-07-23 10:03:45,343 | INFO | forecast | Training BBRI - OPEN
+2026-07-23 10:03:45,858 | INFO | forecast | Training BBRI - HIGH
+2026-07-23 10:03:46,320 | INFO | forecast | Training BBRI - LOW
+2026-07-23 10:03:46,826 | INFO | forecast | Training BBRI - CLOSE
+2026-07-23 10:03:47,290 | INFO | forecast | Training BBRI - VOLUME
+2026-07-23 10:03:47,832 | INFO | forecast | Training BJBR - OPEN
+2026-07-23 10:03:48,319 | INFO | forecast | Training BJBR - HIGH
+2026-07-23 10:03:48,816 | INFO | forecast | Training BJBR - LOW
+2026-07-23 10:03:49,332 | INFO | forecast | Training BJBR - CLOSE
+2026-07-23 10:03:49,821 | INFO | forecast | Training BJBR - VOLUME
+2026-07-23 10:03:50,390 | INFO | forecast | Training BMRI - OPEN
+2026-07-23 10:03:50,851 | INFO | forecast | Training BMRI - HIGH
+2026-07-23 10:03:51,335 | INFO | forecast | Training BMRI - LOW
+2026-07-23 10:03:51,827 | INFO | forecast | Training BMRI - CLOSE
+2026-07-23 10:03:52,322 | INFO | forecast | Training BMRI - VOLUME
+2026-07-23 10:03:52,806 | INFO | __main__ | Generating forecast...
+2026-07-23 10:03:55,463 | INFO | __main__ | Generated 35 forecast rows.
+2026-07-23 10:03:55,464 | INFO | __main__ | Refreshing forecast table...
+2026-07-23 10:03:56,543 | INFO | __main__ | Forecast saved successfully.
+2026-07-23 10:03:56,544 | INFO | __main__ | ========== Forecast Pipeline Finished ==========
+2026-07-23 10:06:00,697 | INFO | __main__ | ========== Forecast Pipeline Started ==========
+2026-07-23 10:06:00,697 | INFO | __main__ | Loading stock data...
+2026-07-23 10:06:01,336 | INFO | __main__ | Loaded 6015 rows.
+2026-07-23 10:06:01,337 | INFO | __main__ | Training models...
+2026-07-23 10:06:01,399 | INFO | forecast | Training BBCA - OPEN
+2026-07-23 10:06:03,661 | INFO | forecast | Training BBCA - HIGH
+2026-07-23 10:06:04,115 | INFO | forecast | Training BBCA - LOW
+2026-07-23 10:06:04,575 | INFO | forecast | Training BBCA - CLOSE
+2026-07-23 10:06:05,045 | INFO | forecast | Training BBCA - VOLUME
+2026-07-23 10:06:05,592 | INFO | forecast | Training BBNI - OPEN
+2026-07-23 10:06:06,128 | INFO | forecast | Training BBNI - HIGH
+2026-07-23 10:06:06,613 | INFO | forecast | Training BBNI - LOW
+2026-07-23 10:06:07,107 | INFO | forecast | Training BBNI - CLOSE
+2026-07-23 10:06:07,571 | INFO | forecast | Training BBNI - VOLUME
+2026-07-23 10:06:08,193 | INFO | forecast | Training BBRI - OPEN
+2026-07-23 10:06:08,652 | INFO | forecast | Training BBRI - HIGH
+2026-07-23 10:06:09,142 | INFO | forecast | Training BBRI - LOW
+2026-07-23 10:06:09,605 | INFO | forecast | Training BBRI - CLOSE
+2026-07-23 10:06:10,067 | INFO | forecast | Training BBRI - VOLUME
+2026-07-23 10:06:10,615 | INFO | forecast | Training BJBR - OPEN
+2026-07-23 10:06:11,110 | INFO | forecast | Training BJBR - HIGH
+2026-07-23 10:06:11,557 | INFO | forecast | Training BJBR - LOW
+2026-07-23 10:06:12,027 | INFO | forecast | Training BJBR - CLOSE
+2026-07-23 10:06:12,491 | INFO | forecast | Training BJBR - VOLUME
+2026-07-23 10:06:13,020 | INFO | forecast | Training BMRI - OPEN
+2026-07-23 10:06:13,479 | INFO | forecast | Training BMRI - HIGH
+2026-07-23 10:06:13,932 | INFO | forecast | Training BMRI - LOW
+2026-07-23 10:06:14,383 | INFO | forecast | Training BMRI - CLOSE
+2026-07-23 10:06:14,887 | INFO | forecast | Training BMRI - VOLUME
+2026-07-23 10:06:15,384 | INFO | __main__ | Generating forecast...
+2026-07-23 10:06:18,098 | INFO | __main__ | Generated 35 forecast rows.
+2026-07-23 10:06:18,098 | INFO | __main__ | Refreshing forecast table...
+2026-07-23 10:06:18,661 | INFO | __main__ | Forecast saved successfully.
+2026-07-23 10:06:18,661 | INFO | __main__ | ========== Forecast Pipeline Finished ==========

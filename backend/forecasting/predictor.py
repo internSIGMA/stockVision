@@ -22,12 +22,6 @@ def predict_next_day(stock, models):
 
     pred_volume = float(models["volume"].predict(latest)[0])
 
-    pred_foreign_buy = float(models["foreign_buy"].predict(latest)[0])
-
-    pred_foreign_sell = float(models["foreign_sell"].predict(latest)[0])
-
-    pred_foreign_flow = (pred_foreign_buy - pred_foreign_sell)
-
     high = max(
         pred_high,
         pred_open,
@@ -50,13 +44,7 @@ def predict_next_day(stock, models):
 
         "close": pred_close,
 
-        "volume": pred_volume,
-
-        "foreign_buy": pred_foreign_buy,
-
-        "foreign_sell": pred_foreign_sell,
-
-        "foreign_flow": pred_foreign_flow
+        "volume": pred_volume
 
     }
 

@@ -31,7 +31,6 @@ def create_features(df):
 
         df[f"volume_lag_{lag}"] = df["volume"].shift(lag)
 
-        df[f"foreign_flow_lag_{lag}"] = df["foreign_flow"].shift(lag)
 
     df["return_1"] = df["close"].pct_change(1)
 
@@ -151,17 +150,6 @@ def create_features(df):
         df["volume_ma5"]
     )
 
-    df["foreign_flow_ma5"] = (
-        df["foreign_flow"]
-        .rolling(5)
-        .mean()
-    )
-
-    df["foreign_flow_change"] = (
-        df["foreign_flow"]
-        .pct_change()
-    )
-
     df["dayofweek"] = df["tanggal"].dt.dayofweek
 
     df["weekofyear"] = df["tanggal"].dt.isocalendar().week.astype(int)
@@ -182,10 +170,6 @@ feature_cols = [
     "close",
     "volume",
 
-    "foreign_buy",
-    "foreign_sell",
-    "foreign_flow",
-
     "close_lag_1",
     "close_lag_2",
     "close_lag_3",
@@ -197,12 +181,6 @@ feature_cols = [
     "volume_lag_3",
     "volume_lag_5",
     "volume_lag_10",
-
-    "foreign_flow_lag_1",
-    "foreign_flow_lag_2",
-    "foreign_flow_lag_3",
-    "foreign_flow_lag_5",
-    "foreign_flow_lag_10",
 
     "return_1",
     "return_5",
@@ -242,9 +220,6 @@ feature_cols = [
 
     "volume_ma5",
     "volume_ratio",
-
-    "foreign_flow_ma5",
-    "foreign_flow_change",
 
     "dayofweek",
     "weekofyear",

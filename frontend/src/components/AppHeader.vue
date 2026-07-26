@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { TrendingUp, ListChecks, Clock, Sun, Moon, Menu, X } from 'lucide-vue-next';
 import { useMarketStore } from '../store/market.js';
 import { useAuthStore } from '../store/auth.js';
+import AccountMenu from './AccountMenu.vue';
 
 const route = useRoute();
 const router = useRouter();

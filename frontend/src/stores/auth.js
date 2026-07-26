@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   loginUser,
-  googleLogin,
+  loginWithGoogle,
   registerUser,
   getProfile,
   deleteUser,
@@ -18,17 +18,11 @@ import { useMarketStore } from '@/stores/market'
 
 const STORAGE_KEY = 'stockvision.auth'
 
-/**
- * Watchlist awal untuk user yang belum punya satu pun di DB, dipilih dari
- * emiten utamanya. Emiten di luar peta ini cukup jadi watchlist berisi
- * dirinya sendiri.
- */
 const SEED_WATCHLISTS = {
   BBCA: ['BBCA', 'BBRI', 'BMRI'],
   BBNI: ['BBNI', 'BJBR'],
 }
 
-/** Sesi bertahan di localStorage; JSON rusak diperlakukan seperti belum login. */
 function readPersisted() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -47,26 +41,20 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isLoggedIn = computed(() => !!user.value)
+  const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
+  const isAdmin = computed(() => accessRole.value === 'admin')
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
   )
 
-  /**
-   * Emiten yang benar-benar bisa ditampilkan. Backend menolak emiten di luar
-   * SUPPORTED_TICKERS, jadi simbol lain disaring keluar di sini — dan kalau
-   * tidak tersisa apa pun, jatuh ke seluruh daftar yang didukung supaya
-   * halaman tidak pernah kosong total.
-   */
   const watchlist = computed(() => {
     const symbols = (activeWatchlist.value?.symbols || []).filter(isSupported)
     if (!symbols.length) return SUPPORTED_TICKERS
-
     const utama = user.value?.defaultTicker
     return utama && isSupported(utama) && !symbols.includes(utama) ? [utama, ...symbols] : symbols
   })
 
-  /** Simbol yang disimpan user tapi ditolak backend — dipakai untuk memberi tahu. */
   const watchlistTidakDidukung = computed(() =>
     (activeWatchlist.value?.symbols || []).filter((s) => !isSupported(s)),
   )
@@ -74,26 +62,25 @@ export const useAuthStore = defineStore('auth', () => {
   const emitenUtama = computed(() => user.value?.defaultTicker || watchlist.value[0] || 'BBCA')
 
   function persist() {
-    if (user.value) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: user.value }))
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
-    }
+    if (user.value) localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: user.value }))
+    else localStorage.removeItem(STORAGE_KEY)
   }
 
-  /** Backend memakai snake_case; sisa aplikasi memakai camelCase. */
   function mapUser(raw) {
     return {
       id: raw.id,
-      email: raw.email,
-      username: raw.username,
-      name: raw.name,
+      email: raw.email ?? '',
+      username: raw.username ?? '',
+      name: raw.name ?? raw.username ?? 'User',
       role: raw.role,
-      defaultTicker: raw.default_ticker || 'BBCA',
+      accessRole: raw.access_role ?? raw.accessRole ?? 'user',
+      defaultTicker: raw.default_ticker ?? raw.defaultTicker ?? 'BBCA',
+      phone: raw.phone ?? '',
+      avatar: raw.avatar ?? raw.avatar_url ?? '',
+      emailNotification: raw.email_notification ?? raw.emailNotification ?? true,
     }
   }
 
-  /** Dipakai bersama login password dan login Google — bedanya cuma sumber user. */
   async function mulaiSesi(raw) {
     user.value = mapUser(raw)
     persist()
@@ -112,17 +99,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** idToken berasal dari Google Identity Services di halaman login. */
-  async function loginWithGoogle(idToken) {
+  async function googleLogin(idToken) {
     loading.value = true
     try {
-      return await mulaiSesi(await googleLogin(idToken))
+      return await mulaiSesi(await loginWithGoogle(idToken))
     } finally {
       loading.value = false
     }
   }
 
-  /** Daftar lalu langsung masuk — POST /users sudah mengembalikan user penuh. */
   async function register(payload) {
     loading.value = true
     try {
@@ -132,7 +117,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Ambil ulang profil dari DB; sesi di localStorage bisa tertinggal versi lama. */
   async function refreshUser() {
     if (!user.value) return null
     user.value = mapUser(await getProfile(user.value.id))
@@ -140,7 +124,6 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value
   }
 
-  /** Menghapus akun sekaligus watchlist-nya di backend, lalu mengakhiri sesi. */
   async function hapusAkun() {
     if (!user.value) return
     await deleteUser(user.value.id)
@@ -179,7 +162,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function saveWatchlist(symbols) {
     if (!user.value) return
-
     const active = activeWatchlist.value
     if (active) {
       const updated = await updateWatchlist(user.value.id, active.id, { symbols })
@@ -192,38 +174,57 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Watchlist terakhir tidak dihapus: Stream tidak punya sumber emiten lain. */
   async function hapusWatchlist(watchlistId) {
     if (!user.value || watchlists.value.length <= 1) return
-
     await deleteWatchlist(user.value.id, watchlistId)
     watchlists.value = watchlists.value.filter((w) => w.id !== watchlistId)
-
     if (activeWatchlistId.value === watchlistId) {
       activeWatchlistId.value = watchlists.value[0]?.id ?? null
     }
   }
 
-  async function setEmitenUtama(ticker) {
-    if (!user.value) return
-    await updateUser(user.value.id, { default_ticker: ticker })
-    user.value = { ...user.value, defaultTicker: ticker }
-    persist()
-  }
+  async function updateProfile(profileData) {
+    if (!user.value) throw new Error('User belum login.')
 
-  /**
-   * Menyimpan perubahan profil. `payload` hanya boleh berisi field yang didukung
-   * backend: name, username, email, default_ticker, role, password. Field lain
-   * (mis. nomor telepon) diurus sebagai preferensi lokal di luar store ini.
-   */
-  async function updateProfile(payload) {
-    if (!user.value) return null
-    user.value = mapUser(await updateUser(user.value.id, payload))
+    const payload = {}
+    if (profileData.name !== undefined) payload.name = profileData.name.trim()
+    if (profileData.username !== undefined) payload.username = profileData.username.trim()
+    if (profileData.email !== undefined) payload.email = profileData.email.trim()
+    if (profileData.phone !== undefined) payload.phone = profileData.phone.trim()
+    if (profileData.avatar !== undefined) payload.avatar = profileData.avatar
+    if (profileData.emailNotification !== undefined) payload.email_notification = profileData.emailNotification
+    if (profileData.defaultTicker !== undefined) {
+      const ticker = profileData.defaultTicker.trim().toUpperCase()
+      if (!isSupported(ticker)) throw new Error(`Ticker ${ticker} belum didukung.`)
+      payload.default_ticker = ticker
+    }
+
+    const updatedRaw = await updateUser(user.value.id, payload)
+
+    const currentRaw = {
+      id: user.value.id,
+      email: user.value.email,
+      username: user.value.username,
+      name: user.value.name,
+      role: user.value.role,
+      default_ticker: user.value.defaultTicker,
+      phone: user.value.phone,
+      avatar: user.value.avatar,
+      email_notification: user.value.emailNotification,
+    }
+
+    user.value = mapUser({ ...currentRaw, ...payload, ...(updatedRaw || {}) })
     persist()
+
+    if (payload.default_ticker) useMarketStore().resetTicker(user.value.defaultTicker)
     return user.value
   }
 
-  /** Dipanggil saat boot: sesi ada di localStorage, tapi watchlist tidak. */
+  async function setEmitenUtama(ticker) {
+    if (!user.value) return
+    return updateProfile({ defaultTicker: ticker })
+  }
+
   async function restore() {
     if (!user.value || watchlists.value.length) return
     await fetchWatchlists()
@@ -238,9 +239,11 @@ export const useAuthStore = defineStore('auth', () => {
     watchlistTidakDidukung,
     emitenUtama,
     loading,
+    accessRole,
+    isAdmin,
     isLoggedIn,
     login,
-    loginWithGoogle,
+    googleLogin,
     register,
     refreshUser,
     hapusAkun,
@@ -250,8 +253,8 @@ export const useAuthStore = defineStore('auth', () => {
     ensureWatchlist,
     selectWatchlist,
     saveWatchlist,
-    setEmitenUtama,
     updateProfile,
+    setEmitenUtama,
     restore,
   }
 })

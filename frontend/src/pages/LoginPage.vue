@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useGoogleSignIn } from '@/composables/useGoogleSignIn'
 
@@ -8,35 +8,41 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-// Datang dari flow reset password: email sudah diketahui, jangan minta ketik ulang.
-const email = ref(route.query.email || '')
+const email = ref(typeof route.query.email === 'string' ? route.query.email : '')
 const password = ref('')
 const remember = ref(true)
 const error = ref('')
 
 function lanjut() {
-  router.push(route.query.redirect || '/stream')
+  const redirect =
+    typeof route.query.redirect === 'string' ? route.query.redirect : '/stream'
+  router.push(redirect)
 }
 
-// Backend membalas 401 dengan pesan bahasa Inggris; tampilkan versi yang ramah.
 function pesanError(err) {
-  return err.message === 'invalid credentials' ? 'Email atau kata sandi salah.' : err.message
+  return (
+    err?.response?.data?.error ||
+    err?.response?.data?.message ||
+    err?.message ||
+    'Login gagal. Periksa email dan kata sandi.'
+  )
 }
 
 async function onSubmit() {
   error.value = ''
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(email.value.trim(), password.value)
     lanjut()
   } catch (err) {
     error.value = pesanError(err)
   }
 }
 
-const { siap: googleSiap, error: googleError, pasang } = useGoogleSignIn(async (credential) => {
+// Tombol Google resmi dirender transparan di atas tombol bergaya sendiri.
+const { siap, error: googleError, pasang } = useGoogleSignIn(async (credential) => {
   error.value = ''
   try {
-    await auth.loginWithGoogle(credential)
+    await auth.googleLogin(credential)
     lanjut()
   } catch (err) {
     error.value = pesanError(err)
@@ -78,13 +84,15 @@ function titik(seri) {
 
 <template>
   <div class="flex min-h-screen bg-[#1c1c1c]">
-    <!-- KIRI — preview aplikasi (disembunyikan di mobile) -->
+    <!-- Panel kiri: ilustrasi (disembunyikan di layar kecil) -->
     <section
       class="hidden w-1/2 flex-col justify-center gap-12 bg-[#e9e9e9] px-14 py-12 text-[#171717] md:flex"
     >
       <header>
         <p class="text-[15px] font-semibold">◆StockVision</p>
-        <p class="tabular mt-1 text-[11px] text-[#171717]/45">Dashboard Pasar Saham Indonesia</p>
+        <p class="tabular mt-1 text-[11px] text-[#171717]/45">
+          Dashboard Pasar Saham Indonesia
+        </p>
       </header>
 
       <div>
@@ -93,11 +101,18 @@ function titik(seri) {
           <span class="tabular text-[10px] uppercase text-[#171717]/40">IDX</span>
         </div>
 
-        <p class="tabular mt-2 text-[40px] font-bold leading-none tracking-[0.06em]">9.875</p>
-        <p class="tabular mt-2 text-[13px] font-medium text-[#16a34a]">+125 (+1,28)</p>
+        <p class="tabular mt-2 text-[40px] font-bold leading-none tracking-[0.06em]">
+          9.875
+        </p>
 
-        <!-- Ilustrasi: garis harga (biru) di atas garis rata-rata (hijau). -->
-        <figure class="mt-8" aria-label="Ilustrasi pergerakan harga sepanjang tahun">
+        <p class="tabular mt-2 text-[13px] font-medium text-[#16a34a]">
+          +125 (+1,28)
+        </p>
+
+        <figure
+          class="mt-8"
+          aria-label="Ilustrasi pergerakan harga sepanjang tahun"
+        >
           <svg
             :viewBox="`0 0 ${LEBAR} 112`"
             class="h-[120px] w-full"
@@ -113,6 +128,7 @@ function titik(seri) {
               stroke-linecap="round"
               vector-effect="non-scaling-stroke"
             />
+
             <polyline
               :points="titik(SERI_RATA)"
               stroke="#1f8a4c"
@@ -125,27 +141,48 @@ function titik(seri) {
 
           <div class="h-px w-full bg-[#171717]/25"></div>
 
-          <figcaption class="tabular mt-2 flex justify-between text-[9px] text-[#171717]/45">
-            <span v-for="bulan in BULAN" :key="bulan">{{ bulan }}</span>
+          <figcaption
+            class="tabular mt-2 flex justify-between text-[9px] text-[#171717]/45"
+          >
+            <span
+              v-for="bulan in BULAN"
+              :key="bulan"
+            >
+              {{ bulan }}
+            </span>
           </figcaption>
         </figure>
       </div>
 
       <p class="max-w-md text-[12px] leading-relaxed text-[#171717]/50">
-        Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan crawling data saham
-        Indonesia secara real-time.
+        Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan
+        crawling data saham Indonesia secara real-time.
       </p>
     </section>
 
-    <!-- KANAN — form login -->
+    <!-- Panel kanan: form login -->
     <section class="flex w-full items-center justify-center px-6 py-12 md:w-1/2">
       <div class="w-full max-w-[320px]">
-        <h1 class="text-[24px] font-semibold text-white">Masuk ke StockVision</h1>
-        <p class="mt-1 text-[11px] text-white/40">Gunakan akun demo untuk mencoba</p>
+        <h1 class="text-[24px] font-semibold text-white">
+          Masuk ke StockVision
+        </h1>
 
-        <form class="mt-9 flex flex-col gap-4" @submit.prevent="onSubmit">
+        <p class="mt-1 text-[11px] text-white/40">
+          Gunakan akun demo untuk mencoba
+        </p>
+
+        <form
+          class="mt-9 flex flex-col gap-4"
+          @submit.prevent="onSubmit"
+        >
           <div class="space-y-2">
-            <label for="email" class="block text-[12px] font-medium text-white/85">Email</label>
+            <label
+              for="email"
+              class="block text-[12px] font-medium text-white/85"
+            >
+              Email
+            </label>
+
             <input
               id="email"
               v-model="email"
@@ -158,9 +195,13 @@ function titik(seri) {
           </div>
 
           <div class="space-y-2">
-            <label for="password" class="block text-[12px] font-medium text-white/85">
+            <label
+              for="password"
+              class="block text-[12px] font-medium text-white/85"
+            >
               Password
             </label>
+
             <input
               id="password"
               v-model="password"
@@ -173,12 +214,15 @@ function titik(seri) {
           </div>
 
           <div class="flex items-center justify-between">
-            <label class="flex cursor-pointer items-center gap-2 text-[12px] text-white/70">
+            <label
+              class="flex cursor-pointer items-center gap-2 text-[12px] text-white/70"
+            >
               <input
                 v-model="remember"
                 type="checkbox"
                 class="size-3.5 cursor-pointer accent-white"
               />
+
               ingat saya
             </label>
 
@@ -190,7 +234,13 @@ function titik(seri) {
             </RouterLink>
           </div>
 
-          <p v-if="error" role="alert" class="text-[12px] text-[#f87171]">{{ error }}</p>
+          <p
+            v-if="error"
+            role="alert"
+            class="text-[12px] text-[#f87171]"
+          >
+            {{ error }}
+          </p>
 
           <button
             type="submit"
@@ -203,9 +253,11 @@ function titik(seri) {
 
         <div class="my-7 flex items-center gap-3">
           <span class="h-px flex-1 bg-white/12"></span>
+
           <span class="text-[10px] font-medium tracking-[0.14em] text-white/35">
             OR SIGN IN WITH
           </span>
+
           <span class="h-px flex-1 bg-white/12"></span>
         </div>
 
@@ -216,7 +268,11 @@ function titik(seri) {
             class="flex h-10 w-full items-center justify-center gap-2.5 rounded-md bg-white text-[13px] font-medium text-[#171717] transition-colors hover:bg-white/90 disabled:opacity-60"
             @click="googleTidakSiap"
           >
-            <svg class="size-[18px]" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              class="size-[18px]"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -234,21 +290,26 @@ function titik(seri) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
+
             Login With Google
           </button>
 
-          <!-- Tombol asli Google ditumpuk transparan di atas tombol bergaya kita:
-               popup-nya hanya boleh dibuka dari elemen milik Google sendiri. -->
+          <!-- Tombol asli Google, transparan di atas tombol bergaya di atas -->
           <div
             ref="wadahGoogle"
-            class="absolute inset-0 overflow-hidden opacity-0 [&>div]:!w-full"
-            :class="googleSiap ? '' : 'pointer-events-none'"
+            :class="[
+              'absolute inset-0 overflow-hidden opacity-0 [&>div]:!w-full',
+              siap ? '' : 'pointer-events-none',
+            ]"
           ></div>
         </div>
 
         <p class="mt-7 text-center text-[12px] text-white/40">
           Belum punya akun?
-          <RouterLink to="/register" class="text-white/80 transition-colors hover:text-white">
+          <RouterLink
+            to="/register"
+            class="text-white/80 transition-colors hover:text-white"
+          >
             Daftar
           </RouterLink>
         </p>

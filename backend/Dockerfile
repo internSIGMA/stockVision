@@ -19,5 +19,5 @@ COPY . .
 # Expose the Flask port
 EXPOSE 8080
 
-# Command to run the Flask application
-CMD ["python", "app.py"]
+# Command to run the generator and then the Flask application
+CMD ["sh", "-c", "python db/trading_date.py && python app.py"]

@@ -5,3 +5,8 @@ dist
 .vscode/*
 !.vscode/extensions.json
 npm-debug.log*
+
+# Environment secrets
+.env
+.env.*
+!.env.example
