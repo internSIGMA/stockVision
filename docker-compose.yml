@@ -44,7 +44,7 @@ services:
     container_name: stockvision_frontend
     restart: always
     ports:
-      - "5174:5173"
+      - "80:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
