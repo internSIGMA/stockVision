@@ -4,11 +4,9 @@ import { useEmitenData } from '@/composables/useEmitenData'
 import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
-import PromoBanner from '@/components/stream/PromoBanner.vue'
 import TechnicalSummary from '@/components/stream/TechnicalSummary.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
-import HistoricalTable from '@/components/stream/HistoricalTable.vue'
 import CandlestickChart from '@/components/charts/CandlestickChart.vue'
 import ForeignFlowChart from '@/components/charts/ForeignFlowChart.vue'
 import ForecastChart from '@/components/charts/ForecastChart.vue'
@@ -16,7 +14,7 @@ import StatCard from '@/components/ui/StatCard.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
-import { useForecastData, HORIZON_PILIHAN } from '@/composables/useForecastData'
+import { useForecastData } from '@/composables/useForecastData'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
 /**
@@ -49,14 +47,15 @@ const volume = computed(
 // boleh menjatuhkan chart & tabel yang lain.
 const {
   horizon,
-  data: forecast,
+  horizonTersedia,
   points: titikProyeksi,
   hasData: adaProyeksi,
   hasBand,
   terakhir: proyeksiAkhir,
+  rentang: rentangProyeksi,
+  volumeRata: volumeProyeksi,
   perubahanPersen: proyeksiPersen,
-  confidenceLabel,
-  isPlaceholder,
+  trend: trenProyeksi,
   isLoading: forecastLoading,
   error: forecastError,
   setHorizon,
@@ -67,7 +66,7 @@ const TREN_CLASS = {
   TURUN: 'text-down',
 }
 
-const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-muted-foreground')
+const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-foreground')
 </script>
 
 <template>
@@ -78,13 +77,20 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
       <!-- 1 — Trending -->
       <TrendingStocksStrip ref="strip" />
 
-      <!-- 2 — Watchlist + promo & statistik -->
+      <!-- Snapshot harga bisa 404 kalau emiten belum pernah di-crawl; chart & tabel tetap jalan. -->
+      <p
+        v-if="error && !loading"
+        class="rounded-lg border-[0.5px] border-[var(--color-down)]/30 bg-[var(--color-down-bg)] px-3.5 py-2 text-[11px] text-[var(--color-down-ink)]"
+        role="status"
+      >
+        {{ error }}
+      </p>
+
+      <!-- 2 — Watchlist di kiri; statistik dan candlestick berbagi kolom kanan -->
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
         <WatchlistPanel />
 
         <div class="flex min-w-0 flex-col gap-4">
-          <PromoBanner />
-
           <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard
               label="Last Price"
@@ -116,61 +122,52 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
               </template>
             </StatCard>
           </div>
+
+          <!-- 3 — Candlestick -->
+          <section class="rounded-lg border-[0.5px] border-border bg-card">
+            <header class="flex items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+              <div class="min-w-0">
+                <h2 class="text-[13px] font-medium">
+                  Historical Candlestick — <span class="tabular">{{ ticker ?? '—' }}</span>
+                </h2>
+                <p class="mt-0.5 text-[10px] text-muted-foreground">
+                  Data OHLC tersimpan di database lokal, diperbarui lewat crawler.
+                </p>
+              </div>
+
+              <div class="ml-auto flex shrink-0 items-center gap-2">
+                <span
+                  v-if="ohlc.length"
+                  class="tabular rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {{ ohlc.length }} trading days
+                </span>
+                <Button
+                  v-if="ohlc.length"
+                  variant="ghost"
+                  size="sm"
+                  class="h-6 px-2 text-[10px]"
+                  @click="candle?.resetZoom()"
+                >
+                  Reset zoom
+                </Button>
+              </div>
+            </header>
+
+            <div v-if="loading" class="h-[340px] animate-pulse bg-muted/50" />
+
+            <EmptyState
+              v-else-if="!ohlc.length"
+              title="Belum ada data candlestick"
+              description="Emiten ini belum pernah di-crawl. Jalankan Trigger Crawler di atas untuk mengambil histori harganya."
+            />
+
+            <div v-else class="p-2">
+              <CandlestickChart ref="candle" :rows="ohlc" />
+            </div>
+          </section>
         </div>
       </div>
-
-      <!-- Snapshot harga bisa 404 kalau emiten belum pernah di-crawl; chart & tabel tetap jalan. -->
-      <p
-        v-if="error && !loading"
-        class="rounded-lg border-[0.5px] border-[var(--color-down)]/30 bg-[var(--color-down-bg)] px-3.5 py-2 text-[11px] text-[var(--color-down-ink)]"
-        role="status"
-      >
-        {{ error }}
-      </p>
-
-      <!-- 3 — Candlestick -->
-      <section class="rounded-lg border-[0.5px] border-border bg-card">
-        <header class="flex items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
-          <div class="min-w-0">
-            <h2 class="text-[13px] font-medium">
-              Historical Candlestick — <span class="tabular">{{ ticker ?? '—' }}</span>
-            </h2>
-            <p class="mt-0.5 text-[10px] text-muted-foreground">
-              Data OHLC tersimpan di database lokal, diperbarui lewat crawler.
-            </p>
-          </div>
-
-          <div class="ml-auto flex shrink-0 items-center gap-2">
-            <span
-              v-if="ohlc.length"
-              class="tabular rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
-            >
-              {{ ohlc.length }} trading days
-            </span>
-            <Button
-              v-if="ohlc.length"
-              variant="ghost"
-              size="sm"
-              class="h-6 px-2 text-[10px]"
-              @click="candle?.resetZoom()"
-            >
-              Reset zoom
-            </Button>
-          </div>
-        </header>
-
-        <div v-if="loading" class="h-[340px] animate-pulse bg-muted/50" />
-
-        <EmptyState
-          v-else-if="!ohlc.length"
-          title="Belum ada data candlestick"
-          description="Emiten ini belum pernah di-crawl. Jalankan Trigger Crawler di atas untuk mengambil histori harganya."
-        />
-
-        <div v-else class="p-2">
-          <CandlestickChart ref="candle" :rows="ohlc" />
-        </div>
-      </section>
 
       <!-- 4 — Forecasting -->
       <section class="rounded-lg border-[0.5px] border-border bg-card">
@@ -184,9 +181,10 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
             </p>
           </div>
 
-          <div class="ml-auto flex shrink-0 items-center gap-1">
+          <!-- Hanya horizon yang datanya benar-benar dikirim backend yang muncul. -->
+          <div v-if="horizonTersedia.length > 1" class="ml-auto flex shrink-0 items-center gap-1">
             <Button
-              v-for="h in HORIZON_PILIHAN"
+              v-for="h in horizonTersedia"
               :key="h"
               variant="ghost"
               size="sm"
@@ -198,6 +196,13 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
               {{ h }} Hari
             </Button>
           </div>
+
+          <span
+            v-else-if="adaProyeksi"
+            class="tabular ml-auto shrink-0 rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {{ horizon }} hari ke depan
+          </span>
         </header>
 
         <div v-if="forecastLoading || loading" class="h-[320px] animate-pulse bg-muted/50" />
@@ -209,19 +214,11 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
         />
 
         <div v-else class="flex flex-col gap-3.5 p-3.5">
-          <!-- Angka tiruan tidak boleh lewat tanpa penanda yang terlihat. -->
-          <p
-            v-if="isPlaceholder"
-            class="rounded-lg border-[0.5px] border-[var(--color-skip)]/30 bg-[var(--color-skip-bg)] px-3.5 py-2 text-[11px] text-[var(--color-skip)]"
-            role="status"
-          >
-            <span class="font-medium">Data contoh.</span>
-            Endpoint forecasting backend belum tersedia — angka di bawah adalah placeholder untuk
-            keperluan tampilan, bukan proyeksi sungguhan.
-          </p>
-
           <ForecastChart :rows="ohlc" :points="titikProyeksi" :show-band="hasBand" />
 
+          <!-- Keempat angka ini seluruhnya kolom dari /api/data/forecast:
+               close, low, high, dan volume. Backend tidak mengirim skor
+               confidence atau nama model, jadi tidak ada kartu untuk itu. -->
           <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard
               label="Proyeksi Harga Penutupan"
@@ -230,19 +227,23 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
             />
             <StatCard
               label="Arah Tren"
-              :value="forecast?.trend ?? '—'"
+              :value="trenProyeksi ?? '—'"
               :change="proyeksiPersen"
               :value-class="trenClass"
             />
             <StatCard
-              label="Confidence Level"
-              :value="forecast?.confidence != null ? `${forecast.confidence}%` : '—'"
-              :sub="confidenceLabel"
+              label="Rentang Proyeksi"
+              :value="
+                rentangProyeksi
+                  ? `${formatNumber(rentangProyeksi.bawah)}–${formatNumber(rentangProyeksi.atas)}`
+                  : '—'
+              "
+              :sub="rentangProyeksi ? `Terendah–tertinggi ${horizon} hari` : null"
             />
             <StatCard
-              label="Model"
-              :value="forecast?.model ?? '—'"
-              :sub="`Horizon ${horizon} hari`"
+              label="Volume Proyeksi"
+              :value="formatCompact(volumeProyeksi)"
+              :sub="volumeProyeksi != null ? `Rata-rata ${horizon} hari` : null"
             />
           </div>
 
@@ -281,11 +282,8 @@ const trenClass = computed(() => TREN_CLASS[forecast.value?.trend] ?? 'text-mute
         <AnalysisBrokerCard :ohlc="ohlc" :broker="broker" :loading="loading" />
       </div>
 
-      <!-- 7 — Insider + Historical -->
-      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <InsiderTable :rows="insider" :loading="loading" />
-        <HistoricalTable :rows="ohlc" :loading="loading" :ticker="ticker ?? ''" />
-      </div>
+      <!-- 7 — Insider -->
+      <InsiderTable :rows="insider" :loading="loading" />
     </div>
   </div>
 </template>

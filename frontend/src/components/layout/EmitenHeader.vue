@@ -1,10 +1,10 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { RefreshCw, Star, Zap } from '@lucide/vue'
+import { RefreshCw, Star } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useNotify } from '@/composables/useNotify'
-import { triggerCrawl, triggerCrawlAll } from '@/api/StockVision'
+import { triggerSchedulerNow } from '@/api/StockVision'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -20,48 +20,27 @@ const auth = useAuthStore()
 const market = useMarketStore()
 const notify = useNotify()
 
-const crawlingOne = ref(false)
-const crawlingAll = ref(false)
-const sibuk = computed(() => crawlingOne.value || crawlingAll.value)
+const sibuk = ref(false)
 
 const isUtama = computed(() => market.selectedTicker === auth.emitenUtama)
 
-async function crawlSatu() {
-  const ticker = market.selectedTicker
-  if (!ticker || sibuk.value) return
-
-  crawlingOne.value = true
-  try {
-    await triggerCrawl(ticker)
-    notify.success(`${ticker} berhasil di-crawl`, 'Data terbaru sudah tersimpan.')
-    emit('crawled')
-  } catch (err) {
-    notify.error(`Crawl ${ticker} gagal`, err.message)
-  } finally {
-    crawlingOne.value = false
-  }
-}
-
-async function crawlSemua() {
+/**
+ * Crawl manual per emiten sudah dimatikan backend (semua endpoint-nya 403).
+ * Yang tersisa hanya /scheduler/trigger, dan itu selalu menjalankan seluruh
+ * emiten target sekaligus — jadi satu tombol saja, bukan dua yang identik.
+ */
+async function crawlSekarang() {
   if (sibuk.value) return
 
-  crawlingAll.value = true
+  sibuk.value = true
   try {
-    const hasil = await triggerCrawlAll(auth.watchlist)
-    const gagal = hasil.filter((r) => !r.ok)
-    if (gagal.length) {
-      notify.error(
-        `${hasil.length - gagal.length}/${hasil.length} emiten berhasil`,
-        `Gagal: ${gagal.map((g) => g.ticker).join(', ')}`,
-      )
-    } else {
-      notify.success(`${hasil.length} emiten berhasil di-crawl`)
-    }
+    const hasil = await triggerSchedulerNow()
+    notify.success('Crawl dijalankan', hasil?.message || 'Seluruh emiten target diperbarui.')
     emit('crawled')
   } catch (err) {
     notify.error('Crawl gagal', err.message)
   } finally {
-    crawlingAll.value = false
+    sibuk.value = false
   }
 }
 </script>
@@ -96,14 +75,15 @@ async function crawlSemua() {
     </Select>
 
     <div class="ml-auto flex items-center gap-2">
-      <Button variant="outline" size="sm" :disabled="sibuk" @click="crawlSatu">
-        <RefreshCw class="size-3.5" :class="{ 'animate-spin': crawlingOne }" />
-        {{ crawlingOne ? 'Meng-crawl…' : 'Trigger Crawler' }}
-      </Button>
-
-      <Button variant="outline" size="sm" :disabled="sibuk" @click="crawlSemua">
-        <Zap class="size-3.5" :class="{ 'animate-pulse': crawlingAll }" />
-        {{ crawlingAll ? 'Meng-crawl…' : 'Crawl All' }}
+      <Button
+        variant="outline"
+        size="sm"
+        :disabled="sibuk"
+        title="Menjalankan crawl untuk seluruh emiten target scheduler"
+        @click="crawlSekarang"
+      >
+        <RefreshCw class="size-3.5" :class="{ 'animate-spin': sibuk }" />
+        {{ sibuk ? 'Meng-crawl…' : 'Trigger Crawler' }}
       </Button>
     </div>
   </header>
