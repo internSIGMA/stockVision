@@ -208,9 +208,7 @@ export function updateStockbitToken(token) {
 
 /** → { id, email, username, name, role, default_ticker } | 401 */
 export async function loginUser(email, password) {
-  const baseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://127.0.0.1:8080'
+  const baseUrl = BASE_URL
 
   const response = await fetch(`${baseUrl}/users/login`, {
     method: 'POST',
@@ -249,9 +247,7 @@ export async function loginUser(email, password) {
  * → { id, email, username, name, role, access_role, default_ticker }
  */
 export async function loginWithGoogle(idToken) {
-  const baseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://127.0.0.1:8080'
+  const baseUrl = BASE_URL
 
   const response = await fetch(`${baseUrl}/users/google-login`, {
     method: 'POST',

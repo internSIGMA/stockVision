@@ -45,9 +45,11 @@ export class AuthError extends Error {
   }
 }
 
+import { BASE_URL } from '@/api/index';
+
 export async function login({ email, password }) {
   try {
-    const response = await fetch('http://localhost:8080/users/login', {
+    const response = await fetch(`${BASE_URL}/users/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
