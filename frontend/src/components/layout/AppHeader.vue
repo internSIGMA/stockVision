@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   Clock,
@@ -32,18 +32,41 @@ const TABS = [
     label: 'Stream',
     to: '/stream',
     icon: TrendingUp,
+    adminOnly: false,
   },
   {
     label: 'Crawl Logs',
     to: '/crawl-logs',
     icon: ListChecks,
+    adminOnly: true,
   },
   {
     label: 'Auto Scheduler',
     to: '/auto-scheduler',
     icon: Clock,
+    adminOnly: true,
   },
 ]
+
+/*
+  Mendukung beberapa kemungkinan format role:
+  admin, Admin, ADMIN.
+*/
+const isAdmin = computed(() => {
+  return String(auth.user?.role || '')
+    .trim()
+    .toLowerCase() === 'admin'
+})
+
+/*
+  Admin melihat semua menu.
+  User biasa hanya melihat menu yang adminOnly: false.
+*/
+const visibleTabs = computed(() => {
+  return TABS.filter((tab) => {
+    return !tab.adminOnly || isAdmin.value
+  })
+})
 
 const menuTerbuka = ref(false)
 
@@ -72,11 +95,11 @@ function keluar() {
       aria-label="Navigasi utama"
     >
       <RouterLink
-        v-for="tab in TABS"
+        v-for="tab in visibleTabs"
         :key="tab.to"
         :to="tab.to"
-        class="flex h-[68px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        active-class="!border-foreground text-foreground"
+        class="flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        active-class="!border-foreground !text-foreground"
       >
         <component
           :is="tab.icon"
@@ -90,13 +113,6 @@ function keluar() {
 
     <!-- Bagian kanan header -->
     <div class="ml-auto flex shrink-0 items-center gap-2">
-      <!--
-        Menggantikan tampilan akun lama.
-        AccountMenu akan menampilkan:
-        F Fariz · BJBR
-        Kelola Akun
-        Keluar
-      -->
       <AccountMenu
         v-if="auth.user"
         class="hidden sm:block"
@@ -132,7 +148,7 @@ function keluar() {
         />
       </Button>
 
-      <!-- Tombol keluar desktop tetap dipertahankan -->
+      <!-- Tombol keluar desktop -->
       <Button
         v-if="auth.user"
         variant="ghost"
@@ -166,7 +182,7 @@ function keluar() {
           <SheetTitle>Navigasi</SheetTitle>
         </SheetHeader>
 
-        <!-- Informasi akun di mobile -->
+        <!-- Informasi akun mobile -->
         <div
           v-if="auth.user"
           class="mx-3 mt-3 rounded-lg border border-border bg-muted/30 p-3"
@@ -200,6 +216,11 @@ function keluar() {
               </p>
 
               <p class="text-[11px] text-muted-foreground">
+                Role:
+                {{ auth.user?.role || 'user' }}
+              </p>
+
+              <p class="text-[11px] text-muted-foreground">
                 Emiten utama:
                 {{ auth.emitenUtama || 'BBCA' }}
               </p>
@@ -212,7 +233,7 @@ function keluar() {
           aria-label="Navigasi utama mobile"
         >
           <RouterLink
-            v-for="tab in TABS"
+            v-for="tab in visibleTabs"
             :key="tab.to"
             :to="tab.to"
             class="flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -229,6 +250,7 @@ function keluar() {
           </RouterLink>
 
           <Button
+            v-if="auth.user"
             variant="ghost"
             size="sm"
             class="mt-2 justify-start"
