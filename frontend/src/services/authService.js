@@ -1,3 +1,5 @@
+import { BASE_URL } from '@/api/index'
+
 /**
  * Mock authentication service.
  *
@@ -44,8 +46,6 @@ export class AuthError extends Error {
     this.code = code
   }
 }
-
-import { BASE_URL } from '@/api/index';
 
 export async function login({ email, password }) {
   try {

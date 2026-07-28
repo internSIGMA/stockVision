@@ -1,4 +1,4 @@
-import api from './index'
+import api, { BASE_URL } from './index'
 
 /**
  * Kontrak API StockVision — dipetakan dari kode backend Flask yang sudah ada.
