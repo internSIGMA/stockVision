@@ -49,22 +49,33 @@ const TABS = [
 ]
 
 /*
-  Mendukung beberapa kemungkinan format role:
-  admin, Admin, ADMIN.
+  Bernilai true saat aplikasi dijalankan dengan:
+  npm run dev
+
+  Bernilai false saat aplikasi di-build untuk production.
 */
-const isAdmin = computed(() => {
-  return String(auth.user?.role || '')
+const isDeveloperMode = import.meta.env.DEV
+
+/*
+  Hak akses penuh diberikan kepada:
+  1. User dengan role admin.
+  2. Developer ketika aplikasi berjalan di mode development.
+*/
+const hasAdminAccess = computed(() => {
+  const role = String(auth.user?.role || '')
     .trim()
-    .toLowerCase() === 'admin'
+    .toLowerCase()
+
+  return role === 'admin' || isDeveloperMode
 })
 
 /*
-  Admin melihat semua menu.
-  User biasa hanya melihat menu yang adminOnly: false.
+  Developer lokal dan admin melihat semua menu.
+  User biasa di production hanya melihat Stream.
 */
 const visibleTabs = computed(() => {
   return TABS.filter((tab) => {
-    return !tab.adminOnly || isAdmin.value
+    return !tab.adminOnly || hasAdminAccess.value
   })
 })
 
@@ -79,12 +90,12 @@ function keluar() {
 
 <template>
   <header
-    class="flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4"
+    class="flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4 text-foreground"
   >
     <!-- Logo dan nama aplikasi -->
     <RouterLink
       to="/stream"
-      class="shrink-0 text-[14px] font-medium"
+      class="shrink-0 text-[14px] font-semibold text-foreground transition-colors hover:text-primary"
     >
       ◆ StockVision
     </RouterLink>
@@ -113,6 +124,7 @@ function keluar() {
 
     <!-- Bagian kanan header -->
     <div class="ml-auto flex shrink-0 items-center gap-2">
+      <!-- Menu akun hanya muncul jika ada user login -->
       <AccountMenu
         v-if="auth.user"
         class="hidden sm:block"
@@ -124,6 +136,14 @@ function keluar() {
         aria-hidden="true"
       >
         │
+      </span>
+
+      <!-- Indikator mode developer -->
+      <span
+        v-if="isDeveloperMode && !auth.user"
+        class="hidden rounded-md border border-border bg-muted/40 px-2 py-1 text-[11px] font-medium text-muted-foreground sm:inline"
+      >
+        Developer
       </span>
 
       <!-- Tombol dark/light mode -->
@@ -148,7 +168,7 @@ function keluar() {
         />
       </Button>
 
-      <!-- Tombol keluar desktop -->
+      <!-- Tombol keluar hanya muncul jika user login -->
       <Button
         v-if="auth.user"
         variant="ghost"
@@ -182,7 +202,7 @@ function keluar() {
           <SheetTitle>Navigasi</SheetTitle>
         </SheetHeader>
 
-        <!-- Informasi akun mobile -->
+        <!-- Informasi akun -->
         <div
           v-if="auth.user"
           class="mx-3 mt-3 rounded-lg border border-border bg-muted/30 p-3"
@@ -219,13 +239,22 @@ function keluar() {
                 Role:
                 {{ auth.user?.role || 'user' }}
               </p>
-
-              <p class="text-[11px] text-muted-foreground">
-                Emiten utama:
-                {{ auth.emitenUtama || 'BBCA' }}
-              </p>
             </div>
           </div>
+        </div>
+
+        <!-- Informasi developer tanpa login -->
+        <div
+          v-else-if="isDeveloperMode"
+          class="mx-3 mt-3 rounded-lg border border-border bg-muted/30 p-3"
+        >
+          <p class="text-[13px] font-semibold">
+            Developer Mode
+          </p>
+
+          <p class="mt-1 text-[11px] text-muted-foreground">
+            Akses lokal tanpa login sedang aktif.
+          </p>
         </div>
 
         <nav

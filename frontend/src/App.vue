@@ -1,18 +1,19 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import AppShell from '@/layouts/AppShell.vue'
-import { Toaster } from '@/components/ui/sonner'
+import { RouterView, useRoute } from 'vue-router'
+import AppHeader from '@/components/layout/AppHeader.vue'
 
 const route = useRoute()
 
-/** Login berdiri sendiri tanpa header/sidebar. */
-const tanpaShell = computed(() => route.meta.layout === 'none')
+const tampilkanHeader = computed(() => {
+  return route.meta.hideHeader !== true
+})
 </script>
 
 <template>
-  <RouterView v-if="tanpaShell" />
-  <AppShell v-else />
+  <div class="min-h-screen bg-background text-foreground">
+    <AppHeader v-if="tampilkanHeader" />
 
-  <Toaster position="top-right" />
+    <RouterView />
+  </div>
 </template>
