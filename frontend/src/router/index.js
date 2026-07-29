@@ -22,6 +22,16 @@ const routes = [
     },
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/pages/RegisterPage.vue'),
+    meta: {
+      public: true,
+      guestOnly: true,
+      hideHeader: true,
+    },
+  },
+  {
     path: '/stream',
     name: 'stream',
     component: () => import('@/pages/StreamPage.vue'),

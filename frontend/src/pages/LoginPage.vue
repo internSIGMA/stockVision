@@ -304,16 +304,49 @@ function titik(seri) {
           ></div>
         </div>
 
-        <p class="mt-7 text-center text-[12px] text-white/40">
-          Belum punya akun?
-          <RouterLink
-            to="/register"
-            class="text-white/80 transition-colors hover:text-white"
-          >
-            Daftar
-          </RouterLink>
-        </p>
+      <p class="register-text">
+        Belum punya akun?
+        <RouterLink
+          to="/register"
+          class="register-link"
+        >
+          Daftar Sekarang
+        </RouterLink>
+      </p>  
       </div>
     </section>
   </div>
 </template>
+<style scoped>
+.register-text {
+  margin-top: 18px;
+  color: #a1a1aa;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.register-link {
+  margin-left: 4px;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
+}
+
+.register-link:hover {
+  color: #d4d4d8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.register-link:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+</style>
