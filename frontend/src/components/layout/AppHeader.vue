@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   Clock,
@@ -32,18 +32,52 @@ const TABS = [
     label: 'Stream',
     to: '/stream',
     icon: TrendingUp,
+    adminOnly: false,
   },
   {
     label: 'Crawl Logs',
     to: '/crawl-logs',
     icon: ListChecks,
+    adminOnly: true,
   },
   {
     label: 'Auto Scheduler',
     to: '/auto-scheduler',
     icon: Clock,
+    adminOnly: true,
   },
 ]
+
+/*
+  Bernilai true saat aplikasi dijalankan dengan:
+  npm run dev
+
+  Bernilai false saat aplikasi di-build untuk production.
+*/
+const isDeveloperMode = import.meta.env.DEV
+
+/*
+  Hak akses penuh diberikan kepada:
+  1. User dengan role admin.
+  2. Developer ketika aplikasi berjalan di mode development.
+*/
+const hasAdminAccess = computed(() => {
+  const role = String(auth.user?.role || '')
+    .trim()
+    .toLowerCase()
+
+  return role === 'admin' || isDeveloperMode
+})
+
+/*
+  Developer lokal dan admin melihat semua menu.
+  User biasa di production hanya melihat Stream.
+*/
+const visibleTabs = computed(() => {
+  return TABS.filter((tab) => {
+    return !tab.adminOnly || hasAdminAccess.value
+  })
+})
 
 const menuTerbuka = ref(false)
 
@@ -56,12 +90,12 @@ function keluar() {
 
 <template>
   <header
-    class="flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4"
+    class="flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4 text-foreground"
   >
     <!-- Logo dan nama aplikasi -->
     <RouterLink
       to="/stream"
-      class="shrink-0 text-[14px] font-medium"
+      class="shrink-0 text-[14px] font-semibold text-foreground transition-colors hover:text-primary"
     >
       ◆ StockVision
     </RouterLink>
@@ -72,11 +106,11 @@ function keluar() {
       aria-label="Navigasi utama"
     >
       <RouterLink
-        v-for="tab in TABS"
+        v-for="tab in visibleTabs"
         :key="tab.to"
         :to="tab.to"
-        class="flex h-[68px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        active-class="!border-foreground text-foreground"
+        class="flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        active-class="!border-foreground !text-foreground"
       >
         <component
           :is="tab.icon"
@@ -90,13 +124,7 @@ function keluar() {
 
     <!-- Bagian kanan header -->
     <div class="ml-auto flex shrink-0 items-center gap-2">
-      <!--
-        Menggantikan tampilan akun lama.
-        AccountMenu akan menampilkan:
-        F Fariz · BJBR
-        Kelola Akun
-        Keluar
-      -->
+      <!-- Menu akun hanya muncul jika ada user login -->
       <AccountMenu
         v-if="auth.user"
         class="hidden sm:block"
@@ -108,6 +136,14 @@ function keluar() {
         aria-hidden="true"
       >
         │
+      </span>
+
+      <!-- Indikator mode developer -->
+      <span
+        v-if="isDeveloperMode && !auth.user"
+        class="hidden rounded-md border border-border bg-muted/40 px-2 py-1 text-[11px] font-medium text-muted-foreground sm:inline"
+      >
+        Developer
       </span>
 
       <!-- Tombol dark/light mode -->
@@ -132,7 +168,7 @@ function keluar() {
         />
       </Button>
 
-      <!-- Tombol keluar desktop tetap dipertahankan -->
+      <!-- Tombol keluar hanya muncul jika user login -->
       <Button
         v-if="auth.user"
         variant="ghost"
@@ -166,7 +202,7 @@ function keluar() {
           <SheetTitle>Navigasi</SheetTitle>
         </SheetHeader>
 
-        <!-- Informasi akun di mobile -->
+        <!-- Informasi akun -->
         <div
           v-if="auth.user"
           class="mx-3 mt-3 rounded-lg border border-border bg-muted/30 p-3"
@@ -200,11 +236,25 @@ function keluar() {
               </p>
 
               <p class="text-[11px] text-muted-foreground">
-                Emiten utama:
-                {{ auth.emitenUtama || 'BBCA' }}
+                Role:
+                {{ auth.user?.role || 'user' }}
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- Informasi developer tanpa login -->
+        <div
+          v-else-if="isDeveloperMode"
+          class="mx-3 mt-3 rounded-lg border border-border bg-muted/30 p-3"
+        >
+          <p class="text-[13px] font-semibold">
+            Developer Mode
+          </p>
+
+          <p class="mt-1 text-[11px] text-muted-foreground">
+            Akses lokal tanpa login sedang aktif.
+          </p>
         </div>
 
         <nav
@@ -212,7 +262,7 @@ function keluar() {
           aria-label="Navigasi utama mobile"
         >
           <RouterLink
-            v-for="tab in TABS"
+            v-for="tab in visibleTabs"
             :key="tab.to"
             :to="tab.to"
             class="flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -229,6 +279,7 @@ function keluar() {
           </RouterLink>
 
           <Button
+            v-if="auth.user"
             variant="ghost"
             size="sm"
             class="mt-2 justify-start"

@@ -1,6 +1,6 @@
 import { generateOHLC, latestQuote, emitens, FOCUS_CODES } from '../data/market.js';
 
-const TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM'];
+const TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR'];
 
 function seededValue(code, key, fallback = 0) {
   const str = `${code}:${key}`;
