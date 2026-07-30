@@ -75,7 +75,7 @@ function keluar() {
         v-for="tab in TABS"
         :key="tab.to"
         :to="tab.to"
-        class="flex h-[52px] shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        class="flex h-[68px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
         active-class="!border-foreground text-foreground"
       >
         <component

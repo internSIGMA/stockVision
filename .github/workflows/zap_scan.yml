@@ -1,0 +1,47 @@
+name: OWASP ZAP Security Audit
+
+on:
+  workflow_dispatch: # Memungkinkan eksekusi manual dari tab GitHub Actions
+  schedule:
+    - cron: '0 0 * * 0' # Otomatis berjalan seminggu sekali (Setiap hari Minggu pukul 00:00 UTC)
+
+jobs:
+  zap_scan:
+    name: OWASP ZAP Baseline Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Environment Variables
+        run: |
+          cat <<EOF > .env
+          DB_HOST=db
+          DB_PORT=5432
+          DB_NAME=stockVision
+          DB_USER=stockvision
+          DB_PASSWORD=stockvision_pass
+          EOF
+
+      - name: Start Docker Containers
+        run: |
+          docker compose up -d --build
+          sleep 20 # Menunggu kontainer selesai inisialisasi
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          mkdir -p zap-reports
+          sudo chmod 777 zap-reports
+          docker run --rm -v $(pwd)/zap-reports:/zap/wrk/:rw --network=host \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:80 -r zap_report.html -a || true
+
+      - name: Upload Security Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-zap-report
+          path: |
+            zap-reports/*.html
+            *.html

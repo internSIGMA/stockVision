@@ -27,7 +27,12 @@ const ringkasan = computed(() => {
   const highs = rows.map((r) => Number(r.high)).filter((n) => !Number.isNaN(n))
   const lows = rows.map((r) => Number(r.low)).filter((n) => !Number.isNaN(n))
   const volumes = rows.map((r) => Number(r.volume) || 0)
-  const flows = rows.map((r) => Number(r.foreign_flow) || 0)
+  // Sama seperti ForeignFlowChart: buy-sell dulu, foreign_flow cuma cadangan.
+  const flows = rows.map((r) => {
+    const beli = Number(r.foreign_buy)
+    const jual = Number(r.foreign_sell)
+    return Number.isFinite(beli) && Number.isFinite(jual) ? beli - jual : Number(r.foreign_flow) || 0
+  })
 
   return {
     tertinggi: highs.length ? Math.max(...highs) : null,

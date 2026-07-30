@@ -5,19 +5,19 @@ services:
     container_name: stockvision_db
     restart: always
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-stockVision}
+      POSTGRES_USER: ${DB_USER:-stockvision}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockvision_pass}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/database.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockvision} -d ${DB_NAME:-stockVision}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # Backend Service (Flask REST API)
   backend:
@@ -44,7 +44,7 @@ services:
     container_name: stockvision_frontend
     restart: always
     ports:
-      - "5174:5173"
+      - "80:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
