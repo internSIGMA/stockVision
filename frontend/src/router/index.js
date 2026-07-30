@@ -6,68 +6,113 @@ const routes = [
     path: '/',
     name: 'landing',
     component: () => import('@/pages/LandingPage.vue'),
-    meta: { layout: 'none' },
+    meta: {
+      public: true,
+      hideHeader: true,
+    },
   },
   {
     path: '/login',
     name: 'login',
     component: () => import('@/pages/LoginPage.vue'),
-    meta: { layout: 'none', guestOnly: true },
+    meta: {
+      public: true,
+      guestOnly: true,
+      hideHeader: true,
+    },
   },
   {
     path: '/register',
     name: 'register',
-    component: () => import('@/views/RegisterView.vue'),
-    meta: { layout: 'none', guestOnly: true },
-  },
-  {
-    path: '/forgot-password',
-    name: 'forgot-password',
-    component: () => import('@/pages/ForgotPasswordPage.vue'),
-    meta: { layout: 'none', guestOnly: true },
+    component: () => import('@/pages/RegisterPage.vue'),
+    meta: {
+      public: true,
+      guestOnly: true,
+      hideHeader: true,
+    },
   },
   {
     path: '/stream',
     name: 'stream',
     component: () => import('@/pages/StreamPage.vue'),
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: '/crawl-logs',
     name: 'crawl-logs',
     component: () => import('@/pages/CrawlLogsPage.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      adminOnly: true,
+    },
   },
   {
     path: '/auto-scheduler',
     name: 'auto-scheduler',
     component: () => import('@/pages/AutoSchedulerPage.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: {
+      requiresAuth: true,
+      adminOnly: true,
+    },
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/stream',
+    redirect: '/',
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
 })
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
-  if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+  const isDeveloperMode =
+    import.meta.env.DEV &&
+    import.meta.env.VITE_DEVELOPER_BYPASS === 'true'
+
+  const isLoggedIn = Boolean(auth.isAuthenticated)
+
+  const role = String(auth.user?.role || '')
+    .trim()
+    .toLowerCase()
+
+  const isAdmin = role === 'admin'
+
+  // Landing page dan login tetap dapat dibuka.
+  if (to.meta.public) {
+    if (to.meta.guestOnly && isLoggedIn) {
+      return '/stream'
+    }
+
+    return true
   }
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: 'stream', query: { accessDenied: 'true' } }
+
+  if (
+    to.meta.requiresAuth &&
+    !isLoggedIn &&
+    !isDeveloperMode
+  ) {
+    return {
+      path: '/login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
   }
-  if (to.meta.guestOnly && auth.isLoggedIn) {
-    return { name: 'stream' }
+
+  if (
+    to.meta.adminOnly &&
+    !isAdmin &&
+    !isDeveloperMode
+  ) {
+    return '/stream'
   }
+
   return true
 })
 
