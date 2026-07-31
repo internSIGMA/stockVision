@@ -58,6 +58,14 @@ const routes = [
     },
   },
   {
+    path: '/token-callback',
+    name: 'token-callback',
+    component: () => import('@/pages/TokenCallbackPage.vue'),
+    meta: {
+      public: true,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },

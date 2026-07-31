@@ -941,9 +941,12 @@ def update_token():
         if not data or "token" not in data:
             return jsonify({"error": "Token is required"}), 400
         
-        new_token = data["token"]
+        new_token = str(data["token"]).strip()
+        if new_token.lower().startswith("bearer "):
+            new_token = new_token[7:].strip()
+            
         if not new_token.startswith("eyJhbGciOi"):
-            return jsonify({"error": "Invalid token format"}), 400
+            return jsonify({"error": "Invalid token format (must start with eyJhbGciOi)"}), 400
         
         # Decode expiry from JWT payload
         import base64

@@ -10,11 +10,15 @@ import api from './index'
  * Endpoint crawl memakai method GET, bukan POST.
  */
 
-/** Backend menolak emiten di luar daftar ini dengan HTTP 400. */
+/**
+ * Backend kini mendukung emiten apa saja di IDX (on-demand crawl via yfinance).
+ * Daftar berikut hanyalah fallback awal — pengguna dapat menambah emiten IDX apa pun.
+ */
 export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
 
+/** Terima simbol IDX valid: 1–4 huruf kapital, opsional suffix angka (misal GOTO). */
 export function isSupported(ticker) {
-  return SUPPORTED_TICKERS.includes(String(ticker || '').toUpperCase())
+  return /^[A-Z]{1,4}[0-9]{0,2}$/.test(String(ticker || '').trim().toUpperCase())
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */
@@ -395,6 +399,14 @@ export function createWatchlist(userId, payload) {
 
 export function deleteWatchlist(userId, watchlistId) {
   return api.delete(`/users/${userId}/watchlists/${watchlistId}`)
+}
+
+/**
+ * Kuota emiten unik per akun (maks 10).
+ * → { user_id, unique_symbols: [...], used_quota, max_quota, remaining_quota }
+ */
+export function getWatchlistQuota(userId) {
+  return api.get(`/users/${userId}/watchlist-quota`)
 }
 
 /** Emiten utama tersimpan sebagai kolom default_ticker di tabel users. */
