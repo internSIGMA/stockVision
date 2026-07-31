@@ -242,20 +242,22 @@ function keluar() {
                   <template v-else>{{ inisial }}</template>
                 </span>
                 <div>
-                  <input
-                    ref="inputFoto"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    class="hidden"
-                    @change="pilihFoto"
-                  />
-                  <Button type="button" variant="outline" size="sm" @click="inputFoto?.click()">
-                    Ganti foto
-                  </Button>
-                  <p class="mt-2 text-[11px] text-muted-foreground">
-                    JPG, PNG, atau WEBP, maksimal 2 MB.
-                  </p>
-                </div>
+                  <label for="ak-foto" class="sr-only">Ganti foto profil</label>
+                    <input
+                       id="ak-foto"
+                       ref="inputFoto"
+                        type="file"
+                         accept="image/jpeg,image/png,image/webp"
+                       class="hidden"
+                     @change="pilihFoto"
+                   />
+                    <Button type="button" variant="outline" size="sm" @click="inputFoto?.click()">
+                      Ganti foto
+                    </Button>
+                       <p class="mt-2 text-[11px] text-muted-foreground">
+                         JPG, PNG, atau WEBP, maksimal 2 MB.
+                       </p>
+                  </div>
               </div>
 
               <div class="grid grid-cols-1 gap-x-5 gap-y-4 py-3 sm:grid-cols-2">

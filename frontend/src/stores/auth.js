@@ -59,6 +59,16 @@ export const useAuthStore = defineStore('auth', () => {
     (activeWatchlist.value?.symbols || []).filter((s) => !isSupported(s)),
   )
 
+  /**
+   * Simbol apa adanya dari watchlist aktif — tanpa dua perilaku milik
+   * `watchlist` yang bikin penghapusan tidak kelihatan: fallback ke seluruh
+   * SUPPORTED_TICKERS saat kosong, dan penyisipan emiten utama di depan.
+   * Dipakai panel yang menampilkan daftar bisa-hapus.
+   */
+  const watchlistTersimpan = computed(() =>
+    (activeWatchlist.value?.symbols || []).filter(isSupported),
+  )
+
   const emitenUtama = computed(() => user.value?.defaultTicker || watchlist.value[0] || 'BBCA')
 
   function persist() {
@@ -174,6 +184,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Mengeluarkan satu emiten dari watchlist aktif. Perubahannya disimpan ke
+   * backend lewat saveWatchlist, bukan cuma di memori.
+   */
+  async function removeFromWatchlist(ticker) {
+    if (!user.value) return
+
+    const sisa = watchlistTersimpan.value.filter((t) => t !== ticker)
+    await saveWatchlist(sisa)
+
+    // Emiten utama ikut pindah kalau yang barusan dihapus adalah dirinya.
+    // Kalau tidak ada sisa, biarkan — updateProfile menolak ticker kosong.
+    if (user.value.defaultTicker === ticker && sisa.length) {
+      await setEmitenUtama(sisa[0])
+    }
+
+    // Jangan tinggalkan Stream menampilkan emiten yang sudah tidak dipantau.
+    const market = useMarketStore()
+    if (market.selectedTicker === ticker) market.setTicker(sisa[0] ?? null)
+
+    return sisa
+  }
+
   async function hapusWatchlist(watchlistId) {
     if (!user.value || watchlists.value.length <= 1) return
     await deleteWatchlist(user.value.id, watchlistId)
@@ -226,7 +259,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    if (!user.value || watchlists.value.length) return
+    if (!user.value) return
+
+    // selectedTicker tidak ikut dipersistensi, jadi setelah refresh nilainya
+    // kosong dan seluruh section Stream ikut kosong. Pulihkan dari profil user.
+    useMarketStore().initTicker(user.value.defaultTicker)
+
+    if (watchlists.value.length) return
     await fetchWatchlists()
   }
 
@@ -236,6 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
     activeWatchlistId,
     activeWatchlist,
     watchlist,
+    watchlistTersimpan,
     watchlistTidakDidukung,
     emitenUtama,
     loading,
@@ -248,6 +288,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshUser,
     hapusAkun,
     hapusWatchlist,
+    removeFromWatchlist,
     logout,
     fetchWatchlists,
     ensureWatchlist,

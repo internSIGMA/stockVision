@@ -132,7 +132,7 @@ function target(log) {
             class="rounded-full border px-2.5 py-1 text-[11px] transition-colors"
             :class="
               rentang === r.key
-                ? 'border-foreground bg-foreground text-background'
+                ? 'border-[var(--color-info)] bg-[var(--color-info-bg)] text-[var(--color-info-ink)]'
                 : 'border-border text-muted-foreground hover:text-foreground'
             "
             :aria-pressed="rentang === r.key"

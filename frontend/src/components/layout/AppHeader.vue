@@ -62,11 +62,9 @@ const isDeveloperMode = import.meta.env.DEV
   2. Developer ketika aplikasi berjalan di mode development.
 */
 const hasAdminAccess = computed(() => {
-  const role = String(auth.user?.role || '')
-    .trim()
-    .toLowerCase()
-
-  return role === 'admin' || isDeveloperMode
+  // Izin ada di kolom access_role, bukan role — role isinya jabatan
+  // ("Trader — Perbankan"), jadi tidak pernah bernilai "admin".
+  return auth.isAdmin || isDeveloperMode
 })
 
 /*
@@ -110,7 +108,7 @@ function keluar() {
         :key="tab.to"
         :to="tab.to"
         class="flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        active-class="!border-foreground !text-foreground"
+        active-class="!border-primary !text-primary"
       >
         <component
           :is="tab.icon"
