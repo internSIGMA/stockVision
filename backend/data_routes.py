@@ -34,10 +34,6 @@ def get_historical_ohlc():
     if not symbol:
         return jsonify({"error": "Parameter 'symbol' wajib diisi"}), 400
         
-    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
-    if symbol not in allowed_symbols:
-        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Pendukung: {', '.join(allowed_symbols)}"}), 400
-        
     from_date = request.args.get("from")
     to_date = request.args.get("to")
     
@@ -63,6 +59,19 @@ def get_historical_ohlc():
         cur = conn.cursor()
         cur.execute(query, params)
         rows = cur.fetchall()
+        
+        # On-demand crawl via yfinance if symbol has no historical records in DB
+        if not rows:
+            try:
+                from crawl_yfinance import crawl_ohlcv, insert_ohlcv
+                records = crawl_ohlcv(symbol, period="5y")
+                if records:
+                    insert_ohlcv(records)
+                    cur.execute(query, params)
+                    rows = cur.fetchall()
+            except Exception as e:
+                print(f"[On-Demand Crawl] Failed to fetch yfinance data for {symbol}: {e}")
+
         cur.close()
         conn.close()
         
