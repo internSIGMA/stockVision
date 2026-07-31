@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { Toaster } from '@/components/ui/sonner'
 
 const route = useRoute()
 
@@ -15,5 +16,9 @@ const tampilkanHeader = computed(() => {
     <AppHeader v-if="tampilkanHeader" />
 
     <RouterView />
+
+    <!-- Wadah toast dipasang sekali di sini; useNotify di komponen mana pun
+         tidak menampilkan apa-apa tanpa ini. -->
+    <Toaster position="top-right" :duration="4000" close-button />
   </div>
 </template>

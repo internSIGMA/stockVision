@@ -31,10 +31,23 @@ const props = defineProps({
 
 const { isDark } = useTheme()
 
-const AKTUAL = '#525252'
-const AKTUAL_GELAP = '#d4d4d4'
-const PROYEKSI = '#7c3aed'
-const BAND = 'rgba(124, 58, 237, 0.12)'
+/**
+ * Palet diambil dari CSS variable supaya chart ikut token di globals.css.
+ * isDark ikut dibaca agar computed ini dihitung ulang saat tema berganti —
+ * getComputedStyle sendiri bukan sumber reaktif buat Vue.
+ */
+const palet = computed(() => {
+  void isDark.value
+  const style = getComputedStyle(document.documentElement)
+  const ambil = (nama) => style.getPropertyValue(nama).trim()
+  return {
+    aktual: ambil('--primary'),
+    proyeksi: ambil('--primary-light'),
+    band: ambil('--primary-soft'),
+    grid: ambil('--border'),
+    text: ambil('--muted-foreground'),
+  }
+})
 
 const historis = computed(() => props.rows.slice(-props.limit))
 
@@ -45,6 +58,7 @@ const historis = computed(() => props.rows.slice(-props.limit))
  * dan tidak melayang terputus.
  */
 const chartData = computed(() => {
+  const warna = palet.value
   const aktual = historis.value.map((r) => Number(r.close))
   const sambungan = aktual.length ? aktual.length - 1 : 0
   const hargaSambung = aktual.length ? aktual[aktual.length - 1] : null
@@ -70,7 +84,7 @@ const chartData = computed(() => {
         label: 'Batas atas',
         data: isiSetelahSambungan(props.points.map((p) => p.upper)),
         borderColor: 'transparent',
-        backgroundColor: BAND,
+        backgroundColor: warna.band,
         pointRadius: 0,
         borderWidth: 0,
         fill: '+1', // isi sampai dataset berikutnya (batas bawah)
@@ -92,7 +106,7 @@ const chartData = computed(() => {
     {
       label: 'Harga aktual',
       data: [...aktual, ...new Array(props.points.length).fill(null)],
-      borderColor: isDark.value ? AKTUAL_GELAP : AKTUAL,
+      borderColor: warna.aktual,
       borderWidth: 1.5,
       pointRadius: 0,
       pointHoverRadius: 3,
@@ -102,7 +116,7 @@ const chartData = computed(() => {
     {
       label: 'Proyeksi',
       data: isiSetelahSambungan(props.points.map((p) => p.prediksi)),
-      borderColor: PROYEKSI,
+      borderColor: warna.proyeksi,
       borderWidth: 1.5,
       borderDash: [4, 3],
       pointRadius: 0,
@@ -116,8 +130,7 @@ const chartData = computed(() => {
 })
 
 const chartOptions = computed(() => {
-  const grid = isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-  const text = isDark.value ? '#a1a1a1' : '#737373'
+  const { grid, text } = palet.value
   const mono = { family: "'Spline Sans Mono', monospace", size: 9 }
 
   const cariTitik = (label) => props.points.find((p) => p.tanggal === label)

@@ -4,12 +4,12 @@ import { TrendingUp } from '@lucide/vue'
 import { useLandingSpotlight } from '@/composables/useLandingSpotlight'
 import { formatNumber, formatPercent, trendClass } from '@/utils/format'
 
-const { ticker, candles, hargaTerakhir, perubahanPersen, isRekomendasi, loading, error } =
+const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
   useLandingSpotlight()
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-muted/40">
+  <div class="flex min-h-screen flex-col bg-[var(--background-secondary)]">
     <header class="flex h-16 items-center justify-between border-b-[0.5px] border-border bg-background px-6 md:px-10">
       <RouterLink to="/" class="flex items-center gap-2.5">
         <span
@@ -19,7 +19,7 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, isRekomendasi, loading,
           <TrendingUp class="size-[18px]" />
         </span>
         <span class="text-[15px] font-bold tracking-tight">
-          Stock<span class="text-muted-foreground">Vision</span>
+          Stock<span class="text-primary">Vision</span>
         </span>
       </RouterLink>
 
@@ -34,7 +34,7 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, isRekomendasi, loading,
     <main class="flex flex-1 flex-col items-center px-6 py-16 text-center md:py-20">
       <h1 class="max-w-3xl text-[32px] font-bold leading-[1.15] tracking-tight md:text-[44px]">
         Mulai Analisis Saham dengan
-        <span class="block text-muted-foreground">Data Cerdas</span>
+        <span class="block text-primary">Data Cerdas</span>
       </h1>
 
       <p class="mt-6 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
@@ -50,16 +50,13 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, isRekomendasi, loading,
               <span v-for="i in 3" :key="i" class="size-2 rounded-full bg-muted-foreground/25"></span>
             </div>
 
-            <!-- Label emiten: favorit user, atau rekomendasi untuk pengunjung. -->
+            <!-- Etalase: emiten berperforma terbaik, sama untuk semua pengunjung. -->
             <span v-if="ticker" class="flex items-center gap-1.5">
               <span class="tabular text-[11px] font-semibold">{{ ticker }}</span>
               <span
-                class="rounded px-1.5 py-0.5 text-[9px] font-medium"
-                :class="isRekomendasi
-                  ? 'bg-[var(--color-info-bg)] text-[var(--color-info-ink)]'
-                  : 'bg-[var(--color-skip-bg)] text-[var(--color-skip-ink)]'"
+                class="rounded bg-[var(--color-info-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--color-info-ink)]"
               >
-                {{ isRekomendasi ? 'Rekomendasi' : 'Favoritmu' }}
+                Performa terbaik
               </span>
             </span>
           </div>

@@ -1,10 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { Eye, EyeOff } from '@lucide/vue'
 import { useEmitenData } from '@/composables/useEmitenData'
 import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
 import TechnicalSummary from '@/components/stream/TechnicalSummary.vue'
+import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
 import CandlestickChart from '@/components/charts/CandlestickChart.vue'
@@ -15,6 +17,7 @@ import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { useForecastData } from '@/composables/useForecastData'
+import { usePrescriptive } from '@/composables/usePrescriptive'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
 /**
@@ -30,6 +33,27 @@ const { ticker, summary, ohlc, insider, broker, loading, error, reload } = useEm
 
 const strip = ref(null)
 const candle = ref(null)
+
+// ---- Tampil/sembunyi Foreign Flow ----
+
+const FF_KEY = 'stockvision.foreignflow'
+
+/** Default tersembunyi; pilihannya diingat antar kunjungan. */
+const ffTampil = ref(localStorage.getItem(FF_KEY) === 'true')
+
+/**
+ * Chart baru dipasang saat pertama kali ditampilkan, lalu dipertahankan
+ * (v-show, bukan v-if) supaya tidak dibongkar-pasang tiap kali disembunyikan.
+ * Kalau dipasang sejak awal di dalam container tersembunyi, canvas-nya lahir
+ * dengan lebar 0 dan bisa tetap kosong saat akhirnya ditampilkan.
+ */
+const ffPernahTampil = ref(ffTampil.value)
+
+function toggleForeignFlow() {
+  ffTampil.value = !ffTampil.value
+  if (ffTampil.value) ffPernahTampil.value = true
+  localStorage.setItem(FF_KEY, String(ffTampil.value))
+}
 
 function segarkan() {
   reload()
@@ -60,6 +84,15 @@ const {
   error: forecastError,
   setHorizon,
 } = useForecastData({ ohlc })
+
+// Prescriptive juga berdiri sendiri: emiten yang belum pernah dianalisis
+// pipeline wajar kosong, dan itu tidak boleh menjatuhkan bagian lain.
+const {
+  data: prescriptive,
+  tradingLevels,
+  isLoading: prescriptiveLoading,
+  reload: muatUlangPrescriptive,
+} = usePrescriptive()
 
 const TREN_CLASS = {
   NAIK: 'text-up',
@@ -256,27 +289,63 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
 
       <!-- 5 — Foreign flow -->
       <section class="rounded-lg border-[0.5px] border-border bg-card">
-        <header class="border-b-[0.5px] border-border px-3.5 py-2.5">
-          <h2 class="text-[13px] font-medium">Foreign Flow Activity (IDR)</h2>
-          <p class="mt-0.5 text-[10px] text-muted-foreground">
-            Selisih beli dan jual asing per hari, dalam miliar rupiah.
-          </p>
+        <header
+          class="flex items-start justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5"
+        >
+          <div class="min-w-0">
+            <h2 class="text-[13px] font-medium">Foreign Flow Activity (IDR)</h2>
+            <p class="mt-0.5 text-[10px] text-muted-foreground">
+              Selisih beli dan jual asing per hari, dalam miliar rupiah.
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 shrink-0"
+            :aria-expanded="ffTampil"
+            @click="toggleForeignFlow"
+          >
+            <component :is="ffTampil ? Eye : EyeOff" class="size-3.5" />
+            {{ ffTampil ? 'Sembunyikan' : 'Tampilkan' }}
+          </Button>
         </header>
 
-        <div v-if="loading" class="h-[300px] animate-pulse bg-muted/50" />
+        <p
+          v-if="!ffTampil"
+          class="px-3.5 py-6 text-center text-[11px] text-muted-foreground"
+        >
+          Grafik disembunyikan. Klik Tampilkan untuk melihat aliran dana asing.
+        </p>
 
-        <EmptyState
-          v-else-if="!ohlc.length"
-          title="Belum ada data foreign flow"
-          description="Foreign flow ikut terambil bersama histori OHLC."
-        />
+        <div v-show="ffTampil">
+          <div v-if="loading" class="h-[300px] animate-pulse bg-muted/50" />
 
-        <div v-else class="p-3.5">
-          <ForeignFlowChart :rows="ohlc" />
+          <EmptyState
+            v-else-if="!ohlc.length"
+            title="Belum ada data foreign flow"
+            description="Foreign flow ikut terambil bersama histori OHLC."
+          />
+
+          <div v-else-if="ffPernahTampil" class="p-3.5">
+            <ForeignFlowChart :rows="ohlc" />
+          </div>
         </div>
       </section>
 
-      <!-- 6 — Technical + Analysis/Broker -->
+      <!-- 6 — Prescriptive -->
+      <PrescriptivePanel
+        :rows="ohlc"
+        :forecast="titikProyeksi"
+        :loading="loading"
+        :forecast-loading="forecastLoading"
+        :backend="prescriptive"
+        :backend-loading="prescriptiveLoading"
+        :levels="tradingLevels"
+        @recompute="muatUlangPrescriptive"
+      />
+
+      <!-- 7 — Technical + Analysis/Broker -->
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <TechnicalSummary :rows="ohlc" :loading="loading" />
         <AnalysisBrokerCard :ohlc="ohlc" :broker="broker" :loading="loading" />
