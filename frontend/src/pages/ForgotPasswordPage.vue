@@ -62,7 +62,7 @@ async function onSimpan() {
           v-for="n in 3"
           :key="n"
           class="h-1 flex-1 rounded-full transition-colors duration-200"
-          :class="n <= step ? 'bg-foreground' : 'bg-border'"
+          :class="n <= step ? 'bg-primary' : 'bg-border'"
         ></span>
       </div>
 
@@ -106,7 +106,7 @@ async function onSimpan() {
             <!-- SMTP belum dikonfigurasi: backend menitipkan kodenya lewat response. -->
             <p
               v-if="kodeSimulasi"
-              class="rounded-lg border-[0.5px] border-[var(--color-skip)]/30 bg-[var(--color-skip-bg)] px-3.5 py-2.5 text-[11px] leading-relaxed text-[var(--color-skip)]"
+              class="rounded-lg border-[0.5px] border-[var(--color-skip)]/30 bg-[var(--color-skip-bg)] px-3.5 py-2.5 text-[11px] leading-relaxed text-[var(--color-skip-ink)]"
               role="status"
             >
               <span class="font-medium">Mode simulasi.</span>

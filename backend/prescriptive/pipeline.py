@@ -71,7 +71,6 @@ def run_prescriptive_pipeline():
 
     # Siapkan ringkasan hasil
     results_summary = []
-    display_cols = ["symbol", "sector", "TOTAL_SCORE", "RECOMMENDATION", "expected_return", "current_close"]
     
     for _, row in score_df.iterrows():
         results_summary.append({
@@ -80,7 +79,6 @@ def run_prescriptive_pipeline():
             "sector": row.get("sector"),
             "total_score": int(row.get("TOTAL_SCORE", 0)),
             "recommendation": row.get("RECOMMENDATION"),
-            "insight_summary": row.get("insight_summary"),
             "llm_summary": row.get("llm_summary"),
             "new_buyer_strategy": {
                 "recommendation": row.get("rec_new_buyer"),
@@ -113,6 +111,7 @@ def run_prescriptive_pipeline():
                     "profitability": int(row.get("score_profitability", 0)),
                     "growth": int(row.get("score_growth", 0)),
                 },
+                "total": int(row.get("TOTAL_SCORE", 0)),
             },
             "signals": {
                 "trend": row.get("TREND"),

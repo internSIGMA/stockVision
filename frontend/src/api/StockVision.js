@@ -104,6 +104,23 @@ export function getForecast(symbol, days) {
   return api.get('/api/data/forecast', { params })
 }
 
+/**
+ * Hasil analisis prescriptive terbaru: rekomendasi, skor tekno-fundamental,
+ * level entry/target/stop loss, strategi pembeli baru vs pemegang, dan
+ * ringkasan naratif dari LLM.
+ *
+ * Ringkasannya dibuat di backend — kunci Gemini tidak pernah menyentuh
+ * browser. Jangan pindahkan pemanggilan LLM ke sini: variabel VITE_* ikut
+ * ter-bundle ke berkas publik dan kuncinya akan terbaca semua pengunjung.
+ *
+ * → { symbol, recommendation, total_score, trade_setup, scores, signals,
+ *     new_buyer_strategy, holding_strategy, llm_summary, ... } | null
+ */
+export async function getPrescriptive(symbol) {
+  const res = await api.get('/api/prescriptive/results', { params: { symbol } })
+  return res?.results?.[0] ?? null
+}
+
 // ============================================================
 // TRIGGER CRAWL MANUAL
 // ============================================================

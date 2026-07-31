@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue'
-import { Building2, Plus, Star } from '@lucide/vue'
+import { ref, watch } from 'vue'
+import { Building2, Check, Inbox, Pencil, Plus, Star, X } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useNotify } from '@/composables/useNotify'
@@ -22,6 +22,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const auth = useAuthStore()
 const market = useMarketStore()
@@ -53,6 +62,40 @@ async function jadikanUtama(ticker) {
     notify.success(`${ticker} jadi emiten utama`)
   } catch (err) {
     notify.error('Gagal menyimpan emiten utama', err.message)
+  }
+}
+
+// ---- Mode edit: hapus emiten dari watchlist ----
+
+const modeEdit = ref(false)
+const tickerDihapus = ref(null)
+const dialogHapus = ref(false)
+const menghapus = ref(false)
+
+// Ganti watchlist saat sedang mengedit bisa menyisakan mode edit di daftar
+// yang sama sekali berbeda — tutup saja.
+watch(() => auth.activeWatchlistId, () => (modeEdit.value = false))
+
+function tanyaHapus(ticker) {
+  tickerDihapus.value = ticker
+  dialogHapus.value = true
+}
+
+async function konfirmasiHapus() {
+  const ticker = tickerDihapus.value
+  if (!ticker || menghapus.value) return
+
+  menghapus.value = true
+  try {
+    const sisa = await auth.removeFromWatchlist(ticker)
+    notify.success(`${ticker} dihapus dari watchlist`)
+    dialogHapus.value = false
+    tickerDihapus.value = null
+    if (!sisa?.length) modeEdit.value = false
+  } catch (err) {
+    notify.error('Gagal menghapus emiten', err.message)
+  } finally {
+    menghapus.value = false
   }
 }
 </script>
@@ -94,7 +137,7 @@ async function jadikanUtama(ticker) {
         </Button>
 
         <Button variant="outline" size="sm" class="h-8 shrink-0" @click="editorTerbuka = true">
-          Edit
+          Kelola
         </Button>
       </div>
     </div>
@@ -104,20 +147,39 @@ async function jadikanUtama(ticker) {
       <div class="flex items-center gap-1.5">
         <Building2 class="size-3.5 text-muted-foreground" aria-hidden="true" />
         <p class="text-[12px] font-medium">Focus Emiten</p>
+
+        <Button
+          v-if="auth.watchlistTersimpan.length || modeEdit"
+          variant="ghost"
+          size="xs"
+          class="ml-auto shrink-0"
+          :class="modeEdit ? 'text-primary hover:text-primary' : 'text-muted-foreground'"
+          :aria-pressed="modeEdit"
+          @click="modeEdit = !modeEdit"
+        >
+          <component :is="modeEdit ? Check : Pencil" class="size-3" />
+          {{ modeEdit ? 'Selesai' : 'Edit' }}
+        </Button>
       </div>
+
       <p class="text-[11px] leading-relaxed text-muted-foreground">
-        Emiten yang kamu pantau. Klik untuk membuka, klik bintang untuk menjadikannya utama.
+        {{
+          modeEdit
+            ? 'Klik ikon silang untuk mengeluarkan emiten dari daftar pantau.'
+            : 'Emiten yang kamu pantau. Klik untuk membuka, klik bintang untuk menjadikannya utama.'
+        }}
       </p>
 
       <EmptyState
-        v-if="!auth.watchlist.length"
-        title="Belum ada emiten"
-        description="Tambahkan emiten lewat tombol Edit di atas."
+        v-if="!auth.watchlistTersimpan.length"
+        :icon="Inbox"
+        title="Watchlist kosong"
+        description="Tambahkan emiten lewat tombol Kelola di atas."
       />
 
       <ul v-else class="flex flex-col gap-1">
         <li
-          v-for="ticker in auth.watchlist"
+          v-for="ticker in auth.watchlistTersimpan"
           :key="ticker"
           class="flex items-center justify-between rounded-md border px-2.5 py-2 transition-colors"
           :class="
@@ -138,6 +200,7 @@ async function jadikanUtama(ticker) {
           <!-- Padding, bukan ikon lebih besar: ikon 14px tetap proporsional,
                tapi area kliknya naik dari 14px ke 32px. -->
           <button
+            v-if="!modeEdit"
             type="button"
             class="-mr-1 flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent"
             :class="
@@ -150,6 +213,16 @@ async function jadikanUtama(ticker) {
             @click="jadikanUtama(ticker)"
           >
             <Star class="size-3.5" :class="{ 'fill-current': auth.emitenUtama === ticker }" />
+          </button>
+
+          <button
+            v-else
+            type="button"
+            class="-mr-1 flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--destructive)] transition-colors hover:bg-[var(--down-bg)]"
+            :aria-label="`Hapus ${ticker} dari watchlist`"
+            @click.stop="tanyaHapus(ticker)"
+          >
+            <X class="size-3.5" />
           </button>
         </li>
       </ul>
@@ -178,5 +251,34 @@ async function jadikanUtama(ticker) {
         </div>
       </SheetContent>
     </Sheet>
+
+    <AlertDialog v-model:open="dialogHapus">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus {{ tickerDihapus }} dari watchlist?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <template v-if="auth.emitenUtama === tickerDihapus">
+              {{ tickerDihapus }} sedang menjadi emiten utama. Emiten utama akan otomatis
+              pindah ke urutan pertama yang tersisa.
+            </template>
+            <template v-else>
+              {{ tickerDihapus }} akan dikeluarkan dari daftar pantau kamu.
+            </template>
+            Kamu bisa menambahkannya lagi lewat tombol Kelola.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="menghapus">Batal</AlertDialogCancel>
+
+          <!-- Tombol biasa, bukan AlertDialogAction: AlertDialogAction memakai
+               DialogClose yang selalu menutup dialog saat diklik, sedangkan
+               penghapusan ini menembak backend dan bisa gagal. -->
+          <Button variant="destructive" :disabled="menghapus" @click="konfirmasiHapus">
+            {{ menghapus ? 'Menghapus…' : 'Hapus' }}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

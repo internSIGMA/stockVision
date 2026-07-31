@@ -1,5 +1,4 @@
 import { computed, ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { getOhlcHistory, SUPPORTED_TICKERS } from '@/api/StockVision'
 
 /** Jumlah candle yang dirender di mock jendela. */
@@ -28,7 +27,7 @@ function bersihkan(rows) {
 
 /**
  * Persentase perubahan close sepanjang `JENDELA_PERFORMA` baris terakhir.
- * Dipakai untuk memilih emiten "paling bagus" bagi pengunjung tanpa akun.
+ * Dipakai untuk memilih emiten berperforma terbaik.
  */
 function performa(rows) {
   if (rows.length < 2) return null
@@ -40,19 +39,18 @@ function performa(rows) {
 }
 
 /**
- * Emiten sorotan untuk landing page:
- *   - sudah login  → emiten utama (default_ticker) user
- *   - belum login  → emiten dengan performa terbaik di antara yang didukung
+ * Emiten sorotan untuk halaman publik (landing & login): emiten dengan
+ * performa terbaik diantara yang didukung backend.
+ *
+ * Sengaja TIDAK melihat status login maupun emiten favorit user — sorotan ini
+ * etalase, jadi semua pengunjung harus melihat emiten yang sama.
  *
  * Selalu mengembalikan data OHLC nyata dari backend, tidak ada ilustrasi statis.
  */
 export function useLandingSpotlight() {
-  const auth = useAuthStore()
-
   const ticker = ref(null)
   const rows = ref([])
   const perubahanPersen = ref(null)
-  const isRekomendasi = ref(false)
   const loading = ref(true)
   const error = ref('')
 
@@ -109,19 +107,6 @@ export function useLandingSpotlight() {
     error.value = ''
 
     try {
-      if (auth.isLoggedIn) {
-        // Emiten kesukaan user; kalau kosong, jatuh ke jalur rekomendasi.
-        const favorit = auth.emitenUtama
-        const data = await muatSatu(favorit)
-        if (data.length) {
-          ticker.value = favorit
-          rows.value = data
-          perubahanPersen.value = performa(data)
-          isRekomendasi.value = false
-          return
-        }
-      }
-
       const rekomendasi = await pilihRekomendasi()
       if (!rekomendasi) {
         error.value = 'Belum ada data pasar yang bisa ditampilkan.'
@@ -132,7 +117,6 @@ export function useLandingSpotlight() {
       ticker.value = rekomendasi.symbol
       rows.value = rekomendasi.rows
       perubahanPersen.value = rekomendasi.skor
-      isRekomendasi.value = true
     } catch (err) {
       error.value = err.message
       rows.value = []
@@ -149,7 +133,6 @@ export function useLandingSpotlight() {
     candles,
     hargaTerakhir,
     perubahanPersen,
-    isRekomendasi,
     loading,
     error,
     reload: muat,
