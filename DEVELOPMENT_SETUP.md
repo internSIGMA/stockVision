@@ -55,41 +55,6 @@ git checkout main_dply
 
 ---
 
-### 2. Buat Berkas `.env` Lokal
-Buat berkas `.env` di direktori utama proyek (`/stockVision/.env`):
-
-```bash
-cat << 'EOF' > .env
-# ============================================================
-# DATABASE CONFIGURATION (Menunjuk ke Server Shared DB 10.1.8.108)
-# ============================================================
-DB_HOST=10.1.8.108
-DB_PORT=5434
-DB_NAME=stockVision
-DB_USER=stockvision
-DB_PASSWORD=stockvision_pass
-
-# ============================================================
-# STOCKBIT & CREDENTIALS
-# ============================================================
-STOCKBIT_USERNAME=winssss
-STOCKBIT_PASSWORD=Sigma#2026
-STOCKBIT_PLAYER_ID=zmFLRX6p-zWkZ-HQr1-HNFjg5TaMDir
-STOCKBIT_ACCESS_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6ImExNWQ5OGE2LTdkYzgtNDM3NS05NDk0LTEyOWJlM2RlODVkNCIsInR5cCI6IkpXVCJ9...
-
-# ============================================================
-# SMTP CONFIGURATION
-# ============================================================
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=sigmaadmin2026@gmail.com
-SMTP_PASSWORD=Sigmaaa#2026
-SMTP_FROM=sigmaadmin2026@gmail.com
-EOF
-```
-
----
-
 ### 3. Jalankan Kontainer Backend & Frontend
 Jalankan kontainer `backend` dan `frontend` di laptop Anda (**tidak perlu memicu kontainer DB lokal**):
 
@@ -124,29 +89,13 @@ docker compose up -d --build backend frontend
 
 ---
 
-## 🗄️ Akses Database via Aplikasi GUI (DBeaver / TablePlus / DataGrip)
-
-Jika Anda ingin melihat atau mengelola tabel database secara langsung dari laptop:
-
-| Parameter | Nilai / Value |
-| :--- | :--- |
-| **Host / IP** | `10.1.8.108` |
-| **Port** | `5434` |
-| **Database** | `stockVision` |
-| **User** | `stockvision` |
-| **Password** | `stockvision_pass` |
 
 ---
 
 ## 🛠️ Troubleshooting (Kendala Sering Terjadi)
 
-### 1. `Connection timed out` saat Akses Database Server
-* **Penyebab**: Laptop Anda belum terhubung ke jaringan LAN/VPN server, atau IP server berubah.
-* **Solusi**: 
-  - Pastikan `ping 10.1.8.108` mengembalikan balasan (reply).
-  - Pastikan port `5434` terbuka di firewall server.
 
-### 2. `Connection refused` di Port 8080 saat Pertama Kali Dinyalakan
+### q. `Connection refused` di Port 8080 saat Pertama Kali Dinyalakan
 * **Penyebab**: Backend sedang menjalankan inisialisasi awal kalender bursa (`python db/trading_date.py`).
 * **Solusi**: Tunggu 10–15 detik, periksa log dengan `docker compose logs -f backend`.
 
