@@ -192,7 +192,73 @@ def get_stock_info():
         conn.close()
         
         if not row:
-            return jsonify({"error": f"Data snapshot untuk {symbol} tidak ditemukan"}), 404
+            # Fallback 1: Ambil data snapshot dari idxsaham.ohlc_forecasting (yfinance historical data)
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT symbol, tanggal, open, high, low, close, volume
+                FROM idxsaham.ohlc_forecasting
+                WHERE symbol = %s
+                ORDER BY tanggal DESC
+                LIMIT 2;
+            """, (symbol,))
+            ohlc_rows = cur.fetchall()
+            cur.close()
+            conn.close()
+
+            # Fallback 2: Jika ohlc_forecasting belum ada data untuk symbol ini, lakukan on-demand yfinance crawl secara dinamis
+            if not ohlc_rows:
+                try:
+                    from crawl_yfinance import crawl_ohlcv, insert_ohlcv, crawl_company_info, insert_company_info
+                    recs = crawl_ohlcv(symbol, period="5y")
+                    if recs:
+                        insert_ohlcv(recs)
+                        c_info = crawl_company_info(symbol)
+                        if c_info:
+                            insert_company_info(c_info)
+                        conn = get_connection()
+                        cur = conn.cursor()
+                        cur.execute("""
+                            SELECT symbol, tanggal, open, high, low, close, volume
+                            FROM idxsaham.ohlc_forecasting
+                            WHERE symbol = %s
+                            ORDER BY tanggal DESC
+                            LIMIT 2;
+                        """, (symbol,))
+                        ohlc_rows = cur.fetchall()
+                        cur.close()
+                        conn.close()
+                except Exception as e:
+                    print(f"[Stock-Info Fallback] Dynamic yfinance crawl error for {symbol}: {e}")
+
+
+            if ohlc_rows:
+                latest = ohlc_rows[0]
+                prev = ohlc_rows[1] if len(ohlc_rows) > 1 else latest
+                c_close = decimal_to_float(latest[5]) or 0.0
+                p_close = decimal_to_float(prev[5]) or decimal_to_float(latest[2]) or c_close
+                diff = round(c_close - p_close, 2)
+                diff_pct = round((diff / p_close * 100), 2) if p_close > 0 else 0.0
+                
+                return jsonify({
+                    "symbol": latest[0],
+                    "nama": latest[0],
+                    "tanggal": str(latest[1]),
+                    "waktu_update": "16:00:00",
+                    "harga": c_close,
+                    "harga_sebelumnya": p_close,
+                    "perubahan": diff,
+                    "perubahan_persen": diff_pct,
+                    "volume": latest[6],
+                    "rata_rata": c_close,
+                    "bid_price": decimal_to_float(latest[4]),
+                    "bid_volume": 0,
+                    "offer_price": decimal_to_float(latest[3]),
+                    "offer_volume": 0,
+                    "status_pasar": "CLOSED"
+                })
+            else:
+                return jsonify({"error": f"Data snapshot untuk {symbol} tidak ditemukan"}), 404
             
         result = {
             "symbol": row[0],
@@ -214,6 +280,7 @@ def get_stock_info():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # ============================================================
 # ENDPOINT: GET MAJORHOLDER / INSIDER ACTIVITY
@@ -291,6 +358,15 @@ def get_stock_forecast():
         cur.close()
         conn.close()
         
+        if not rows:
+            try:
+                from forecasting.dynamic_forecast import generate_dynamic_forecast
+                forecast_items = generate_dynamic_forecast(symbol, horizon_days=7)
+                if forecast_items:
+                    return jsonify(forecast_items)
+            except Exception as e:
+                print(f"[Forecast Endpoint] Dynamic forecast generation failed for {symbol}: {e}")
+
         result = []
         for r in rows:
             result.append({
@@ -305,3 +381,4 @@ def get_stock_forecast():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+

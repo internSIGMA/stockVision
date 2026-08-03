@@ -28,7 +28,7 @@ DAILY_CRAWL_MINUTE = 0
 
 def get_active_target_symbols():
     """
-    Dapatkan seluruh simbol emiten unik yang aktif di seluruh watchlist pengguna (SQLite).
+    Dapatkan seluruh simbol emiten unik yang aktif di seluruh watchlist pengguna.
     Jika kosong, gunakan daftar emiten default.
     """
     symbols = set()
@@ -53,9 +53,24 @@ def get_active_target_symbols():
     except Exception as e:
         print("[Scheduler] Error reading dynamic symbols from watchlist.db:", e)
         
+    try:
+        conn = _get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT stock_code FROM idxsaham.watchlists;")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        for r in rows:
+            if r[0] and str(r[0]).strip():
+                symbols.add(str(r[0]).strip().upper())
+    except Exception as e:
+        pass
+
     if not symbols:
-        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR"}
+        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
     return sorted(list(symbols))
+
+
 
 # =============================================================
 # DATABASE

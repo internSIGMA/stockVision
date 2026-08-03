@@ -91,12 +91,13 @@ def create_table_fundamental():
     conn.close()
     print("[yfinance Crawler] Tabel 'idxsaham.fundamental' siap.")
 
-def crawl_ohlcv(symbol):
+def crawl_ohlcv(symbol, period="5y"):
     ticker_symbol = f"{symbol}.JK"
-    print(f"[yfinance Crawler] Mengunduh data historis 5 tahun untuk {ticker_symbol}...")
+    print(f"[yfinance Crawler] Mengunduh data historis {period} untuk {ticker_symbol}...")
     
     ticker = yf.Ticker(ticker_symbol)
-    df = ticker.history(period="5y", auto_adjust=False)
+    df = ticker.history(period=period, auto_adjust=False)
+
     
     if df.empty:
         print(f"[yfinance Crawler] Warning: Data untuk {ticker_symbol} kosong.")
@@ -312,7 +313,7 @@ def insert_fundamental(record):
 
     )
 
-    ON CONFLICT(symbol)
+    ON CONFLICT(symbol, report_date)
 
     DO UPDATE SET
 
