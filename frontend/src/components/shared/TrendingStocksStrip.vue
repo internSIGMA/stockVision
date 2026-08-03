@@ -1,27 +1,71 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { TICKERS, getSummary } from '@/lib/mockApi.js'
-import { useMarketStore } from '@/store/market.js'
+import { SUPPORTED_TICKERS, getOhlcHistory } from '@/api/StockVision'
+import { useMarketStore } from '@/stores/market'
 
 const market = useMarketStore()
 
 const items = ref([])
 const loading = ref(true)
 
-onMounted(async () => {
-  try {
-    const results = await Promise.all(
-      TICKERS.map((ticker) => getSummary(ticker)),
-    )
+/** Sesi bursa yang digambar di sparkline. */
+const SESI_SPARK = 30
 
-    items.value = results
-  } catch (error) {
-    console.error('Gagal mengambil data saham:', error)
-    items.value = []
-  } finally {
-    loading.value = false
+/**
+ * Harga dan perubahan dihitung dari satu deret yang sama dengan sparkline,
+ * supaya angka persen dan garisnya tidak pernah bercerita beda.
+ * Persennya adalah perubahan sesi terakhir, konvensi umum kartu emiten.
+ */
+function ringkas(ticker, rows) {
+  const closes = (rows || [])
+    .map((r) => Number(r.close))
+    .filter(Number.isFinite)
+
+  if (!closes.length) return null
+
+  const price = closes[closes.length - 1]
+  const sebelumnya = closes.length > 1 ? closes[closes.length - 2] : price
+  const change = price - sebelumnya
+
+  return {
+    ticker,
+    price,
+    change,
+    change_pct: sebelumnya ? (change / sebelumnya) * 100 : 0,
+    spark: closes.slice(-SESI_SPARK),
   }
-})
+}
+
+/**
+ * Riwayat diambil penuh lalu dipotong di sini. Parameter from/to milik
+ * /api/data/ohlc tidak dipakai karena membalas HTTP 500 ("column reference
+ * tanggal is ambiguous"), jadi penyaringan tanggal dikerjakan di klien.
+ */
+async function muatSatu(ticker) {
+  return ringkas(ticker, await getOhlcHistory(ticker))
+}
+
+async function reload() {
+  loading.value = true
+
+  // allSettled: satu emiten gagal tidak boleh mengosongkan seluruh strip.
+  const hasil = await Promise.allSettled(SUPPORTED_TICKERS.map(muatSatu))
+
+  hasil
+    .filter((h) => h.status === 'rejected')
+    .forEach((h) => console.error('Gagal mengambil data saham:', h.reason?.message || h.reason))
+
+  items.value = hasil
+    .filter((h) => h.status === 'fulfilled' && h.value)
+    .map((h) => h.value)
+
+  loading.value = false
+}
+
+onMounted(reload)
+
+// StreamPage memanggil strip.reload() dari tombol segarkan.
+defineExpose({ reload })
 
 function fmt(number) {
   return Math.round(number).toLocaleString('id-ID')
@@ -114,8 +158,8 @@ function sparklinePath(values, width = 140, height = 22) {
             class="chg"
             :class="
               item.change >= 0
-                ? 'up-text'
-                : 'down-text'
+                ? 'text-up'
+                : 'text-down'
             "
           >
             {{ item.change >= 0 ? '+' : '' }}
@@ -133,7 +177,7 @@ function sparklinePath(values, width = 140, height = 22) {
   width: 100%;
   max-width: none;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--card);
   box-sizing: border-box;
 }
 
@@ -167,7 +211,7 @@ function sparklinePath(values, width = 140, height = 22) {
   border: 1px solid var(--border);
   border-radius: 10px;
 
-  background: var(--surface);
+  background: var(--card);
   color: inherit;
 
   font-family: inherit;
@@ -184,13 +228,13 @@ function sparklinePath(values, width = 140, height = 22) {
 }
 
 .trend-card:hover {
-  border-color: var(--border-strong);
+  border-color: var(--primary-light);
   transform: translateY(-1px);
 }
 
 .trend-card.active {
   border-color: var(--primary);
-  background: var(--primary-bg);
+  background: var(--primary-soft);
   box-shadow:
     0 0 0 1px var(--primary) inset;
 }
@@ -215,7 +259,7 @@ function sparklinePath(values, width = 140, height = 22) {
 
 .px {
   min-width: 0;
-  color: var(--ink);
+  color: var(--foreground);
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;

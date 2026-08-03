@@ -10,11 +10,15 @@ import api from './index'
  * Endpoint crawl memakai method GET, bukan POST.
  */
 
-/** Backend menolak emiten di luar daftar ini dengan HTTP 400. */
+/**
+ * Backend kini mendukung emiten apa saja di IDX (on-demand crawl via yfinance).
+ * Daftar berikut hanyalah fallback awal — pengguna dapat menambah emiten IDX apa pun.
+ */
 export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
 
+/** Terima simbol IDX valid: 1–4 huruf kapital, opsional suffix angka (misal GOTO). */
 export function isSupported(ticker) {
-  return SUPPORTED_TICKERS.includes(String(ticker || '').toUpperCase())
+  return /^[A-Z]{1,4}[0-9]{0,2}$/.test(String(ticker || '').trim().toUpperCase())
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */
@@ -98,6 +102,23 @@ export function getForecast(symbol, days) {
   if (days != null) params.days = days
 
   return api.get('/api/data/forecast', { params })
+}
+
+/**
+ * Hasil analisis prescriptive terbaru: rekomendasi, skor tekno-fundamental,
+ * level entry/target/stop loss, strategi pembeli baru vs pemegang, dan
+ * ringkasan naratif dari LLM.
+ *
+ * Ringkasannya dibuat di backend — kunci Gemini tidak pernah menyentuh
+ * browser. Jangan pindahkan pemanggilan LLM ke sini: variabel VITE_* ikut
+ * ter-bundle ke berkas publik dan kuncinya akan terbaca semua pengunjung.
+ *
+ * → { symbol, recommendation, total_score, trade_setup, scores, signals,
+ *     new_buyer_strategy, holding_strategy, llm_summary, ... } | null
+ */
+export async function getPrescriptive(symbol) {
+  const res = await api.get('/api/prescriptive/results', { params: { symbol } })
+  return res?.results?.[0] ?? null
 }
 
 // ============================================================
@@ -395,6 +416,14 @@ export function createWatchlist(userId, payload) {
 
 export function deleteWatchlist(userId, watchlistId) {
   return api.delete(`/users/${userId}/watchlists/${watchlistId}`)
+}
+
+/**
+ * Kuota emiten unik per akun (maks 10).
+ * → { user_id, unique_symbols: [...], used_quota, max_quota, remaining_quota }
+ */
+export function getWatchlistQuota(userId) {
+  return api.get(`/users/${userId}/watchlist-quota`)
 }
 
 /** Emiten utama tersimpan sebagai kolom default_ticker di tabel users. */

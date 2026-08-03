@@ -243,7 +243,7 @@ onBeforeUnmount(() => {
   outline: none;
 
   background: transparent;
-  color: #111827;
+  color: var(--foreground);
 
   font-family: inherit;
   cursor: pointer;
@@ -259,7 +259,7 @@ onBeforeUnmount(() => {
 .account-trigger:hover {
   border-color: transparent;
   background: transparent;
-  color: #111827;
+  color: var(--foreground);
   opacity: 0.85;
 }
 
@@ -270,13 +270,13 @@ onBeforeUnmount(() => {
   border-color: transparent;
   outline: none;
   background: transparent;
-  color: #111827;
+  color: var(--foreground);
   box-shadow: none;
 }
 
 /* Tombol akun dark mode */
 .account-trigger--dark {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
 }
 
 .account-trigger--dark:hover,
@@ -286,7 +286,7 @@ onBeforeUnmount(() => {
 .account-trigger--dark:focus-visible {
   border-color: transparent !important;
   background: transparent !important;
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
   box-shadow: none !important;
 }
 
@@ -299,11 +299,11 @@ onBeforeUnmount(() => {
 
   overflow: hidden;
 
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 50%;
 
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--card-hover);
+  color: var(--foreground);
 
   font-weight: 600;
 }
@@ -322,9 +322,9 @@ onBeforeUnmount(() => {
 
 .account-avatar--dark,
 .dropdown-avatar--dark {
-  border-color: #334155 !important;
-  background: #1e293b !important;
-  color: #f8fafc !important;
+  border-color: var(--border) !important;
+  background: var(--card-hover) !important;
+  color: var(--foreground) !important;
 }
 
 .account-avatar img,
@@ -339,7 +339,7 @@ onBeforeUnmount(() => {
 .account-name {
   display: inline-block;
 
-  color: #111827;
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -350,14 +350,14 @@ onBeforeUnmount(() => {
 }
 
 .account-name--dark {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
 /* Panah */
 .account-arrow {
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 11px;
   line-height: 1;
 
@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
 }
 
 .account-arrow--dark {
-  color: #94a3b8 !important;
+  color: var(--muted-foreground) !important;
 }
 
 .account-arrow.rotate {
@@ -382,11 +382,11 @@ onBeforeUnmount(() => {
   width: 280px;
   padding: 10px;
 
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 14px;
 
-  background: #ffffff;
-  color: #111827;
+  background: var(--card);
+  color: var(--foreground);
 
   opacity: 1;
   isolation: isolate;
@@ -397,9 +397,9 @@ onBeforeUnmount(() => {
 }
 
 .account-dropdown--dark {
-  border-color: #334155 !important;
-  background: #111827 !important;
-  color: #f8fafc !important;
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
   opacity: 1 !important;
 
   box-shadow:
@@ -423,7 +423,7 @@ onBeforeUnmount(() => {
 .dropdown-profile strong {
   display: block;
 
-  color: #111827;
+  color: var(--foreground);
   font-size: 14px;
   font-weight: 700;
 }
@@ -434,7 +434,7 @@ onBeforeUnmount(() => {
 
   overflow: hidden;
 
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 12px;
 
   text-overflow: ellipsis;
@@ -442,11 +442,11 @@ onBeforeUnmount(() => {
 }
 
 .account-dropdown--dark .dropdown-profile strong {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
 }
 
 .account-dropdown--dark .dropdown-profile p {
-  color: #94a3b8 !important;
+  color: var(--muted-foreground) !important;
 }
 
 /* Garis pemisah */
@@ -454,11 +454,11 @@ onBeforeUnmount(() => {
   height: 1px;
   margin: 7px 0;
 
-  background: #e5e7eb;
+  background: var(--border);
 }
 
 .account-dropdown--dark .dropdown-divider {
-  background: #334155 !important;
+  background: var(--border) !important;
 }
 
 /* Item menu */
@@ -476,7 +476,7 @@ onBeforeUnmount(() => {
   outline: none;
 
   background: transparent;
-  color: #111827;
+  color: var(--foreground);
 
   font-family: inherit;
   text-align: left;
@@ -490,16 +490,16 @@ onBeforeUnmount(() => {
 
 .dropdown-item:hover,
 .dropdown-item:focus-visible {
-  background: #f3f4f6;
+  background: var(--card-hover);
 }
 
 .account-dropdown--dark .dropdown-item {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
 }
 
 .account-dropdown--dark .dropdown-item:hover,
 .account-dropdown--dark .dropdown-item:focus-visible {
-  background: #1e293b !important;
+  background: var(--card-hover) !important;
 }
 
 .dropdown-icon {
@@ -507,13 +507,13 @@ onBeforeUnmount(() => {
 
   width: 18px;
 
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 15px;
   text-align: center;
 }
 
 .account-dropdown--dark .dropdown-icon {
-  color: #94a3b8 !important;
+  color: var(--muted-foreground) !important;
 }
 
 .dropdown-item > div {
@@ -523,43 +523,43 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-item strong {
-  color: #111827;
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
 }
 
 .dropdown-item small {
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 11px;
 }
 
 .account-dropdown--dark .dropdown-item strong {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
 }
 
 .account-dropdown--dark .dropdown-item small {
-  color: #94a3b8 !important;
+  color: var(--muted-foreground) !important;
 }
 
 /* Tombol keluar */
 .logout-item strong,
 .logout-item .dropdown-icon {
-  color: #dc2626;
+  color: var(--destructive);
 }
 
 .logout-item:hover,
 .logout-item:focus-visible {
-  background: #fef2f2;
+  background: var(--down-bg);
 }
 
 .account-dropdown--dark .logout-item strong,
 .account-dropdown--dark .logout-item .dropdown-icon {
-  color: #f87171 !important;
+  color: var(--destructive) !important;
 }
 
 .account-dropdown--dark .logout-item:hover,
 .account-dropdown--dark .logout-item:focus-visible {
-  background: rgba(239, 68, 68, 0.12) !important;
+  background: color-mix(in srgb, var(--destructive) 12%, transparent) !important;
 }
 
 /* Animasi dropdown */

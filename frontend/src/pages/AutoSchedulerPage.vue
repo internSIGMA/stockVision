@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { CalendarClock, Clock, Loader2, RefreshCw, Target, Zap } from '@lucide/vue'
+import { CalendarClock, Clock, Copy, Loader2, RefreshCw, Target, Zap, BookMarked, ExternalLink } from '@lucide/vue'
 import {
   getSchedulerStatus,
   toggleScheduler,
   triggerSchedulerNow,
+  updateStockbitToken,
 } from '@/api/StockVision'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useNotify } from '@/composables/useNotify'
@@ -16,6 +17,92 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 
 const REFRESH_MS = 5000
+
+// Bookmarklet: scans localStorage, sessionStorage, cookies, and XHR headers for Stockbit JWT.
+// Then opens StockVision /token-callback which passes it securely to the backend.
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173'
+const BOOKMARKLET_CODE = `javascript:(function(){
+  function findJWT(){
+    var re=/eyJhbGciOi[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+/;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        var v=localStorage.getItem(k);
+        var m=v&&v.match(re);
+        if(m)return m[0];
+      }
+    }catch(e){}
+    try{
+      for(var j=0;j<sessionStorage.length;j++){
+        var sk=sessionStorage.key(j);
+        var sv=sessionStorage.getItem(sk);
+        var sm=sv&&sv.match(re);
+        if(sm)return sm[0];
+      }
+    }catch(e){}
+    try{
+      var cm=document.cookie.match(re);
+      if(cm)return cm[0];
+    }catch(e){}
+    return null;
+  }
+
+  var t=findJWT();
+  if(t){
+    window.open('${FRONTEND_URL}/token-callback?t='+encodeURIComponent(t),'_blank');
+    return;
+  }
+
+  var _orig=XMLHttpRequest.prototype.setRequestHeader;
+  var _token=null;
+  XMLHttpRequest.prototype.setRequestHeader=function(h,v){
+    if(h.toLowerCase()==='authorization'&&v.startsWith('Bearer ')){_token=v.split(' ')[1];}
+    _orig.apply(this,arguments);
+  };
+  function check(){
+    if(_token){
+      window.open('${FRONTEND_URL}/token-callback?t='+encodeURIComponent(_token),'_blank');
+    } else {
+      alert('Token belum tertangkap. Silakan klik salah satu menu/saham di Stockbit (misal BBCA), lalu jalankan bookmarklet ini lagi.');
+    }
+  }
+  setTimeout(check,1200);
+})()`
+
+const bookmarkletSalin = ref(false)
+
+async function salinBookmarklet() {
+  try {
+    await navigator.clipboard.writeText(BOOKMARKLET_CODE)
+    bookmarkletSalin.value = true
+    notify.success('Kode bookmarklet disalin!')
+    setTimeout(() => (bookmarkletSalin.value = false), 2500)
+  } catch {
+    notify.error('Gagal menyalin, coba manual')
+  }
+}
+
+// Manual token input state & handler
+const tokenManual = ref('')
+const mengirimToken = ref(false)
+
+async function updateTokenManual() {
+  if (!tokenManual.value.trim()) {
+    notify.error('Token tidak boleh kosong')
+    return
+  }
+  mengirimToken.value = true
+  try {
+    await updateStockbitToken(tokenManual.value.trim())
+    notify.success('Token Stockbit berhasil diperbarui!')
+    tokenManual.value = ''
+    await muat()
+  } catch (err) {
+    notify.error('Gagal memperbarui token', err?.response?.data?.error || err.message)
+  } finally {
+    mengirimToken.value = false
+  }
+}
 
 const auth = useAuthStore()
 const notify = useNotify()
@@ -124,7 +211,7 @@ function nilai(row, ...keys) {
         <div>
           <h1 class="text-[16px] font-semibold tracking-[-0.01em]">Auto Crawling Scheduler</h1>
           <p class="mt-0.5 text-[11px] text-muted-foreground">
-            Crawling otomatis pada jam bursa, hanya di hari trading.
+            Crawling harian pukul 17:00 WIB setelah bursa tutup, hanya di hari trading.
           </p>
         </div>
       </div>
@@ -300,6 +387,76 @@ function nilai(row, ...keys) {
           </div>
         </section>
       </div>
+
+      <!-- Bookmarklet Stockbit Token -->
+      <section class="rounded-lg border-[0.5px] border-border bg-card">
+        <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
+          <BookMarked class="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <h2 class="text-[13px] font-medium">Bookmarklet Token Stockbit</h2>
+        </header>
+
+        <div class="flex flex-col gap-3 p-3.5">
+          <p class="text-[12px] leading-relaxed text-muted-foreground">
+            Karena Stockbit memblokir login otomatis dari IP server, gunakan bookmarklet ini
+            <strong>sekali</strong> untuk mengirim token aktif Anda ke backend.
+            Setelah itu backend akan menyegarkan token secara otomatis.
+          </p>
+
+          <ol class="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground">
+            <li>1. Login ke
+              <a href="https://stockbit.com" target="_blank" rel="noopener" class="text-primary underline inline-flex items-center gap-0.5">
+                stockbit.com <ExternalLink class="size-3" />
+              </a>
+            </li>
+            <li>2. Klik salah satu saham (contoh: <strong>BBCA, BBRI, BMRI</strong>) — tunggu hingga chart terbuka</li>
+            <li>3. Klik tombol <strong>Salin Kode Bookmarklet</strong> di bawah ini</li>
+            <li>4. Di browser: <em>Bookmark Manager</em> → buat bookmark baru → paste kode sebagai URL → simpan</li>
+            <li>5. Kembali ke tab Stockbit (yang sudah buka halaman saham), klik bookmark tersebut</li>
+            <li>6. Tab StockVision baru terbuka otomatis → token terkirim ke backend ✅</li>
+          </ol>
+
+          <div class="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              class="gap-1.5"
+              @click="salinBookmarklet"
+            >
+              <Copy class="size-3.5" :class="{ 'text-up': bookmarkletSalin }" />
+              {{ bookmarkletSalin ? '✅ Disalin!' : 'Salin Kode Bookmarklet' }}
+            </Button>
+          </div>
+
+          <p class="rounded-md bg-muted px-3 py-2 text-[10px] text-muted-foreground">
+            <strong>Catatan:</strong> Bookmarklet hanya perlu dijalankan <strong>sekali</strong>.
+            Backend menyimpan token + refresh token secara otomatis — crawl harian tetap berjalan tanpa intervensi manual.
+            Ulangi proses ini hanya jika token benar-benar kedaluwarsa (biasanya setelah beberapa hari tanpa akses).
+          </p>
+
+          <!-- Input Manual Token -->
+          <div class="mt-2 border-t-[0.5px] border-border pt-3">
+            <label class="block text-[11px] font-medium text-muted-foreground mb-1.5">
+              Atau Input / Paste Token Secara Manual:
+            </label>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="tokenManual"
+                type="text"
+                placeholder="Paste Bearer eyJhbGciOi... di sini"
+                class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <Button
+                size="sm"
+                :disabled="mengirimToken || !tokenManual.trim()"
+                @click="updateTokenManual"
+              >
+                <Loader2 v-if="mengirimToken" class="size-3.5 animate-spin" />
+                Update Token
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Riwayat -->
       <section class="rounded-lg border-[0.5px] border-border bg-card">
