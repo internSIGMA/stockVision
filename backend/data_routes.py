@@ -9,13 +9,29 @@ load_dotenv(find_dotenv(), override=True)
 data_bp = Blueprint("data_bp", __name__)
 
 def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "postgres"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432))
-    )
+    db_host = os.getenv("DB_HOST") or "db"
+    db_port = int(os.getenv("DB_PORT") or 5432)
+    db_name = os.getenv("DB_NAME") or "stockVision"
+    db_user = os.getenv("DB_USER") or "stockvision"
+    db_pass = os.getenv("DB_PASSWORD") or "stockvision_pass"
+    try:
+        return psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
+            port=db_port
+        )
+    except psycopg2.OperationalError as e:
+        if db_host == "db":
+            return psycopg2.connect(
+                host="localhost",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5434
+            )
+        raise e
 
 def decimal_to_float(val):
     if val is None:
