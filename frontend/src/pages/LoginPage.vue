@@ -439,6 +439,12 @@ const labelTanggal = computed(() => {
   color: var(--muted-foreground);
 }
 
+/* Sembunyikan ikon mata bawaan dari browser (khususnya MS Edge) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
 .field:hover {
   border-color: var(--primary-light);
 }

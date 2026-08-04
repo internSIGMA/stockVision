@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useNotify } from '@/composables/useNotify'
-import { getWatchlistQuota, isSupported, SUPPORTED_TICKERS } from '@/api/StockVision'
+import { isSupported } from '@/api/StockVision'
 import { Button } from '@/components/ui/button'
 import { Check, Plus } from '@lucide/vue'
 
@@ -11,7 +11,7 @@ import { Check, Plus } from '@lucide/vue'
  * WatchlistManagerPage
  * - Edit nama daftar pantau
  * - Input bebas untuk semua emiten IDX
- * - Kuota maks 9 emiten unik per akun
+
  */
 const emit = defineEmits(['close'])
 
@@ -23,9 +23,8 @@ const notify = useNotify()
 // State
 // ──────────────────────────────────────────────
 const menyimpan    = ref(false)
+const inputTicker  = ref('')
 const inputError   = ref('')
-const quota        = ref({ used_quota: 0, max_quota: 9, remaining_quota: 9, unique_symbols: [] })
-const loadingQuota = ref(false)
 const menghapus    = ref(false)
 
 /** Salinan lokal supaya bisa di-cancel */
@@ -42,51 +41,29 @@ const berubah = computed(() => {
   return awal !== kini || inputName.value.trim() !== namaAwal
 })
 
-const uniqueCount   = computed(() => new Set(dipilih.value.map(s => s.toUpperCase())).size)
-const remainingSlot = computed(() => Math.max(0, 9 - uniqueCount.value))
 
-// Warna progress bar kuota
-const quotaBarColor = computed(() => {
-  if (uniqueCount.value >= 9)  return 'bg-destructive'
-  if (uniqueCount.value >= 7)   return 'bg-yellow-500'
-  return 'bg-primary'
-})
-
-// ──────────────────────────────────────────────
-// Load quota dari server
-// ──────────────────────────────────────────────
-async function muatKuota() {
-  if (!auth.user?.id) return
-  loadingQuota.value = true
-  try {
-    const q = await getWatchlistQuota(auth.user.id)
-    quota.value = q
-  } catch {
-    // silent — local computed is good enough
-  } finally {
-    loadingQuota.value = false
-  }
-}
-
-onMounted(muatKuota)
 
 // ──────────────────────────────────────────────
 // Add ticker
 // ──────────────────────────────────────────────
-function tambahTicker(ticker) {
+function toggleTicker(ticker) {
+  const t = ticker.trim().toUpperCase()
   inputError.value = ''
 
-  if (dipilih.value.map(s => s.toUpperCase()).includes(ticker.toUpperCase())) {
+  if (!t) return
+
+  if (!isSupported(t)) {
+    inputError.value = `"${t}" bukan format kode emiten IDX yang valid (contoh: BBCA, TLKM, GOTO).`
     return
   }
 
-  const currentUnique = new Set(dipilih.value.map(s => s.toUpperCase()))
-  if (currentUnique.size >= 9) {
-    inputError.value = `Batas kuota emiten tercapai!`
-    return
+  const isSelected = dipilih.value.map(s => s.toUpperCase()).includes(t)
+  if (isSelected) {
+    hapus(t)
+  } else {
+    dipilih.value = [...dipilih.value, t]
   }
-
-  dipilih.value = [...dipilih.value, ticker]
+  // Biarkan inputTicker tetap ada agar user melihat status berubah jadi hijau/biru
 }
 
 function hapus(ticker) {
@@ -112,7 +89,6 @@ async function simpan() {
       market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
     }
     notify.success('Daftar pantau tersimpan', `${inputName.value.trim()} diperbarui.`)
-    await muatKuota()
   } catch (err) {
     const msg = err?.response?.data?.error || err.message || 'Gagal menyimpan watchlist'
     notify.error('Gagal menyimpan watchlist', msg)
@@ -124,6 +100,7 @@ async function simpan() {
 function batal() {
   dipilih.value   = [...auth.watchlistTersimpan]
   inputName.value = auth.activeWatchlist?.name || ''
+  inputTicker.value = ''
   inputError.value  = ''
 }
 
@@ -140,6 +117,15 @@ async function hapusDaftarPantau() {
     notify.error('Gagal menghapus daftar pantau', err.message)
   } finally {
     menghapus.value = false
+  }
+}
+
+function onKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    if (inputTicker.value.trim()) {
+      toggleTicker(inputTicker.value)
+    }
   }
 }
 
@@ -162,52 +148,48 @@ async function hapusDaftarPantau() {
       />
     </div>
 
-    <!-- Quota bar -->
-    <div class="rounded-lg border border-border bg-card p-3">
-      <div class="mb-1.5 flex items-center justify-between">
-        <span class="text-[11px] font-medium text-muted-foreground">Kuota Emiten</span>
-        <span
-          class="tabular text-[11px] font-semibold"
-          :class="uniqueCount >= 9 ? 'text-destructive' : 'text-foreground'"
-        >
-          {{ uniqueCount }} / 9
-        </span>
-      </div>
-      <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          class="h-full rounded-full transition-all duration-300"
-          :class="quotaBarColor"
-          :style="{ width: `${(uniqueCount / 9) * 100}%` }"
-        />
-      </div>
-      <p class="mt-1 text-[10px] text-muted-foreground">
-        {{ remainingSlot > 0 ? `Sisa ${remainingSlot} slot` : 'Kuota penuh — hapus emiten lama untuk menambah yang baru.' }}
-      </p>
-    </div>
-
-    <!-- Pilihan Emiten -->
-    <div class="flex flex-col gap-2">
+    <!-- Pencarian & Tambah Emiten -->
+    <div class="flex flex-col gap-1.5">
       <label class="text-[11px] font-medium text-muted-foreground">
-        Emiten Tersedia (Pilih untuk menambah/menghapus)
+        Cari & Tambah Emiten IDX (contoh: TLKM, GOTO)
       </label>
-      <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        <button
-          v-for="ticker in SUPPORTED_TICKERS"
-          :key="ticker"
-          type="button"
-          class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-all"
-          :class="{
-            'border-primary bg-primary text-primary-foreground shadow-sm': dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()),
-            'border-border bg-card hover:bg-accent hover:text-accent-foreground': !dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount < 9,
-            'border-border bg-muted text-muted-foreground opacity-50 cursor-not-allowed': !dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount >= 9
-          }"
-          :disabled="!dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount >= 9"
-          @click="dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) ? hapus(ticker) : tambahTicker(ticker)"
-        >
-          <Check v-if="dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase())" class="size-3.5" />
-          <Plus v-else class="size-3.5 opacity-70" />
-          {{ ticker }}
-        </button>
+      <div class="flex flex-col gap-2">
+        <input
+          v-model="inputTicker"
+          type="text"
+          maxlength="6"
+          placeholder="Ketik kode emiten..."
+          class="rounded-md border border-input bg-background px-3 py-1.5 font-mono text-[13px] uppercase shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          @keydown="onKeydown"
+          @input="inputError = ''"
+        />
+
+        <!-- Hasil Pencarian Live -->
+        <div v-if="inputTicker.trim().length > 0" class="rounded-md border border-border bg-card p-1.5 shadow-sm">
+          <div v-if="!isSupported(inputTicker.trim().toUpperCase())" class="text-[11px] text-muted-foreground px-2 py-1">
+            Format kode tidak valid (harus huruf kapital, misal: BBCA)
+          </div>
+          <button
+            v-else
+            type="button"
+            class="flex w-full items-center justify-between rounded-md px-3 py-2 text-[13px] font-bold font-mono transition-all"
+            :class="[
+              dipilih.map(s => s.toUpperCase()).includes(inputTicker.trim().toUpperCase())
+                ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+                : 'bg-muted text-foreground border border-transparent hover:bg-accent hover:text-accent-foreground'
+            ]"
+            @click="toggleTicker(inputTicker.trim().toUpperCase())"
+          >
+            <span>{{ inputTicker.trim().toUpperCase() }}</span>
+            
+            <span v-if="dipilih.map(s => s.toUpperCase()).includes(inputTicker.trim().toUpperCase())" class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide">
+              <Check class="size-3.5" /> DI WATCHLIST
+            </span>
+            <span v-else class="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+              <Plus class="size-3.5" /> Tambah
+            </span>
+          </button>
+        </div>
       </div>
       <p v-if="inputError" class="text-[11px] text-destructive">{{ inputError }}</p>
     </div>
