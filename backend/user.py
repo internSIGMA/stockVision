@@ -54,20 +54,28 @@ def _ensure_users_table():
     cur = conn.cursor()
     cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
     cur.execute(
-    """
-    CREATE TABLE IF NOT EXISTS idxsaham.users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        username VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        name VARCHAR(255),
-        role VARCHAR(255),
-        access_role VARCHAR(20) NOT NULL DEFAULT 'user',
-        default_ticker VARCHAR(20),
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-    );
-    """
-)
+        """
+        CREATE TABLE IF NOT EXISTS idxsaham.users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            username VARCHAR(100) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(255),
+            role VARCHAR(255),
+            access_role VARCHAR(20) NOT NULL DEFAULT 'user',
+            default_ticker VARCHAR(20),
+            phone_number VARCHAR(50),
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    # Ensure phone_number column exists if table is already created
+    cur.execute(
+        """
+        ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+        """
+    )
     conn.commit()
 
     # Check if table is empty
@@ -123,9 +131,9 @@ def create_user(payload):
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING id, email, username, name, role, default_ticker;
+        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker, phone_number)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id, email, username, name, role, default_ticker, phone_number;
         """,
         (
             str(payload["email"]).strip().lower(),
@@ -134,6 +142,7 @@ def create_user(payload):
             str(payload.get("name") or "").strip() or None,
             str(payload.get("role") or "").strip() or None,
             str(payload.get("default_ticker") or "").strip().upper() or None,
+            str(payload.get("phone_number") or "").strip() or None,
         ),
     )
     row = cur.fetchone()
@@ -148,6 +157,7 @@ def create_user(payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -159,7 +169,7 @@ def get_user(user_id):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE id = %s;",
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE id = %s;",
         (user_id,),
     )
     row = cur.fetchone()
@@ -176,6 +186,7 @@ def get_user(user_id):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -184,7 +195,7 @@ def get_users():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users ORDER BY id ASC;"
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users ORDER BY id ASC;"
     )
     rows = cur.fetchall()
     cur.close()
@@ -198,6 +209,7 @@ def get_users():
             "name": row[3],
             "role": row[4],
             "default_ticker": row[5],
+            "phone_number": row[6],
         }
         for row in rows
     ]
@@ -468,13 +480,16 @@ def update_user(user_id, payload):
     if "default_ticker" in payload:
         fields.append("default_ticker = %s")
         values.append(str(payload.get("default_ticker") or "").strip().upper() or None)
+    if "phone_number" in payload:
+        fields.append("phone_number = %s")
+        values.append(str(payload.get("phone_number") or "").strip() or None)
 
     if not fields:
         raise ValueError("no fields provided for update")
 
     values.extend([user_id])
     cur.execute(
-        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker;",
+        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker, phone_number;",
         values,
     )
     row = cur.fetchone()
@@ -492,6 +507,7 @@ def update_user(user_id, payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -520,6 +536,7 @@ def login_user(payload):
             role,
             access_role,
             default_ticker,
+            phone_number,
             password
         FROM idxsaham.users
         WHERE email = %s;
@@ -543,6 +560,7 @@ def login_user(payload):
         role,
         access_role,
         default_ticker,
+        phone_number,
         stored_hash,
     ) = row
 
@@ -557,6 +575,7 @@ def login_user(payload):
         "role": role,
         "access_role": access_role,
         "default_ticker": default_ticker,
+        "phone_number": phone_number,
     }
 
 
@@ -863,13 +882,13 @@ def google_login_route():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE email = %s;",
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE email = %s;",
         (email,),
     )
     row = cur.fetchone()
 
     if row:
-        user_id, email_val, username, name_val, role, default_ticker = row
+        user_id, email_val, username, name_val, role, default_ticker, phone_number = row
         cur.close()
         conn.close()
         return jsonify({
@@ -878,7 +897,8 @@ def google_login_route():
             "username": username,
             "name": name_val,
             "role": role,
-            "default_ticker": default_ticker
+            "default_ticker": default_ticker,
+            "phone_number": phone_number
         })
     else:
         # Create a new user since they don't exist
@@ -906,7 +926,7 @@ def google_login_route():
             """
             INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
             VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id, email, username, name, role, default_ticker;
+            RETURNING id, email, username, name, role, default_ticker, phone_number;
             """,
             (email, username, password_hash, name, "Trader — Umum", "BBCA")
         )
@@ -921,7 +941,8 @@ def google_login_route():
             "username": new_row[2],
             "name": new_row[3],
             "role": new_row[4],
-            "default_ticker": new_row[5]
+            "default_ticker": new_row[5],
+            "phone_number": new_row[6]
         }), 201
 @user_bp.route("/test-ui")
 def test_ui():
