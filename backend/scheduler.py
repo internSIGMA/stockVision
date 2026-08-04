@@ -353,6 +353,11 @@ def _run_scheduled_crawl(app_context_func=None):
                     errors.append(err_msg)
                     _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
                     print(f"[Scheduler] {err_msg}")
+        except Exception as e:
+            err_msg = f"yfinance OHLC Init: {str(e)}"
+            errors.append(err_msg)
+            print(f"[Scheduler] {err_msg}")
+
         # Menjalankan Training Model Forecast & Prescriptive Pipeline setelah bursa tutup
         try:
             print("[Scheduler] Memulai training model forecast & prescriptive pipeline setelah bursa tutup...")
