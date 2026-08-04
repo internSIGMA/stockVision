@@ -59,7 +59,7 @@ function toggleTicker(ticker) {
 
   const isSelected = dipilih.value.map(s => s.toUpperCase()).includes(t)
   if (isSelected) {
-    hapus(t)
+    return // Jangan hapus jika sudah ada di watchlist (sesuai permintaan user)
   } else {
     dipilih.value = [...dipilih.value, t]
   }
@@ -89,6 +89,7 @@ async function simpan() {
       market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
     }
     notify.success('Daftar pantau tersimpan', `${inputName.value.trim()} diperbarui.`)
+    emit('close') // Tutup sidebar setelah berhasil simpan
   } catch (err) {
     const msg = err?.response?.data?.error || err.message || 'Gagal menyimpan watchlist'
     notify.error('Gagal menyimpan watchlist', msg)
@@ -166,8 +167,8 @@ function onKeydown(e) {
 
         <!-- Hasil Pencarian Live -->
         <div v-if="inputTicker.trim().length > 0" class="rounded-md border border-border bg-card p-1.5 shadow-sm">
-          <div v-if="!isSupported(inputTicker.trim().toUpperCase())" class="text-[11px] text-muted-foreground px-2 py-1">
-            Format kode tidak valid (harus huruf kapital, misal: BBCA)
+          <div v-if="!isSupported(inputTicker.trim().toUpperCase())" class="text-[11px] font-medium text-destructive px-2 py-1">
+            Kode emiten "{{ inputTicker.toUpperCase() }}" tidak ditemukan atau belum didukung.
           </div>
           <button
             v-else
