@@ -225,7 +225,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .account-menu {
   position: relative;
-  z-index: 1000;
 }
 
 /* Tombol akun */

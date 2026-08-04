@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { SUPPORTED_TICKERS, getOhlcHistory } from '@/api/StockVision'
+import { onMounted, ref, watch } from 'vue'
+import { getOhlcHistory } from '@/api/StockVision'
 import { useMarketStore } from '@/stores/market'
+import { useAuthStore } from '@/stores/auth'
 
 const market = useMarketStore()
+const auth = useAuthStore()
 
 const items = ref([])
 const loading = ref(true)
@@ -48,8 +50,18 @@ async function muatSatu(ticker) {
 async function reload() {
   loading.value = true
 
+  const emitenDitampilkan = auth.watchlistTersimpan.length 
+    ? auth.watchlistTersimpan 
+    : (auth.emitenUtama ? [auth.emitenUtama] : [])
+
+  if (!emitenDitampilkan.length) {
+    items.value = []
+    loading.value = false
+    return
+  }
+
   // allSettled: satu emiten gagal tidak boleh mengosongkan seluruh strip.
-  const hasil = await Promise.allSettled(SUPPORTED_TICKERS.map(muatSatu))
+  const hasil = await Promise.allSettled(emitenDitampilkan.map(muatSatu))
 
   hasil
     .filter((h) => h.status === 'rejected')
@@ -63,6 +75,10 @@ async function reload() {
 }
 
 onMounted(reload)
+
+watch(() => auth.watchlistTersimpan, () => {
+  reload()
+}, { deep: true })
 
 // StreamPage memanggil strip.reload() dari tombol segarkan.
 defineExpose({ reload })
@@ -185,11 +201,8 @@ function sparklinePath(values, width = 140, height = 22) {
   Lima saham dibagi rata ke seluruh lebar halaman.
 */
 .trend-strip {
-  display: grid;
-  grid-template-columns: repeat(
-    5,
-    minmax(0, 1fr)
-  );
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 
   width: 100%;
@@ -202,10 +215,11 @@ function sparklinePath(values, width = 140, height = 22) {
 }
 
 .trend-card {
+  flex: 1 1 calc(20% - 12px); /* Memaksa maksimal 5 kartu per baris */
+  max-width: 500px; /* Diperbesar agar 4 kartu bisa full layar di monitor lebar */
+  
   display: block;
-  width: 100%;
   min-width: 0;
-  max-width: none;
 
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -280,40 +294,31 @@ function sparklinePath(values, width = 140, height = 22) {
 }
 
 .trend-skel {
-  width: 100%;
+  flex: 1 1 calc(20% - 12px);
+  max-width: 500px;
   min-width: 0;
-  max-width: none;
   height: 68px;
   border-radius: 10px;
   box-sizing: border-box;
 }
 
-/* Tablet besar */
-@media (max-width: 1100px) {
-  .trend-strip {
-    grid-template-columns: repeat(
-      3,
-      minmax(0, 1fr)
-    );
-  }
-}
-
-/* Tablet */
+/* Tablet / Mobile */
 @media (max-width: 760px) {
   .trend-strip {
-    grid-template-columns: repeat(
-      2,
-      minmax(0, 1fr)
-    );
     padding: 12px;
+  }
+  .trend-card, .trend-skel {
+    flex: 1 1 45%;
+    max-width: none;
   }
 }
 
-/* Mobile */
 @media (max-width: 480px) {
   .trend-strip {
-    grid-template-columns: 1fr;
     gap: 10px;
+  }
+  .trend-card, .trend-skel {
+    flex: 1 1 100%;
   }
 }
 </style>

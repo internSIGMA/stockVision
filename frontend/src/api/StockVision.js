@@ -11,14 +11,24 @@ import api from './index'
  */
 
 /**
- * Backend kini mendukung emiten apa saja di IDX (on-demand crawl via yfinance).
- * Daftar berikut hanyalah fallback awal — pengguna dapat menambah emiten IDX apa pun.
+ * Daftar sebagian emiten resmi di BEI (untuk simulasi Frontend).
+ * Berisi 9 emiten prioritas + puluhan emiten populer lainnya.
  */
+export const OFFICIAL_TICKERS = [
+  'BBCA', 'BBRI', 'BMRI', 'TLKM', 'ANTM', 'PTBA', 'GOTO', 'BSSR', 'PTRO',
+  'ASII', 'UNVR', 'ICBP', 'INDF', 'KLBF', 'PGAS', 'UNTR', 'CPIN', 'MYOR', 
+  'INKP', 'TKIM', 'SMGR', 'INTP', 'BRPT', 'TPIA', 'AMMN', 'BREN', 'CUAN',
+  'MDKA', 'INCO', 'ADRO', 'ITMG', 'HRUM', 'AKRA', 'MEDC', 'SIDO', 'AMRT',
+  'MIDI', 'ACES', 'MAPI', 'ERAA', 'CTRA', 'BSDE', 'SMRA', 'PWON', 'ASRI',
+  'BBNI', 'BJBR', 'BBTN', 'BRIS', 'ARTO', 'MEGA', 'PNBN'
+]
+
 export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
 
-/** Terima simbol IDX valid: 1–4 huruf kapital, opsional suffix angka (misal GOTO). */
+/** Memeriksa apakah emiten ada di dalam daftar resmi bursa (simulasi). */
 export function isSupported(ticker) {
-  return /^[A-Z]{1,4}[0-9]{0,2}$/.test(String(ticker || '').trim().toUpperCase())
+  if (!ticker || typeof ticker !== 'string') return false
+  return OFFICIAL_TICKERS.includes(ticker.trim().toUpperCase())
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */
