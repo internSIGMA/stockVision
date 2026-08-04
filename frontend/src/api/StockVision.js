@@ -14,7 +14,7 @@ import api from './index'
  * Backend kini mendukung emiten apa saja di IDX (on-demand crawl via yfinance).
  * Daftar berikut hanyalah fallback awal — pengguna dapat menambah emiten IDX apa pun.
  */
-export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
+export const SUPPORTED_TICKERS = ['BBCA', 'BBRI', 'BMRI', 'TLKM', 'ANTM', 'PTBA', 'GOTO', 'BSSR', 'PTRO']
 
 /** Terima simbol IDX valid: 1–4 huruf kapital, opsional suffix angka (misal GOTO). */
 export function isSupported(ticker) {

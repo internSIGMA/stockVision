@@ -3,15 +3,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useNotify } from '@/composables/useNotify'
-import { getWatchlistQuota, isSupported } from '@/api/StockVision'
+import { getWatchlistQuota, isSupported, SUPPORTED_TICKERS } from '@/api/StockVision'
 import { Button } from '@/components/ui/button'
+import { Check, Plus } from '@lucide/vue'
 
 /**
  * WatchlistManagerPage
+ * - Edit nama daftar pantau
  * - Input bebas untuk semua emiten IDX
- * - Kuota maks 10 emiten unik per akun (cek di backend & front-end)
- * - Menyimpan perubahan secara batch (Save)
+ * - Kuota maks 9 emiten unik per akun
  */
+const emit = defineEmits(['close'])
+
 const auth   = useAuthStore()
 const market = useMarketStore()
 const notify = useNotify()
@@ -20,30 +23,32 @@ const notify = useNotify()
 // State
 // ──────────────────────────────────────────────
 const menyimpan    = ref(false)
-const inputTicker  = ref('')
 const inputError   = ref('')
-const quota        = ref({ used_quota: 0, max_quota: 10, remaining_quota: 10, unique_symbols: [] })
+const quota        = ref({ used_quota: 0, max_quota: 9, remaining_quota: 9, unique_symbols: [] })
 const loadingQuota = ref(false)
+const menghapus    = ref(false)
 
 /** Salinan lokal supaya bisa di-cancel */
-const dipilih = ref([...auth.watchlist])
+const dipilih = ref([...auth.watchlistTersimpan])
+const inputName = ref(auth.activeWatchlist?.name || '')
 
 // ──────────────────────────────────────────────
 // Computed
 // ──────────────────────────────────────────────
 const berubah = computed(() => {
-  const awal = [...auth.watchlist].sort().join(',')
+  const awal = [...auth.watchlistTersimpan].sort().join(',')
   const kini = [...dipilih.value].sort().join(',')
-  return awal !== kini
+  const namaAwal = auth.activeWatchlist?.name || ''
+  return awal !== kini || inputName.value.trim() !== namaAwal
 })
 
 const uniqueCount   = computed(() => new Set(dipilih.value.map(s => s.toUpperCase())).size)
-const remainingSlot = computed(() => Math.max(0, 10 - uniqueCount.value))
+const remainingSlot = computed(() => Math.max(0, 9 - uniqueCount.value))
 
 // Warna progress bar kuota
 const quotaBarColor = computed(() => {
-  if (uniqueCount.value >= 10)  return 'bg-destructive'
-  if (uniqueCount.value >= 8)   return 'bg-yellow-500'
+  if (uniqueCount.value >= 9)  return 'bg-destructive'
+  if (uniqueCount.value >= 7)   return 'bg-yellow-500'
   return 'bg-primary'
 })
 
@@ -68,30 +73,20 @@ onMounted(muatKuota)
 // ──────────────────────────────────────────────
 // Add ticker
 // ──────────────────────────────────────────────
-function tambah() {
-  const t = inputTicker.value.trim().toUpperCase()
+function tambahTicker(ticker) {
   inputError.value = ''
 
-  if (!t) return
-
-  if (!isSupported(t)) {
-    inputError.value = `"${t}" bukan format kode emiten IDX yang valid (contoh: BBCA, TLKM, GOTO).`
-    return
-  }
-
-  if (dipilih.value.map(s => s.toUpperCase()).includes(t)) {
-    inputError.value = `${t} sudah ada di watchlist.`
+  if (dipilih.value.map(s => s.toUpperCase()).includes(ticker.toUpperCase())) {
     return
   }
 
   const currentUnique = new Set(dipilih.value.map(s => s.toUpperCase()))
-  if (currentUnique.size >= 10) {
-    inputError.value = `Batas kuota emiten tercapai! Akun ini hanya dapat memiliki maksimal 10 emiten unik. Hapus salah satu emiten untuk menambah yang baru.`
+  if (currentUnique.size >= 9) {
+    inputError.value = `Batas kuota emiten tercapai!`
     return
   }
 
-  dipilih.value = [...dipilih.value, t]
-  inputTicker.value = ''
+  dipilih.value = [...dipilih.value, ticker]
 }
 
 function hapus(ticker) {
@@ -106,13 +101,17 @@ function hapus(ticker) {
 // ──────────────────────────────────────────────
 async function simpan() {
   if (!berubah.value || menyimpan.value) return
+  if (!inputName.value.trim()) {
+    notify.error('Gagal menyimpan', 'Nama daftar pantau tidak boleh kosong.')
+    return
+  }
   menyimpan.value = true
   try {
-    await auth.saveWatchlist(dipilih.value)
+    await auth.saveWatchlist(dipilih.value, inputName.value.trim())
     if (!dipilih.value.includes(market.selectedTicker)) {
       market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
     }
-    notify.success('Watchlist tersimpan', `${dipilih.value.length} emiten dipantau.`)
+    notify.success('Daftar pantau tersimpan', `${inputName.value.trim()} diperbarui.`)
     await muatKuota()
   } catch (err) {
     const msg = err?.response?.data?.error || err.message || 'Gagal menyimpan watchlist'
@@ -123,18 +122,45 @@ async function simpan() {
 }
 
 function batal() {
-  dipilih.value   = [...auth.watchlist]
-  inputTicker.value = ''
+  dipilih.value   = [...auth.watchlistTersimpan]
+  inputName.value = auth.activeWatchlist?.name || ''
   inputError.value  = ''
 }
 
-function onKeydown(e) {
-  if (e.key === 'Enter') tambah()
+async function hapusDaftarPantau() {
+  if (auth.watchlists.length <= 1 || menghapus.value) return
+  if (!confirm(`Hapus daftar pantau "${auth.activeWatchlist?.name}"?`)) return
+  
+  menghapus.value = true
+  try {
+    await auth.hapusWatchlist(auth.activeWatchlistId)
+    notify.success('Daftar pantau dihapus')
+    emit('close')
+  } catch (err) {
+    notify.error('Gagal menghapus daftar pantau', err.message)
+  } finally {
+    menghapus.value = false
+  }
 }
+
+
 </script>
 
 <template>
   <div class="flex flex-col gap-4 p-4">
+
+    <!-- Input Nama Watchlist -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-[11px] font-medium text-muted-foreground">
+        Nama Daftar Pantau
+      </label>
+      <input
+        v-model="inputName"
+        type="text"
+        placeholder="Contoh: Saham Teknologi"
+        class="rounded-md border border-input bg-background px-3 py-1.5 text-[13px] shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+    </div>
 
     <!-- Quota bar -->
     <div class="rounded-lg border border-border bg-card p-3">
@@ -142,16 +168,16 @@ function onKeydown(e) {
         <span class="text-[11px] font-medium text-muted-foreground">Kuota Emiten</span>
         <span
           class="tabular text-[11px] font-semibold"
-          :class="uniqueCount >= 10 ? 'text-destructive' : 'text-foreground'"
+          :class="uniqueCount >= 9 ? 'text-destructive' : 'text-foreground'"
         >
-          {{ uniqueCount }} / 10
+          {{ uniqueCount }} / 9
         </span>
       </div>
       <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
           class="h-full rounded-full transition-all duration-300"
           :class="quotaBarColor"
-          :style="{ width: `${(uniqueCount / 10) * 100}%` }"
+          :style="{ width: `${(uniqueCount / 9) * 100}%` }"
         />
       </div>
       <p class="mt-1 text-[10px] text-muted-foreground">
@@ -159,29 +185,29 @@ function onKeydown(e) {
       </p>
     </div>
 
-    <!-- Input tambah emiten -->
-    <div class="flex flex-col gap-1.5">
+    <!-- Pilihan Emiten -->
+    <div class="flex flex-col gap-2">
       <label class="text-[11px] font-medium text-muted-foreground">
-        Tambah Emiten IDX (contoh: TLKM, ASII, GOTO)
+        Emiten Tersedia (Pilih untuk menambah/menghapus)
       </label>
-      <div class="flex gap-2">
-        <input
-          v-model="inputTicker"
-          type="text"
-          maxlength="6"
-          placeholder="Kode emiten..."
-          class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 font-mono text-[13px] uppercase shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          :disabled="uniqueCount >= 10"
-          @keydown="onKeydown"
-          @input="inputError = ''"
-        />
-        <Button
-          size="sm"
-          :disabled="!inputTicker.trim() || uniqueCount >= 10"
-          @click="tambah"
+      <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <button
+          v-for="ticker in SUPPORTED_TICKERS"
+          :key="ticker"
+          type="button"
+          class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-all"
+          :class="{
+            'border-primary bg-primary text-primary-foreground shadow-sm': dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()),
+            'border-border bg-card hover:bg-accent hover:text-accent-foreground': !dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount < 9,
+            'border-border bg-muted text-muted-foreground opacity-50 cursor-not-allowed': !dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount >= 9
+          }"
+          :disabled="!dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) && uniqueCount >= 9"
+          @click="dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase()) ? hapus(ticker) : tambahTicker(ticker)"
         >
-          + Tambah
-        </Button>
+          <Check v-if="dipilih.map(s => s.toUpperCase()).includes(ticker.toUpperCase())" class="size-3.5" />
+          <Plus v-else class="size-3.5 opacity-70" />
+          {{ ticker }}
+        </button>
       </div>
       <p v-if="inputError" class="text-[11px] text-destructive">{{ inputError }}</p>
     </div>
@@ -239,6 +265,16 @@ function onKeydown(e) {
       </Button>
       <Button v-if="berubah" variant="ghost" size="sm" :disabled="menyimpan" @click="batal">
         Batal
+      </Button>
+      <Button
+        v-if="auth.watchlists.length > 1"
+        variant="destructive"
+        size="sm"
+        class="ml-auto"
+        :disabled="menyimpan || menghapus"
+        @click="hapusDaftarPantau"
+      >
+        {{ menghapus ? 'Menghapus...' : 'Hapus Daftar' }}
       </Button>
     </div>
 
