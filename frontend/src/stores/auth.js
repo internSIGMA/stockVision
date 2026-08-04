@@ -170,15 +170,17 @@ export const useAuthStore = defineStore('auth', () => {
     activeWatchlistId.value = id
   }
 
-  async function saveWatchlist(symbols) {
+  async function saveWatchlist(symbols, name = null) {
     if (!user.value) return
     const active = activeWatchlist.value
     if (active) {
-      const updated = await updateWatchlist(user.value.id, active.id, { symbols })
+      const payload = { symbols }
+      if (name) payload.name = name
+      const updated = await updateWatchlist(user.value.id, active.id, payload)
       const i = watchlists.value.findIndex((w) => w.id === active.id)
       if (i !== -1) watchlists.value[i] = updated
     } else {
-      const created = await createWatchlist(user.value.id, { name: 'Watchlist', symbols })
+      const created = await createWatchlist(user.value.id, { name: name || 'Watchlist', symbols })
       watchlists.value.push(created)
       activeWatchlistId.value = created.id
     }

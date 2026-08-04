@@ -88,7 +88,7 @@ function keluar() {
 
 <template>
   <header
-    class="flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4 text-foreground"
+    class="relative z-40 flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4 text-foreground"
   >
     <!-- Logo dan nama aplikasi -->
     <RouterLink
