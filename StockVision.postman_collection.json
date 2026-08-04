@@ -1,0 +1,516 @@
+{
+	"info": {
+		"_postman_id": "stockvision-api-collection-v1",
+		"name": "StockVision API Collection (Full)",
+		"description": "Koleksi API Postman Lengkap untuk backend StockVision.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Auth & Password Reset",
+			"item": [
+				{
+					"name": "User Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username_or_email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": ["{{base_url}}"],
+							"path": ["users", "login"]
+						}
+					}
+				},
+				{
+					"name": "Google Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id_token\": \"YOUR_GOOGLE_ID_TOKEN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/google-login",
+							"host": ["{{base_url}}"],
+							"path": ["users", "google-login"]
+						}
+					}
+				},
+				{
+					"name": "Request Reset Code (OTP)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/reset-password/send-code",
+							"host": ["{{base_url}}"],
+							"path": ["users", "reset-password", "send-code"]
+						}
+					}
+				},
+				{
+					"name": "Verify Reset Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/reset-password/verify-code",
+							"host": ["{{base_url}}"],
+							"path": ["users", "reset-password", "verify-code"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"reset_token\": \"YOUR_RESET_TOKEN\",\n  \"new_password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/reset-password/reset",
+							"host": ["{{base_url}}"],
+							"path": ["users", "reset-password", "reset"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. User Management",
+			"item": [
+				{
+					"name": "Create / Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"johndoe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": ["{{base_url}}"],
+							"path": ["users"]
+						}
+					}
+				},
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": ["{{base_url}}"],
+							"path": ["users"]
+						}
+					}
+				},
+				{
+					"name": "Get User Detail",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"johndoe_updated\",\n  \"email\": \"john_new@example.com\",\n  \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Watchlist Management",
+			"item": [
+				{
+					"name": "Get User Watchlists",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlists",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlists"]
+						}
+					}
+				},
+				{
+					"name": "Get Watchlist Quota",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlist-quota",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlist-quota"]
+						}
+					}
+				},
+				{
+					"name": "Add Watchlist Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"stock_code\": \"BBCA\",\n  \"notes\": \"Target buy at support\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlists",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlists"]
+						}
+					}
+				},
+				{
+					"name": "Get Watchlist Detail",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlists/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlists", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Watchlist Item",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notes\": \"Updated note context\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlists/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlists", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Watchlist Item",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{base_url}}/users/1/watchlists/1",
+							"host": ["{{base_url}}"],
+							"path": ["users", "1", "watchlists", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Market Data & Forecasting",
+			"item": [
+				{
+					"name": "Get OHLC Data",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/data/ohlc?symbol=BBCA&period=1d&limit=300",
+							"host": ["{{base_url}}"],
+							"path": ["api", "data", "ohlc"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" },
+								{ "key": "period", "value": "1d" },
+								{ "key": "limit", "value": "300" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Broker Activity Data",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/data/broker-activity?symbol=BBCA&date=2026-08-01",
+							"host": ["{{base_url}}"],
+							"path": ["api", "data", "broker-activity"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" },
+								{ "key": "date", "value": "2026-08-01" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Stock Info",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/data/stock-info?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "data", "stock-info"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Major Shareholders",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/data/majorholder?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "data", "majorholder"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Forecast Data",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/data/forecast?symbol=BBCA&days=7",
+							"host": ["{{base_url}}"],
+							"path": ["api", "data", "forecast"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" },
+								{ "key": "days", "value": "7" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Prescriptive Analytics",
+			"item": [
+				{
+					"name": "Run Prescriptive Model",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbol\": \"BBCA\",\n  \"risk_tolerance\": \"medium\",\n  \"horizon_days\": 14\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/prescriptive/run",
+							"host": ["{{base_url}}"],
+							"path": ["api", "prescriptive", "run"]
+						}
+					}
+				},
+				{
+					"name": "Get Prescriptive Results",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/prescriptive/results?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "prescriptive", "results"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. System Health, Logs & Token",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				},
+				{
+					"name": "Get Crawl Logs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/crawl-status?limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["crawl-status"],
+							"query": [
+								{ "key": "limit", "value": "50" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Update System Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"YOUR_STOCKBIT_ACCESS_TOKEN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/update-token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "update-token"]
+						}
+					}
+				},
+				{
+					"name": "Force Login System",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Scheduler Control",
+			"item": [
+				{
+					"name": "Scheduler Status",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/scheduler/status",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "status"]
+						}
+					}
+				},
+				{
+					"name": "Start Scheduler",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/scheduler/start",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "start"]
+						}
+					}
+				},
+				{
+					"name": "Stop Scheduler",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/scheduler/stop",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "stop"]
+						}
+					}
+				},
+				{
+					"name": "Pause Scheduler",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/scheduler/pause",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "pause"]
+						}
+					}
+				},
+				{
+					"name": "Resume Scheduler",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/scheduler/resume",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "resume"]
+						}
+					}
+				},
+				{
+					"name": "Trigger Crawling Now",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/scheduler/trigger",
+							"host": ["{{base_url}}"],
+							"path": ["scheduler", "trigger"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000"
+		}
+	]
+}
