@@ -63,7 +63,6 @@ function toggleTicker(ticker) {
   } else {
     dipilih.value = [...dipilih.value, t]
   }
-  // Biarkan inputTicker tetap ada agar user melihat status berubah jadi hijau/biru
 }
 
 function hapus(ticker) {
@@ -135,6 +134,22 @@ function onKeydown(e) {
 
 <template>
   <div class="flex flex-col gap-4 p-4">
+
+    <!-- Status Kuota Emiten -->
+    <div class="rounded-lg border border-border bg-card p-3">
+      <div class="mb-1.5 flex items-center justify-between">
+        <span class="text-[11px] font-medium text-muted-foreground">Emiten Terdaftar</span>
+        <span class="tabular text-[11px] font-semibold text-primary">
+          {{ uniqueCount }} Emiten (Tanpa Batas)
+        </span>
+      </div>
+      <div class="h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
+        <div class="h-full rounded-full bg-primary w-full" />
+      </div>
+      <p class="mt-1 text-[10px] text-muted-foreground">
+        Bebas menambahkan emiten IDX tanpa batasan kuota.
+      </p>
+    </div>
 
     <!-- Input Nama Watchlist -->
     <div class="flex flex-col gap-1.5">

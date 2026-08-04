@@ -348,7 +348,8 @@ def get_stock_forecast():
         SELECT symbol, tanggal, open, high, low, close, volume
         FROM idxsaham.stock_forecasting
         WHERE symbol = %s
-        ORDER BY tanggal ASC;
+        ORDER BY tanggal DESC
+        LIMIT 30;
     """
     try:
         conn = get_connection()
@@ -358,6 +359,7 @@ def get_stock_forecast():
         cur.close()
         conn.close()
         
+        # Fallback if no stored forecast is found
         if not rows:
             try:
                 from forecasting.dynamic_forecast import generate_dynamic_forecast
@@ -366,6 +368,10 @@ def get_stock_forecast():
                     return jsonify(forecast_items)
             except Exception as e:
                 print(f"[Forecast Endpoint] Dynamic forecast generation failed for {symbol}: {e}")
+
+        # Sort ascending for chart display
+        if rows:
+            rows = sorted(rows, key=lambda x: x[1])
 
         result = []
         for r in rows:

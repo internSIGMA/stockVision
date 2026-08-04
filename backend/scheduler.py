@@ -353,9 +353,18 @@ def _run_scheduled_crawl(app_context_func=None):
                     errors.append(err_msg)
                     _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
                     print(f"[Scheduler] {err_msg}")
+        # Menjalankan Training Model Forecast & Prescriptive Pipeline setelah bursa tutup
+        try:
+            print("[Scheduler] Memulai training model forecast & prescriptive pipeline setelah bursa tutup...")
+            from prescriptive.pipeline import run_prescriptive_pipeline
+            p_res = run_prescriptive_pipeline()
+            p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
+            _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "SUCCESS", p_count)
+            print("[Scheduler] Training model forecast & prescriptive pipeline selesai disiapkan.")
         except Exception as e:
-            err_msg = f"yfinance OHLC Init: {str(e)}"
+            err_msg = f"Prescriptive Pipeline: {str(e)}"
             errors.append(err_msg)
+            _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
             print(f"[Scheduler] {err_msg}")
 
         # Summary
