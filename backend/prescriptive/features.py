@@ -78,18 +78,28 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
     """
     logger.info("Mengkalkulasi Decision Features & Strategi Teknikal Ganda...")
 
+    # Pastikan kolom numerik valid
+    ema20_num = pd.to_numeric(feature_df["EMA20"], errors="coerce").fillna(0)
+    ema50_num = pd.to_numeric(feature_df["EMA50"], errors="coerce").fillna(0)
+    rsi_num = pd.to_numeric(feature_df["RSI14"], errors="coerce").fillna(50)
+    macd_num = pd.to_numeric(feature_df["MACD"], errors="coerce").fillna(0)
+    macd_sig_num = pd.to_numeric(feature_df["MACD_SIGNAL"], errors="coerce").fillna(0)
+    vol_num = pd.to_numeric(feature_df["volume"], errors="coerce").fillna(0)
+    vol_ma20_num = pd.to_numeric(feature_df["VOL_MA20"], errors="coerce").fillna(0)
+
     # Sinyal Teknikal
-    feature_df["TREND"] = np.where(feature_df["EMA20"] > feature_df["EMA50"], "Bullish", "Bearish")
+    feature_df["TREND"] = np.where(ema20_num > ema50_num, "Bullish", "Bearish")
     feature_df["RSI_SIGNAL"] = np.select(
-        [feature_df["RSI14"] < 30, feature_df["RSI14"] > 70],
+        [rsi_num < 30, rsi_num > 70],
         ["Oversold", "Overbought"], default="Neutral"
     )
     feature_df["MACD_SIGNAL2"] = np.where(
-        feature_df["MACD"] > feature_df["MACD_SIGNAL"], "Bullish", "Bearish"
+        macd_num > macd_sig_num, "Bullish", "Bearish"
     )
     feature_df["VOLUME_SIGNAL"] = np.where(
-        feature_df["volume"] > feature_df["VOL_MA20"], "High", "Normal"
+        vol_num > vol_ma20_num, "High", "Normal"
     )
+
 
     # Gabungkan data broker & insider
     master = feature_df.merge(broker_df, on=["symbol", "tanggal"], how="left")
@@ -266,19 +276,21 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
                 recommendation = "Hold"
 
         # 4. TARGET PRICE & STOP LOSS TEKNO-FUNDAMENTAL
-        stop_loss = round(support_price * 0.97, 2)
+        stop_loss = round(support_price * 0.97, 2) if pd.notnull(support_price) else round(close * 0.95, 2)
 
-        if is_fc_valid and forecast_close and forecast_close > entry_price:
+        has_valid_fc = is_fc_valid and pd.notnull(forecast_close) and pd.notnull(entry_price)
+        if has_valid_fc and float(forecast_close) > float(entry_price):
             target_price = round(float(forecast_close), 2)
         else:
-            target_price = max(resistance_price, round(entry_price * 1.06, 2))
+            target_price = max(resistance_price, round(entry_price * 1.06, 2)) if pd.notnull(resistance_price) and pd.notnull(entry_price) else round(close * 1.05, 2)
 
-        risk = entry_price - stop_loss
-        reward = target_price - entry_price
-        if risk > 0 and reward > 0:
+        risk = (entry_price - stop_loss) if (pd.notnull(entry_price) and pd.notnull(stop_loss)) else 0
+        reward = (target_price - entry_price) if (pd.notnull(target_price) and pd.notnull(entry_price)) else 0
+        if pd.notnull(risk) and pd.notnull(reward) and risk > 0 and reward > 0:
             rrr = round(reward / risk, 2)
         else:
             rrr = 0.0
+
 
         pe_str = f"PE {row.get('trailing_pe'):.1f}x" if row.get("trailing_pe") else "PE N/A"
         roe_str = f"ROE {row.get('roe')*100:.1f}%" if row.get("roe") else "ROE N/A"
