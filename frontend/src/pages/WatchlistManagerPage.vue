@@ -84,12 +84,6 @@ function tambah() {
     return
   }
 
-  const currentUnique = new Set(dipilih.value.map(s => s.toUpperCase()))
-  if (currentUnique.size >= 10) {
-    inputError.value = `Batas kuota emiten tercapai! Akun ini hanya dapat memiliki maksimal 10 emiten unik. Hapus salah satu emiten untuk menambah yang baru.`
-    return
-  }
-
   dipilih.value = [...dipilih.value, t]
   inputTicker.value = ''
 }
@@ -137,25 +131,19 @@ function onKeydown(e) {
   <div class="flex flex-col gap-4 p-4">
 
     <!-- Quota bar -->
+    <!-- Status Kuota Emiten -->
     <div class="rounded-lg border border-border bg-card p-3">
       <div class="mb-1.5 flex items-center justify-between">
-        <span class="text-[11px] font-medium text-muted-foreground">Kuota Emiten</span>
-        <span
-          class="tabular text-[11px] font-semibold"
-          :class="uniqueCount >= 10 ? 'text-destructive' : 'text-foreground'"
-        >
-          {{ uniqueCount }} / 10
+        <span class="text-[11px] font-medium text-muted-foreground">Emiten Terdaftar</span>
+        <span class="tabular text-[11px] font-semibold text-primary">
+          {{ uniqueCount }} Emiten (Tanpa Batas)
         </span>
       </div>
-      <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          class="h-full rounded-full transition-all duration-300"
-          :class="quotaBarColor"
-          :style="{ width: `${(uniqueCount / 10) * 100}%` }"
-        />
+      <div class="h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
+        <div class="h-full rounded-full bg-primary w-full" />
       </div>
       <p class="mt-1 text-[10px] text-muted-foreground">
-        {{ remainingSlot > 0 ? `Sisa ${remainingSlot} slot` : 'Kuota penuh — hapus emiten lama untuk menambah yang baru.' }}
+        Bebas menambahkan emiten IDX tanpa batasan kuota.
       </p>
     </div>
 
@@ -171,13 +159,12 @@ function onKeydown(e) {
           maxlength="6"
           placeholder="Kode emiten..."
           class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 font-mono text-[13px] uppercase shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          :disabled="uniqueCount >= 10"
           @keydown="onKeydown"
           @input="inputError = ''"
         />
         <Button
           size="sm"
-          :disabled="!inputTicker.trim() || uniqueCount >= 10"
+          :disabled="!inputTicker.trim()"
           @click="tambah"
         >
           + Tambah

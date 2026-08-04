@@ -124,3 +124,63 @@ CREATE TABLE idxsaham.stock_info (
 
 CREATE INDEX IF NOT EXISTS idx_stock_info_tanggal ON idxsaham.stock_info (tanggal);
 CREATE INDEX IF NOT EXISTS idx_stock_info_symbol  ON idxsaham.stock_info (symbol);
+
+-- =============================================================
+-- TABLE: idxsaham.ohlc_forecasting
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.ohlc_forecasting (
+    symbol VARCHAR(10),
+    tanggal DATE,
+    open NUMERIC(15,2),
+    high NUMERIC(15,2),
+    low NUMERIC(15,2),
+    close NUMERIC(15,2),
+    adj_close NUMERIC(15,2),
+    volume BIGINT,
+    CONSTRAINT pk_ohlc_forecasting PRIMARY KEY (symbol, tanggal)
+);
+
+-- =============================================================
+-- TABLE: idxsaham.stock_ohlc
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.stock_ohlc (
+    symbol VARCHAR(10),
+    tanggal DATE,
+    open NUMERIC(15,2),
+    high NUMERIC(15,2),
+    low NUMERIC(15,2),
+    close NUMERIC(15,2),
+    volume BIGINT,
+    foreign_buy NUMERIC(20,2),
+    foreign_sell NUMERIC(20,2),
+    foreign_flow NUMERIC(20,2),
+    PRIMARY KEY (symbol, tanggal)
+);
+
+-- =============================================================
+-- TABLE: idxsaham.stock_forecasting
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.stock_forecasting (
+    symbol VARCHAR(10),
+    tanggal DATE,
+    open NUMERIC(15,2),
+    high NUMERIC(15,2),
+    low NUMERIC(15,2),
+    close NUMERIC(15,2),
+    volume BIGINT,
+    PRIMARY KEY (symbol, tanggal)
+);
+
+-- =============================================================
+-- TABLE: idxsaham.crawl_logs
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.crawl_logs (
+    id BIGSERIAL PRIMARY KEY,
+    job_type VARCHAR(50),
+    target VARCHAR(50),
+    tanggal_target DATE,
+    status VARCHAR(20),
+    records_count INT,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
