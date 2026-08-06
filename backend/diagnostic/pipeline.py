@@ -6,9 +6,9 @@ logger = logging.getLogger(__name__)
 
 def run_diagnostic_pipeline():
     """
-    Menjalankan pipeline analisis diagnostik secara end-to-end:
-    1. Load data dari PostgreSQL (OHLC, Foreign Flow, Broker, Insider, Fundamental/Meta)
-    2. Menjalankan engine analisis kuantitatif (Spearman correlation, Bandarmology, Volume Z-Score, Insider)
+    Menjalankan pipeline analisis diagnostik secara end-to-end (tanpa foreign flow data):
+    1. Load data dari PostgreSQL (OHLC, Broker, Insider, Fundamental/Meta)
+    2. Menjalankan engine analisis kuantitatif (Trend, Bandarmology, Volume Z-Score, Insider)
     3. Menggenerasi narasi AI Root Cause Analysis (Google Gemini 3.5 Flash dengan fallback deterministik)
     4. Menyimpan/update hasil diagnostik ke tabel idxsaham.diagnostic_results
     """
@@ -17,7 +17,7 @@ def run_diagnostic_pipeline():
 
     try:
         from .data_loader import (
-            load_price_and_foreign_data,
+            load_price_data,
             load_broker_activity_data,
             load_insider_activity_data,
             load_company_meta_data
@@ -26,7 +26,7 @@ def run_diagnostic_pipeline():
         from .db_writer import save_diagnostic_results
     except ImportError:
         from data_loader import (
-            load_price_and_foreign_data,
+            load_price_data,
             load_broker_activity_data,
             load_insider_activity_data,
             load_company_meta_data
@@ -34,8 +34,7 @@ def run_diagnostic_pipeline():
         from diagnostic_engine import run_full_diagnostic_analysis
         from db_writer import save_diagnostic_results
 
-    # 1. Load Data
-    price_df = load_price_and_foreign_data()
+    price_df = load_price_data()
     broker_df = load_broker_activity_data()
     insider_df = load_insider_activity_data()
     meta_df = load_company_meta_data()
@@ -49,10 +48,7 @@ def run_diagnostic_pipeline():
             "elapsed_seconds": round(time.time() - start_time, 2)
         }
 
-    # 2. Run Engine Analysis
     diag_df = run_full_diagnostic_analysis(price_df, broker_df, insider_df, meta_df)
-
-    # 3. Save Results
     saved_count = save_diagnostic_results(diag_df)
 
     elapsed = round(time.time() - start_time, 2)
