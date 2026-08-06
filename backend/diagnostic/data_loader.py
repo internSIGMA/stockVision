@@ -10,20 +10,16 @@ logger = logging.getLogger(__name__)
 
 
 def _get_engine():
-    """Membuat SQLAlchemy engine menggunakan env vars StockVision."""
-    db_url = (
-        f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
-        f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', '5434')}/{os.getenv('DB_NAME')}"
-    )
-    return create_engine(db_url)
+    u, p = os.getenv('DB_USER'), os.getenv('DB_PASSWORD')
+    h, pt, db = os.getenv('DB_HOST'), os.getenv('DB_PORT', '5434'), os.getenv('DB_NAME')
+    return create_engine(f"postgresql+psycopg2://{u}:{p}@{h}:{pt}/{db}")
 
 
 def load_price_and_foreign_data(engine=None) -> pd.DataFrame:
     """Memuat data pergerakan harga OHLC dan Foreign Flow harian."""
-    if engine is None:
-        engine = _get_engine()
+    eng = engine or _get_engine()
     logger.info("Memuat data OHLC & Foreign Flow...")
-    query = """
+    q = """
         SELECT f.symbol, f.tanggal, f.open, f.high, f.low, f.close, f.volume,
                COALESCE(s.foreign_buy, 0) as foreign_buy,
                COALESCE(s.foreign_sell, 0) as foreign_sell,
@@ -32,22 +28,21 @@ def load_price_and_foreign_data(engine=None) -> pd.DataFrame:
         LEFT JOIN idxsaham.stock_ohlc s ON f.symbol = s.symbol AND f.tanggal = s.tanggal
         ORDER BY f.symbol, f.tanggal ASC
     """
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(q, eng)
     df["tanggal"] = pd.to_datetime(df["tanggal"])
     return df
 
 
 def load_broker_activity_data(engine=None) -> pd.DataFrame:
     """Memuat data transaksi broker harian."""
-    if engine is None:
-        engine = _get_engine()
+    eng = engine or _get_engine()
     logger.info("Memuat data aktivitas broker...")
-    query = """
+    q = """
         SELECT kodesaham as symbol, kodebroker, tipebroker, tanggal, nilairp, lot, avgprice, frekuensi, aksi
         FROM idxsaham.broker_activity
         ORDER BY symbol, tanggal DESC
     """
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(q, eng)
     if not df.empty:
         df["tanggal"] = pd.to_datetime(df["tanggal"])
     return df
@@ -55,15 +50,14 @@ def load_broker_activity_data(engine=None) -> pd.DataFrame:
 
 def load_insider_activity_data(engine=None) -> pd.DataFrame:
     """Memuat data aktivitas pemegang saham mayor/insider."""
-    if engine is None:
-        engine = _get_engine()
+    eng = engine or _get_engine()
     logger.info("Memuat data aktivitas insider...")
-    query = """
+    q = """
         SELECT saham as symbol, nama, tanggal, aksi, perubahan, perubahanpersen, harga
         FROM idxsaham.insider_activity
         ORDER BY symbol, tanggal DESC
     """
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(q, eng)
     if not df.empty:
         df["tanggal"] = pd.to_datetime(df["tanggal"])
     return df
@@ -71,14 +65,12 @@ def load_insider_activity_data(engine=None) -> pd.DataFrame:
 
 def load_company_meta_data(engine=None) -> pd.DataFrame:
     """Memuat informasi profil dan rasio fundamental emiten."""
-    if engine is None:
-        engine = _get_engine()
+    eng = engine or _get_engine()
     logger.info("Memuat data fundamental & company info...")
-    query = """
+    q = """
         SELECT c.symbol, c.company_name, c.sector, c.industry, c.beta,
                f.trailing_pe, f.price_to_book, f.roe, f.earnings_growth
         FROM idxsaham.company_info c
         LEFT JOIN idxsaham.fundamental f ON c.symbol = f.symbol
     """
-    df = pd.read_sql(query, engine)
-    return df
+    return pd.read_sql(q, eng)

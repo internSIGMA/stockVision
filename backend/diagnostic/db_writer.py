@@ -1,17 +1,15 @@
 import psycopg2
 from psycopg2.extras import execute_batch
 import logging
+import math
 import os
-from dotenv import load_dotenv, find_dotenv
 from datetime import date
+from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(), override=True)
 
 logger = logging.getLogger(__name__)
 
-# =============================================================
-# DDL: Auto-create tabel idxsaham.diagnostic_results
-# =============================================================
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS idxsaham.diagnostic_results (
     id BIGSERIAL PRIMARY KEY,
@@ -44,9 +42,6 @@ CREATE INDEX IF NOT EXISTS idx_diagnostic_symbol ON idxsaham.diagnostic_results 
 CREATE INDEX IF NOT EXISTS idx_diagnostic_tanggal ON idxsaham.diagnostic_results (tanggal_analisis);
 """
 
-# =============================================================
-# UPSERT: Simpan / update hasil analisis diagnostik
-# =============================================================
 UPSERT_SQL = """
 INSERT INTO idxsaham.diagnostic_results (
     symbol, company_name, sector, tanggal_analisis,
@@ -90,7 +85,7 @@ DO UPDATE SET
 
 
 def _get_connection():
-    """Membuat koneksi psycopg2 menggunakan env vars StockVision."""
+    """Koneksi psycopg2 ke database PostgreSQL StockVision."""
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         database=os.getenv("DB_NAME"),
@@ -101,7 +96,7 @@ def _get_connection():
 
 
 def ensure_table_exists():
-    """Membuat tabel diagnostic_results jika belum ada di database."""
+    """Inisialisasi tabel idxsaham.diagnostic_results jika belum ada."""
     try:
         conn = _get_connection()
         cur = conn.cursor()
@@ -109,98 +104,80 @@ def ensure_table_exists():
         conn.commit()
         cur.close()
         conn.close()
-        logger.info("Tabel idxsaham.diagnostic_results siap digunakan.")
-    except Exception as e:
-        logger.error(f"Gagal membuat/memperbarui tabel diagnostic_results: {e}")
+    except Exception:
+        logger.exception("Gagal inisialisasi tabel idxsaham.diagnostic_results")
         raise
 
 
-def _safe_float(val):
-    """Konversi nilai ke float, return None jika gagal."""
-    if val is None:
+def _to_float(v):
+    if v is None:
         return None
     try:
-        import math
-        f = float(val)
-        if math.isnan(f) or math.isinf(f):
-            return None
-        return f
+        f = float(v)
+        return None if (math.isnan(f) or math.isinf(f)) else f
     except (ValueError, TypeError):
         return None
 
 
-def _safe_int(val):
-    """Konversi nilai ke int, return None jika gagal."""
-    if val is None:
+def _to_int(v):
+    if v is None:
         return None
     try:
-        import math
-        f = float(val)
-        if math.isnan(f) or math.isinf(f):
-            return None
-        return int(f)
+        f = float(v)
+        return None if (math.isnan(f) or math.isinf(f)) else int(f)
     except (ValueError, TypeError):
         return None
 
 
 def save_diagnostic_results(diag_df):
-    """
-    Simpan hasil kalkulasi & narasi diagnostik ke tabel idxsaham.diagnostic_results.
-    Menggunakan UPSERT (INSERT ... ON CONFLICT DO UPDATE) berdasarkan (symbol, tanggal_analisis).
-    """
+    """Menyimpan hasil analisis diagnostik ke database PostgreSQL."""
     ensure_table_exists()
-
-    today = date.today()
-    records = []
+    today_date = date.today()
+    dataset = []
 
     for _, row in diag_df.iterrows():
-        # Gunakan tanggal analisis dari data atau tanggal hari ini
         tgl = row.get("last_trading_date")
         if tgl is not None and str(tgl) != "NaT":
             try:
-                if hasattr(tgl, "date"):
-                    analysis_date = tgl.date()
-                else:
-                    analysis_date = tgl
+                dt_val = tgl.date() if hasattr(tgl, "date") else tgl
             except Exception:
-                analysis_date = today
+                dt_val = today_date
         else:
-            analysis_date = today
+            dt_val = today_date
 
-        records.append({
+        dataset.append({
             "symbol": str(row.get("symbol", "")),
             "company_name": str(row.get("company_name", "")),
             "sector": str(row.get("sector", "")),
-            "tanggal_analisis": analysis_date,
-            "last_close": _safe_float(row.get("last_close")),
-            "return_pct": _safe_float(row.get("return_pct")),
+            "tanggal_analisis": dt_val,
+            "last_close": _to_float(row.get("last_close")),
+            "return_pct": _to_float(row.get("return_pct")),
             "foreign_driver_status": str(row.get("foreign_driver_status", "")),
-            "foreign_corr_spearman": _safe_float(row.get("foreign_corr_spearman")),
-            "net_foreign_30d_rp": _safe_float(row.get("net_foreign_30d_rp")),
+            "foreign_corr_spearman": _to_float(row.get("foreign_corr_spearman")),
+            "net_foreign_30d_rp": _to_float(row.get("net_foreign_30d_rp")),
             "bandar_status": str(row.get("bandar_status", "")),
-            "net_big_money_rp": _safe_float(row.get("net_big_money_rp")),
+            "net_big_money_rp": _to_float(row.get("net_big_money_rp")),
             "top_buyers": str(row.get("top_buyers", "")),
             "top_sellers": str(row.get("top_sellers", "")),
             "volume_anomaly_status": str(row.get("volume_anomaly_status", "")),
-            "latest_volume": _safe_int(row.get("latest_volume")),
-            "vol_zscore": _safe_float(row.get("vol_zscore")),
+            "latest_volume": _to_int(row.get("latest_volume")),
+            "vol_zscore": _to_float(row.get("vol_zscore")),
             "insider_status": str(row.get("insider_status", "")),
-            "total_insider_trxs": _safe_int(row.get("total_insider_trxs", 0)),
-            "beta": _safe_float(row.get("beta")),
-            "trailing_pe": _safe_float(row.get("trailing_pe")),
-            "roe": _safe_float(row.get("roe")),
+            "total_insider_trxs": _to_int(row.get("total_insider_trxs", 0)),
+            "beta": _to_float(row.get("beta")),
+            "trailing_pe": _to_float(row.get("trailing_pe")),
+            "roe": _to_float(row.get("roe")),
             "llm_diagnostic_summary": str(row.get("llm_diagnostic_summary", "")),
         })
 
     try:
         conn = _get_connection()
         cur = conn.cursor()
-        execute_batch(cur, UPSERT_SQL, records)
+        execute_batch(cur, UPSERT_SQL, dataset)
         conn.commit()
         cur.close()
         conn.close()
-        logger.info(f"Berhasil menyimpan {len(records)} record diagnostik ke database.")
-        return len(records)
-    except Exception as e:
-        logger.error(f"Gagal menyimpan hasil diagnostik ke database: {e}")
+        return len(dataset)
+    except Exception:
+        logger.exception("Gagal menyimpan hasil analisis diagnostik ke DB")
         raise

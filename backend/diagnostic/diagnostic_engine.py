@@ -228,8 +228,8 @@ def run_full_diagnostic_analysis(price_df: pd.DataFrame, broker_df: pd.DataFrame
         with ThreadPoolExecutor(max_workers=10) as executor:
             llm_summaries = list(executor.map(generate_diagnostic_llm_summary, records))
         master_diag["llm_diagnostic_summary"] = llm_summaries
-    except Exception as e:
-        logger.error(f"Gagal generate LLM diagnostic summary: {e}")
+    except Exception:
+        logger.exception("Gagal generate LLM diagnostic summary")
         try:
             from .llm import generate_fallback_diagnostic_summary
         except ImportError:

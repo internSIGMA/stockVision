@@ -113,5 +113,5 @@ def generate_diagnostic_llm_summary(row: dict) -> str:
                 logger.warning("Gemini API Quota Terlampaui (429). Mengalihkan generator ke modul narasi deterministik.")
                 _quota_exceeded = True
         else:
-            logger.error(f"Error saat memanggil Gemini AI Diagnostik untuk {symbol}: {e}")
+            logger.exception(f"Error saat memanggil Gemini AI Diagnostik untuk {symbol}")
         return generate_fallback_diagnostic_summary(row)
