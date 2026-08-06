@@ -23,7 +23,7 @@ export const OFFICIAL_TICKERS = [
   'BBNI', 'BJBR', 'BBTN', 'BRIS', 'ARTO', 'MEGA', 'PNBN'
 ]
 
-export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
+export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM', 'GOTO']
 
 /** Memeriksa apakah emiten ada di dalam daftar resmi bursa (simulasi). */
 export function isSupported(ticker) {

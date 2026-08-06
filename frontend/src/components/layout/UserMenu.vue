@@ -285,7 +285,7 @@ function keluar() {
                 </div>
               </div>
 
-              <div class="space-y-1.5 py-3">
+              <div v-if="!auth.isAdmin" class="space-y-1.5 py-3">
                 <label for="ak-saham" class="text-[13px] font-medium">Saham utama</label>
                 <select id="ak-saham" v-model="form.defaultTicker" class="ak-input tabular">
                   <option v-for="t in SUPPORTED_TICKERS" :key="t" :value="t">{{ t }}</option>

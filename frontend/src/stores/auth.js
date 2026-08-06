@@ -42,7 +42,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!user.value)
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
-  const isAdmin = computed(() => accessRole.value === 'admin')
+  const isAdmin = computed(() => {
+    const isAccRoleAdmin = accessRole.value === 'admin'
+    const isRoleAdmin = String(user.value?.role || '').toLowerCase() === 'admin'
+    const isEmailAdmin = String(user.value?.email || '').toLowerCase().includes('admin')
+    return isAccRoleAdmin || isRoleAdmin || isEmailAdmin
+  })
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,

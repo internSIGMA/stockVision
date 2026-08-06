@@ -43,7 +43,7 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
       </p>
 
       <!-- Mock jendela browser berisi candlestick OHLC nyata dari backend. -->
-      <div class="mt-12 w-full max-w-[545px] rounded-xl border-[0.5px] border-border bg-card p-3 shadow-sm">
+      <div class="mt-12 w-full max-w-[820px] rounded-xl border-[0.5px] border-border bg-card p-4 shadow-sm">
         <div class="flex items-center justify-between gap-3 px-1 pb-3">
           <div class="flex items-center gap-2">
             <div class="flex gap-1.5" aria-hidden="true">
@@ -70,7 +70,7 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
           <span v-else class="tabular text-[9px] text-muted-foreground">Live Market Overview</span>
         </div>
 
-        <div class="flex h-[170px] items-end gap-[5px] rounded-md border-[0.5px] border-border px-3 pb-3 pt-4">
+        <div class="flex h-[260px] items-end gap-[5px] rounded-md border-[0.5px] border-border px-3 pb-3 pt-4">
           <!-- Memuat -->
           <template v-if="loading">
             <div
