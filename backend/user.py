@@ -291,6 +291,13 @@ def create_watchlist(user_id, payload):
     cur.close()
     conn.close()
 
+    if normalized_symbols:
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=normalized_symbols)
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist creation failed:", e)
+
     return {
         "id": watchlist_id,
         "user_id": user_id,
@@ -409,7 +416,15 @@ def update_watchlist(user_id, watchlist_id, payload):
     cur.close()
     conn.close()
 
-    return get_watchlist(user_id, watchlist_id)
+    updated_wl = get_watchlist(user_id, watchlist_id)
+    if updated_wl and "symbols" in payload and updated_wl.get("symbols"):
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=updated_wl.get("symbols"))
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist update failed:", e)
+
+    return updated_wl
 
 
 def delete_watchlist(user_id, watchlist_id):

@@ -59,9 +59,12 @@ function toggleTicker(ticker) {
 
   const isSelected = dipilih.value.map(s => s.toUpperCase()).includes(t)
   if (isSelected) {
-    return // Jangan hapus jika sudah ada di watchlist (sesuai permintaan user)
+    // Jika sudah ada, hapus dari watchlist (toggle off)
+    dipilih.value = dipilih.value.filter(s => s.toUpperCase() !== t)
   } else {
+    // Jika belum ada, tambahkan ke watchlist dan kosongkan input
     dipilih.value = [...dipilih.value, t]
+    inputTicker.value = ''
   }
 }
 
@@ -84,6 +87,7 @@ async function simpan() {
   menyimpan.value = true
   try {
     await auth.saveWatchlist(dipilih.value, inputName.value.trim())
+    await auth.fetchWatchlists()
     if (!dipilih.value.includes(market.selectedTicker)) {
       market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
     }
