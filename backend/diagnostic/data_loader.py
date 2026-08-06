@@ -15,20 +15,16 @@ def _get_engine():
     return create_engine(f"postgresql+psycopg2://{u}:{p}@{h}:{pt}/{db}")
 
 
-def load_price_and_foreign_data(engine=None) -> pd.DataFrame:
-    """Memuat data pergerakan harga OHLC dan Foreign Flow harian."""
+def load_price_data(engine=None) -> pd.DataFrame:
+    """Memuat data OHLC historis tanpa foreign flow."""
     eng = engine or _get_engine()
-    logger.info("Memuat data OHLC & Foreign Flow...")
-    q = """
-        SELECT f.symbol, f.tanggal, f.open, f.high, f.low, f.close, f.volume,
-               COALESCE(s.foreign_buy, 0) as foreign_buy,
-               COALESCE(s.foreign_sell, 0) as foreign_sell,
-               COALESCE(s.foreign_flow, 0) as foreign_flow
-        FROM idxsaham.ohlc_forecasting f
-        LEFT JOIN idxsaham.stock_ohlc s ON f.symbol = s.symbol AND f.tanggal = s.tanggal
-        ORDER BY f.symbol, f.tanggal ASC
+    logger.info("Memuat data OHLC...")
+    query = """
+        SELECT symbol, tanggal, open, high, low, close, volume
+        FROM idxsaham.ohlc_forecasting
+        ORDER BY symbol, tanggal ASC
     """
-    df = pd.read_sql(q, eng)
+    df = pd.read_sql(query, eng)
     df["tanggal"] = pd.to_datetime(df["tanggal"])
     return df
 

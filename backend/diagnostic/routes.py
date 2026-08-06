@@ -35,12 +35,13 @@ def get_diagnostic_results():
     ticker = request.args.get("symbol", "").strip().upper()
 
     sql = """
-        SELECT symbol, company_name, sector, tanggal_analisis, last_close, return_pct,
-               foreign_driver_status, foreign_corr_spearman, net_foreign_30d_rp,
-               bandar_status, net_big_money_rp, top_buyers, top_sellers,
+        SELECT symbol, company_name, sector, tanggal_analisis,
+               last_close, return_pct, trend_status, ma5, ma20,
+               trend_gap_pct, return_20d, bandar_status,
+               net_big_money_rp, top_buyers, top_sellers,
                volume_anomaly_status, latest_volume, vol_zscore,
-               insider_status, total_insider_trxs, beta, trailing_pe, roe,
-               llm_diagnostic_summary
+               insider_status, total_insider_trxs, beta, 
+               trailing_pe, roe, llm_diagnostic_summary
         FROM idxsaham.diagnostic_results
         WHERE tanggal_analisis = (SELECT MAX(tanggal_analisis) FROM idxsaham.diagnostic_results)
     """
@@ -66,10 +67,12 @@ def get_diagnostic_results():
                 "tanggal_analisis": str(r["tanggal_analisis"]),
                 "last_close": _num(r["last_close"]),
                 "return_pct": _num(r["return_pct"]),
-                "foreign_flow_diagnostic": {
-                    "status": r["foreign_driver_status"],
-                    "spearman_correlation": _num(r["foreign_corr_spearman"]),
-                    "net_foreign_30d_rp": _num(r["net_foreign_30d_rp"]),
+                "trend_diagnostic": {
+                    "status": r["trend_status"],
+                    "ma5": _num(r["ma5"]),
+                    "ma20": _num(r["ma20"]),
+                    "trend_gap_pct": _num(r["trend_gap_pct"]),
+                    "return_20d": _num(r["return_20d"])
                 },
                 "bandarmology_diagnostic": {
                     "status": r["bandar_status"],
