@@ -19,9 +19,11 @@ CREATE TABLE IF NOT EXISTS idxsaham.diagnostic_results (
     tanggal_analisis DATE NOT NULL,
     last_close NUMERIC(15,2),
     return_pct NUMERIC(10,2),
-    foreign_driver_status VARCHAR(100),
-    foreign_corr_spearman NUMERIC(6,3),
-    net_foreign_30d_rp NUMERIC(18,2),
+    trend_status VARCHAR(100),
+    ma5 NUMERIC(15,2),
+    ma20 NUMERIC(15,2),
+    trend_gap_pct NUMERIC(8,2),
+    return_20d NUMERIC(8,2),
     bandar_status VARCHAR(100),
     net_big_money_rp NUMERIC(18,2),
     top_buyers VARCHAR(255),
@@ -42,10 +44,19 @@ CREATE INDEX IF NOT EXISTS idx_diagnostic_symbol ON idxsaham.diagnostic_results 
 CREATE INDEX IF NOT EXISTS idx_diagnostic_tanggal ON idxsaham.diagnostic_results (tanggal_analisis);
 """
 
+ALTER_TABLE_SQL = """
+ALTER TABLE idxsaham.diagnostic_results ADD COLUMN IF NOT EXISTS trend_status VARCHAR(100);
+ALTER TABLE idxsaham.diagnostic_results ADD COLUMN IF NOT EXISTS ma5 NUMERIC(15,2);
+ALTER TABLE idxsaham.diagnostic_results ADD COLUMN IF NOT EXISTS ma20 NUMERIC(15,2);
+ALTER TABLE idxsaham.diagnostic_results ADD COLUMN IF NOT EXISTS trend_gap_pct NUMERIC(8,2);
+ALTER TABLE idxsaham.diagnostic_results ADD COLUMN IF NOT EXISTS return_20d NUMERIC(8,2);
+"""
+
 UPSERT_SQL = """
 INSERT INTO idxsaham.diagnostic_results (
     symbol, company_name, sector, tanggal_analisis,
-    last_close, return_pct, foreign_driver_status, foreign_corr_spearman, net_foreign_30d_rp,
+    last_close, return_pct, trend_status,
+    ma5, ma20, trend_gap_pct, return_20d,
     bandar_status, net_big_money_rp, top_buyers, top_sellers,
     volume_anomaly_status, latest_volume, vol_zscore,
     insider_status, total_insider_trxs,
@@ -53,7 +64,8 @@ INSERT INTO idxsaham.diagnostic_results (
 )
 VALUES (
     %(symbol)s, %(company_name)s, %(sector)s, %(tanggal_analisis)s,
-    %(last_close)s, %(return_pct)s, %(foreign_driver_status)s, %(foreign_corr_spearman)s, %(net_foreign_30d_rp)s,
+    %(last_close)s, %(return_pct)s, %(trend_status)s,
+    %(ma5)s, %(ma20)s, %(trend_gap_pct)s, %(return_20d)s,
     %(bandar_status)s, %(net_big_money_rp)s, %(top_buyers)s, %(top_sellers)s,
     %(volume_anomaly_status)s, %(latest_volume)s, %(vol_zscore)s,
     %(insider_status)s, %(total_insider_trxs)s,
@@ -65,9 +77,11 @@ DO UPDATE SET
     sector = EXCLUDED.sector,
     last_close = EXCLUDED.last_close,
     return_pct = EXCLUDED.return_pct,
-    foreign_driver_status = EXCLUDED.foreign_driver_status,
-    foreign_corr_spearman = EXCLUDED.foreign_corr_spearman,
-    net_foreign_30d_rp = EXCLUDED.net_foreign_30d_rp,
+    trend_status = EXCLUDED.trend_status,
+    ma5 = EXCLUDED.ma5,
+    ma20 = EXCLUDED.ma20,
+    trend_gap_pct = EXCLUDED.trend_gap_pct,
+    return_20d = EXCLUDED.return_20d,
     bandar_status = EXCLUDED.bandar_status,
     net_big_money_rp = EXCLUDED.net_big_money_rp,
     top_buyers = EXCLUDED.top_buyers,
@@ -101,6 +115,7 @@ def ensure_table_exists():
         conn = _get_connection()
         cur = conn.cursor()
         cur.execute(CREATE_TABLE_SQL)
+        cur.execute(ALTER_TABLE_SQL)
         conn.commit()
         cur.close()
         conn.close()
@@ -152,9 +167,11 @@ def save_diagnostic_results(diag_df):
             "tanggal_analisis": dt_val,
             "last_close": _to_float(row.get("last_close")),
             "return_pct": _to_float(row.get("return_pct")),
-            "foreign_driver_status": str(row.get("foreign_driver_status", "")),
-            "foreign_corr_spearman": _to_float(row.get("foreign_corr_spearman")),
-            "net_foreign_30d_rp": _to_float(row.get("net_foreign_30d_rp")),
+            "trend_status": str(row.get("trend_status", "")),
+            "ma5": _to_float(row.get("ma5")),
+            "ma20": _to_float(row.get("ma20")),
+            "trend_gap_pct": _to_float(row.get("trend_gap_pct")),
+            "return_20d": _to_float(row.get("return_20d")),
             "bandar_status": str(row.get("bandar_status", "")),
             "net_big_money_rp": _to_float(row.get("net_big_money_rp")),
             "top_buyers": str(row.get("top_buyers", "")),

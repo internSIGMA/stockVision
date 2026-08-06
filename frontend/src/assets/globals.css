@@ -285,3 +285,9 @@ body {
     border-color: var(--border);
   }
 }
+
+/* Sembunyikan ikon mata (reveal) bawaan browser seperti di Edge */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

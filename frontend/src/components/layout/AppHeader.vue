@@ -62,9 +62,7 @@ const isDeveloperMode = import.meta.env.DEV
   2. Developer ketika aplikasi berjalan di mode development.
 */
 const hasAdminAccess = computed(() => {
-  // Izin ada di kolom access_role, bukan role — role isinya jabatan
-  // ("Trader — Perbankan"), jadi tidak pernah bernilai "admin".
-  return auth.isAdmin || isDeveloperMode
+  return auth.isAdmin
 })
 
 /*
