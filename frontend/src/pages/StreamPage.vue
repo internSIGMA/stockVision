@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Eye, EyeOff } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth'
 import { useEmitenData } from '@/composables/useEmitenData'
 import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
@@ -30,6 +31,8 @@ const { ticker, summary, ohlc, insider, broker, loading, error, reload } = useEm
   insider: true,
   broker: true,
 })
+
+const authStore = useAuthStore()
 
 const strip = ref(null)
 const candle = ref(null)
@@ -120,8 +123,8 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
       </p>
 
       <!-- 2 — Watchlist di kiri; statistik dan candlestick berbagi kolom kanan -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
-        <WatchlistPanel />
+      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[260px_1fr]'">
+        <WatchlistPanel v-if="!authStore.isAdmin" />
 
         <div class="flex min-w-0 flex-col gap-4">
           <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
