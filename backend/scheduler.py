@@ -34,7 +34,7 @@ def get_active_target_symbols():
     symbols = set()
     try:
         import sqlite3, json
-        db_path = os.path.join(os.path.dirname(__file__), "watchlist.db")
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
         if os.path.exists(db_path):
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
@@ -210,10 +210,11 @@ def _log_crawl(job_type, target, tanggal_target, status, records_count=0, error_
 # =============================================================
 # CRAWL EXECUTION
 # =============================================================
-def _run_scheduled_crawl(app_context_func=None):
+def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbols=None):
     """
     Fungsi utama yang dipanggil oleh scheduler setiap interval.
     Melakukan cek trading day + trading hours lalu crawl semua emiten.
+    Jika is_manual=True, bypass pengecekan hari trading (untuk crawl on-demand / watchlist update).
     """
     state = _scheduler_state
     now_wib = datetime.now(WIB)
@@ -232,24 +233,26 @@ def _run_scheduled_crawl(app_context_func=None):
         run_record["detail"] = "Scheduler sedang di-pause"
         state["total_skipped"] += 1
         _append_history(run_record)
-        _schedule_next()
+        if not is_manual:
+            _schedule_next()
         return
 
-    # Cek hari trading (tetap skip di hari libur / weekend)
-    trading, keterangan = is_trading_day()
-    if not trading:
-        reason = f"Bukan hari trading"
-        if keterangan:
-            reason += f" ({keterangan})"
-        run_record["status"] = "SKIPPED"
-        run_record["detail"] = reason
-        state["total_skipped"] += 1
-        state["last_run"] = now_wib.strftime("%Y-%m-%d %H:%M:%S")
-        state["last_result"] = reason
-        _log_crawl("SCHEDULER", "ALL", now_wib.strftime("%Y-%m-%d"), "SKIP", 0, reason)
-        _append_history(run_record)
-        _schedule_next()
-        return
+    # Cek hari trading (tetap skip di hari libur / weekend HANYA jika bukan manual trigger)
+    if not is_manual:
+        trading, keterangan = is_trading_day()
+        if not trading:
+            reason = f"Bukan hari trading"
+            if keterangan:
+                reason += f" ({keterangan})"
+            run_record["status"] = "SKIPPED"
+            run_record["detail"] = reason
+            state["total_skipped"] += 1
+            state["last_run"] = now_wib.strftime("%Y-%m-%d %H:%M:%S")
+            state["last_result"] = reason
+            _log_crawl("SCHEDULER", "ALL", now_wib.strftime("%Y-%m-%d"), "SKIP", 0, reason)
+            _append_history(run_record)
+            _schedule_next()
+            return
 
     # (Tidak ada pengecekan jam bursa — scheduler harian berjalan pukul 17:00 WIB)
 
@@ -259,10 +262,13 @@ def _run_scheduled_crawl(app_context_func=None):
     total_records = 0
     errors = []
 
-    target_symbols = get_active_target_symbols()
+    if override_symbols:
+        target_symbols = sorted(list(set([str(s).strip().upper() for s in override_symbols if str(s).strip()])))
+    else:
+        target_symbols = get_active_target_symbols()
 
     print(f"\n[Scheduler] {'='*50}")
-    print(f"[Scheduler] Memulai auto-crawl pada {now_wib.strftime('%Y-%m-%d %H:%M:%S WIB')} untuk {len(target_symbols)} emiten: {target_symbols}")
+    print(f"[Scheduler] Memulai {'manual' if is_manual else 'auto'}-crawl pada {now_wib.strftime('%Y-%m-%d %H:%M:%S WIB')} untuk {len(target_symbols)} emiten: {target_symbols}")
     print(f"[Scheduler] {'='*50}")
 
     try:
@@ -272,9 +278,13 @@ def _run_scheduled_crawl(app_context_func=None):
             fetch_majorholder, insert_data_insider
         )
 
+        # =============================================================
+        # PHASE 1: STOCKBIT SCOPE (Stock Info/Orderbook & Majorholder)
+        # =============================================================
+        print("[Scheduler] --- FASE 1: CRAWL STOCKBIT (Stock Info, Orderbook & Insider) ---")
         token = get_token()
 
-        # Crawl Stock Info untuk setiap emiten
+        # Crawl Stock Info & Live Orderbook dari Stockbit
         for symbol in target_symbols:
             try:
                 try:
@@ -282,7 +292,7 @@ def _run_scheduled_crawl(app_context_func=None):
                 except Exception as e:
                     if "401" in str(e) or "Unauthorized" in str(e):
                         print(f"[Scheduler] Token kedaluwarsa saat fetch {symbol}. Mencoba login ulang...")
-                        token = get_token()  # Cache sudah di-invalidate oleh fetch_stock_info, ini akan login ulang
+                        token = get_token()
                         raw = fetch_stock_info(token, symbol)
                     else:
                         raise e
@@ -290,19 +300,19 @@ def _run_scheduled_crawl(app_context_func=None):
                 data = parse_stock_info(raw)
                 insert_data_stock_info(data)
                 total_records += 1
-                _log_crawl("SCHEDULER_STOCK_INFO", symbol,
+                _log_crawl("SCHEDULER_STOCKBIT_INFO", symbol,
                            data.get("tanggal", now_wib.strftime("%Y-%m-%d")),
                            "SUCCESS", 1)
-                print(f"[Scheduler] Stock Info {symbol}: OK")
+                print(f"[Scheduler] Stockbit Stock Info {symbol}: OK")
                 time.sleep(1)  # rate limit protection
             except Exception as e:
-                err_msg = f"Stock Info {symbol}: {str(e)}"
+                err_msg = f"Stockbit Stock Info {symbol}: {str(e)}"
                 errors.append(err_msg)
-                _log_crawl("SCHEDULER_STOCK_INFO", symbol,
+                _log_crawl("SCHEDULER_STOCKBIT_INFO", symbol,
                            now_wib.strftime("%Y-%m-%d"), "FAILED", 0, str(e))
                 print(f"[Scheduler] {err_msg}")
 
-        # Crawl insider/majorholder (global, 2 halaman)
+        # Crawl Insider / Majorholder dari Stockbit
         try:
             today_str = now_wib.strftime("%Y-%m-%d")
             from datetime import date
@@ -321,22 +331,30 @@ def _run_scheduled_crawl(app_context_func=None):
             if records:
                 insert_data_insider(records)
                 total_records += len(records)
-                _log_crawl("SCHEDULER_MAJORHOLDER", "ALL", today_str,
+                _log_crawl("SCHEDULER_STOCKBIT_MAJORHOLDER", "ALL", today_str,
                            "SUCCESS", len(records))
-                print(f"[Scheduler] Majorholder: {len(records)} records")
+                print(f"[Scheduler] Stockbit Majorholder: {len(records)} records")
         except Exception as e:
-            err_msg = f"Majorholder: {str(e)}"
+            err_msg = f"Stockbit Majorholder: {str(e)}"
             errors.append(err_msg)
-            _log_crawl("SCHEDULER_MAJORHOLDER", "ALL",
+            _log_crawl("SCHEDULER_STOCKBIT_MAJORHOLDER", "ALL",
                        now_wib.strftime("%Y-%m-%d"), "FAILED", 0, str(e))
             print(f"[Scheduler] {err_msg}")
 
-        # Crawl OHLC dari yfinance untuk setiap emiten (7 hari ke belakang)
+        # =============================================================
+        # PHASE 2: YFINANCE SCOPE (OHLCV, Company Info, Fundamental)
+        # =============================================================
         try:
-            from crawl_yfinance import crawl_ohlcv, insert_ohlcv
+            from crawl_yfinance import (
+                crawl_ohlcv, insert_ohlcv,
+                crawl_company_info, insert_company_info,
+                crawl_fundamental, insert_fundamental
+            )
             today_str = now_wib.strftime("%Y-%m-%d")
-            print("[Scheduler] Memulai crawl OHLC dari yfinance...")
+            print("[Scheduler] --- FASE 2: CRAWL YFINANCE (OHLCV, Company Info & Fundamental) ---")
+            
             for symbol in target_symbols:
+                # 2.1 OHLCV Time Series
                 try:
                     records = crawl_ohlcv(symbol, period="7d")
                     if records:
@@ -346,15 +364,28 @@ def _run_scheduled_crawl(app_context_func=None):
                         print(f"[Scheduler] yfinance OHLC {symbol}: {len(records)} records")
                     else:
                         _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", 0)
-                        print(f"[Scheduler] yfinance OHLC {symbol}: 0 records (no new data)")
-                    time.sleep(1)  # rate limit protection
+                        print(f"[Scheduler] yfinance OHLC {symbol}: 0 records")
                 except Exception as e:
                     err_msg = f"yfinance OHLC {symbol}: {str(e)}"
                     errors.append(err_msg)
                     _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
                     print(f"[Scheduler] {err_msg}")
+
+                # 2.2 Company Info & Fundamental
+                try:
+                    c_info = crawl_company_info(symbol)
+                    if c_info:
+                        insert_company_info(c_info)
+                    f_info = crawl_fundamental(symbol)
+                    if f_info:
+                        insert_fundamental(f_info)
+                    print(f"[Scheduler] yfinance Info & Fundamental {symbol}: OK")
+                except Exception as e:
+                    print(f"[Scheduler] yfinance Info & Fundamental {symbol} warning: {e}")
+
+                time.sleep(1)  # rate limit protection
         except Exception as e:
-            err_msg = f"yfinance OHLC Init: {str(e)}"
+            err_msg = f"yfinance Pipeline Init: {str(e)}"
             errors.append(err_msg)
             print(f"[Scheduler] {err_msg}")
 
@@ -397,7 +428,8 @@ def _run_scheduled_crawl(app_context_func=None):
         print(f"[Scheduler] Fatal error: {e}")
 
     _append_history(run_record)
-    _schedule_next()
+    if not is_manual:
+        _schedule_next()
 
 
 def _append_history(record):
@@ -491,12 +523,16 @@ def resume_scheduler():
         return {"status": "resumed", "message": "Scheduler dilanjutkan"}
 
 
-def trigger_now():
-    """Trigger crawl sekarang juga (manual, bypass trading hours check)."""
+def trigger_now(symbols=None):
+    """Trigger crawl sekarang juga (manual, bypass trading hours & trading day check)."""
     if _scheduler_state["crawl_in_progress"]:
         return {"status": "busy", "message": "Crawl sedang berjalan, tunggu selesai"}
 
-    thread = threading.Thread(target=_run_scheduled_crawl, daemon=True)
+    thread = threading.Thread(
+        target=_run_scheduled_crawl,
+        kwargs={"is_manual": True, "override_symbols": symbols},
+        daemon=True
+    )
     thread.start()
     return {"status": "triggered", "message": "Manual crawl dimulai di background"}
 

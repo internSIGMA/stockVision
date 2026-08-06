@@ -427,7 +427,12 @@ def get_token():
 
 
 # ============================================================
-# FETCH MAJORHOLDER
+# STOCKBIT SCOPE FUNCTIONS (EXCLUSIVELY STOCKBIT API)
+# Scope: Live Orderbook/Stock Info, Majorholder/Insider, Broker Activity
+# ============================================================
+
+# ============================================================
+# FETCH MAJORHOLDER (STOCKBIT INSIDER ACTIVITY)
 # ============================================================
 def fetch_majorholder(token, date_start, date_end, pages):
     headers     = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
