@@ -13,43 +13,53 @@ def calculate_price_returns(price_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def analyze_foreign_flow_impact(price_df: pd.DataFrame) -> pd.DataFrame:
+def analyze_price_trend(price_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Analisis Diagnostik 1: Korelasi Aliran Dana Investor Asing (Foreign Flow).
-    Menjawab: Seberapa kuat pergerakan harga saham dipengaruhi oleh arus kas asing?
+    Analisis Diagnostik 1:
+    Analisis Trend Harga berdasarkan MA5, MA20, Gap MA, dan Return 20 Hari.
+    Menjawab: Apakah harga saham sedang berada pada fase uptrend, downtrend, atau sideways.
     """
     results = []
-    
-    for symbol, group in price_df.groupby("symbol"):
-        valid_data = group.dropna(subset=["daily_return", "foreign_flow"])
-        
-        if len(valid_data) >= 5:
-            # Spearman correlation via Pearson on ranked data (no scipy needed)
-            rank_ff = valid_data["foreign_flow"].rank()
-            rank_ret = valid_data["daily_return"].rank()
-            spearman_corr = rank_ff.corr(rank_ret, method="pearson")
-        else:
-            spearman_corr = 0.0
-            
-        corr_val = round(float(spearman_corr), 3) if pd.notnull(spearman_corr) else 0.0
-        
-        # Diagnosis Klasifikasi Pemicu Harga
-        if corr_val >= 0.50:
-            driver_status = "Strong Foreign Driven (Asing Sangat Dominan)"
-        elif corr_val >= 0.25:
-            driver_status = "Moderate Foreign Driven (Asing Cukup Berpengaruh)"
-        elif corr_val <= -0.25:
-            driver_status = "Inverted Foreign Flow (Asing Jual / Harga Naik)"
-        else:
-            driver_status = "Domestic / Local Driven (Didominasi Lokal)"
 
-        total_net_foreign_30d = group.tail(30)["foreign_flow"].sum()
+    for symbol, group in price_df.groupby("symbol"):
+        temp = group.sort_values("tanggal").copy()
+
+        temp["ma5"] = temp["close"].rolling(5).mean()
+        temp["ma20"] = temp["close"].rolling(20).mean()
+
+        latest = temp.iloc[-1]
+        ma5 = latest["ma5"]
+        ma20 = latest["ma20"]
+        close = latest["close"]
+
+        if pd.isna(ma20):
+            continue
+
+        if len(temp) >= 20:
+            return20 = ((close - temp.iloc[-20]["close"]) / temp.iloc[-20]["close"]) * 100
+        else:
+            return20 = 0.0
+
+        gap = ((ma5 - ma20) / ma20) * 100
+
+        if gap >= 3 and return20 >= 10:
+            trend_status = "Strong Uptrend"
+        elif gap >= 1:
+            trend_status = "Moderate Uptrend"
+        elif gap <= -3 and return20 <= -10:
+            trend_status = "Strong Downtrend"
+        elif gap <= -1:
+            trend_status = "Moderate Downtrend"
+        else:
+            trend_status = "Sideways"
 
         results.append({
             "symbol": symbol,
-            "foreign_corr_spearman": corr_val,
-            "foreign_driver_status": driver_status,
-            "net_foreign_30d_rp": round(float(total_net_foreign_30d), 2)
+            "trend_status": trend_status,
+            "ma5": round(float(ma5), 2),
+            "ma20": round(float(ma20), 2),
+            "trend_gap_pct": round(float(gap), 2),
+            "return_20d": round(float(return20), 2)
         })
 
     return pd.DataFrame(results)
@@ -65,12 +75,10 @@ def analyze_broker_bandarmology(broker_df: pd.DataFrame) -> pd.DataFrame:
     if broker_df.empty:
         return pd.DataFrame(columns=["symbol", "bandar_status", "net_big_money_rp", "top_buyers", "top_sellers"])
 
-    # Filter 10 hari transaksi terakhir per emiten
     for symbol, group in broker_df.groupby("symbol"):
         latest_dates = group["tanggal"].drop_duplicates().head(10)
         recent_group = group[group["tanggal"].isin(latest_dates)].copy()
         
-        # Hitung net value per broker (BUY = +, SELL = -)
         recent_group["signed_nilairp"] = np.where(
             recent_group["aksi"].str.upper() == "BUY",
             recent_group["nilairp"],
@@ -183,29 +191,29 @@ def run_full_diagnostic_analysis(price_df: pd.DataFrame, broker_df: pd.DataFrame
     
     price_df = calculate_price_returns(price_df)
     
-    df_foreign = analyze_foreign_flow_impact(price_df)
+    df_trend = analyze_price_trend(price_df)
     df_broker = analyze_broker_bandarmology(broker_df)
     df_vol = analyze_volume_anomalies(price_df)
     df_insider = analyze_insider_activity_impact(insider_df)
 
-    # Ambil snapshot harga terakhir per emiten
     last_price = price_df.groupby("symbol").tail(1)[["symbol", "tanggal", "close", "daily_return"]]
     last_price.rename(columns={"tanggal": "last_trading_date", "close": "last_close", "daily_return": "return_pct"}, inplace=True)
 
-    # Merge seluruh komponen diagnostik
     master_diag = meta_df.merge(last_price, on="symbol", how="left")
-    master_diag = master_diag.merge(df_foreign, on="symbol", how="left")
+    master_diag = master_diag.merge(df_trend, on="symbol", how="left")
     master_diag = master_diag.merge(df_broker, on="symbol", how="left")
     master_diag = master_diag.merge(df_vol, on="symbol", how="left")
     master_diag = master_diag.merge(df_insider, on="symbol", how="left")
 
     master_diag.fillna({
+        "trend_status": "Sideways",
+        "ma5": 0.0,
+        "ma20": 0.0,
+        "trend_gap_pct": 0.0,
+        "return_20d": 0.0,
         "bandar_status": "No Broker Data",
         "insider_status": "No Insider Trx",
-        "foreign_driver_status": "No Data",
         "volume_anomaly_status": "Normal",
-        "foreign_corr_spearman": 0.0,
-        "net_foreign_30d_rp": 0.0,
         "net_big_money_rp": 0.0,
         "vol_zscore": 0.0,
         "latest_volume": 0,
@@ -214,7 +222,6 @@ def run_full_diagnostic_analysis(price_df: pd.DataFrame, broker_df: pd.DataFrame
         "top_sellers": "-"
     }, inplace=True)
 
-    # Hasilkan ringkasan naratif AI Gemini Diagnostik
     logger.info("Menghasilkan narasi AI Diagnostic Summary (Google Gemini)...")
     try:
         try:
