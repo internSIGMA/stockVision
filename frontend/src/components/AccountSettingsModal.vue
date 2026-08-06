@@ -20,7 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
-const { user } = storeToRefs(authStore)
+const { user, isAdmin } = storeToRefs(authStore)
 
 const modalBody = ref(null)
 const saving = ref(false)
@@ -401,7 +401,7 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div class="form-group form-group-full">
+            <div v-if="!isAdmin" class="form-group form-group-full">
               <label for="default-ticker">
                 Saham utama
               </label>

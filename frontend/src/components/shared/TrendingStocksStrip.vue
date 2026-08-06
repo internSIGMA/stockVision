@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import { getOhlcHistory } from '@/api/StockVision'
+import { getOhlcHistory, SUPPORTED_TICKERS } from '@/api/StockVision'
 import { useMarketStore } from '@/stores/market'
 import { useAuthStore } from '@/stores/auth'
 
@@ -50,9 +50,11 @@ async function muatSatu(ticker) {
 async function reload() {
   loading.value = true
 
-  const emitenDitampilkan = auth.watchlistTersimpan.length 
-    ? auth.watchlistTersimpan 
-    : (auth.emitenUtama ? [auth.emitenUtama] : [])
+  const emitenDitampilkan = auth.isAdmin
+    ? SUPPORTED_TICKERS
+    : (auth.watchlistTersimpan.length 
+        ? auth.watchlistTersimpan 
+        : (auth.emitenUtama ? [auth.emitenUtama] : []))
 
   if (!emitenDitampilkan.length) {
     items.value = []
