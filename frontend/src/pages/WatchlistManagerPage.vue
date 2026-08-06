@@ -59,11 +59,13 @@ function toggleTicker(ticker) {
 
   const isSelected = dipilih.value.map(s => s.toUpperCase()).includes(t)
   if (isSelected) {
-    return // Jangan hapus jika sudah ada di watchlist (sesuai permintaan user)
+    // Jika sudah ada, hapus dari watchlist (toggle off)
+    dipilih.value = dipilih.value.filter(s => s.toUpperCase() !== t)
   } else {
+    // Jika belum ada, tambahkan ke watchlist dan kosongkan input
     dipilih.value = [...dipilih.value, t]
+    inputTicker.value = ''
   }
-  // Biarkan inputTicker tetap ada agar user melihat status berubah jadi hijau/biru
 }
 
 function hapus(ticker) {
@@ -85,6 +87,7 @@ async function simpan() {
   menyimpan.value = true
   try {
     await auth.saveWatchlist(dipilih.value, inputName.value.trim())
+    await auth.fetchWatchlists()
     if (!dipilih.value.includes(market.selectedTicker)) {
       market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
     }
@@ -135,6 +138,22 @@ function onKeydown(e) {
 
 <template>
   <div class="flex flex-col gap-4 p-4">
+
+    <!-- Status Kuota Emiten -->
+    <div class="rounded-lg border border-border bg-card p-3">
+      <div class="mb-1.5 flex items-center justify-between">
+        <span class="text-[11px] font-medium text-muted-foreground">Emiten Terdaftar</span>
+        <span class="tabular text-[11px] font-semibold text-primary">
+          {{ uniqueCount }} Emiten (Tanpa Batas)
+        </span>
+      </div>
+      <div class="h-1.5 w-full overflow-hidden rounded-full bg-primary/20">
+        <div class="h-full rounded-full bg-primary w-full" />
+      </div>
+      <p class="mt-1 text-[10px] text-muted-foreground">
+        Bebas menambahkan emiten IDX tanpa batasan kuota.
+      </p>
+    </div>
 
     <!-- Input Nama Watchlist -->
     <div class="flex flex-col gap-1.5">

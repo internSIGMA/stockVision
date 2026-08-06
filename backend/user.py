@@ -279,15 +279,6 @@ def create_watchlist(user_id, payload):
 
     normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
 
-    # Validate 10-emiten quota per user account across all watchlists
-    existing = get_user_unique_symbols(user_id)
-    new_syms = set(normalized_symbols)
-    combined = existing.union(new_syms)
-    if len(combined) > 10:
-        raise ValueError(
-            f"Batas kuota emiten tercapai! Setiap akun hanya dapat memiliki maksimal 10 emiten unik di seluruh watchlist (Kuota terpakai: {len(existing)}/10, Total baru: {len(combined)}/10)."
-        )
-
     _ensure_watchlist_db()
     conn = get_sqlite_connection()
     cur = conn.cursor()
@@ -299,6 +290,13 @@ def create_watchlist(user_id, payload):
     conn.commit()
     cur.close()
     conn.close()
+
+    if normalized_symbols:
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=normalized_symbols)
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist creation failed:", e)
 
     return {
         "id": watchlist_id,
@@ -401,15 +399,6 @@ def update_watchlist(user_id, watchlist_id, payload):
             raise ValueError("symbols must be a list")
         normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
 
-        # Validate 10-emiten quota per user account across all watchlists
-        existing = get_user_unique_symbols(user_id, exclude_watchlist_id=watchlist_id)
-        new_syms = set(normalized_symbols)
-        combined = existing.union(new_syms)
-        if len(combined) > 10:
-            raise ValueError(
-                f"Batas kuota emiten tercapai! Setiap akun hanya dapat memiliki maksimal 10 emiten unik di seluruh watchlist (Kuota terpakai di watchlist lain: {len(existing)}/10, Total baru: {len(combined)}/10)."
-            )
-
         fields.append("symbols = ?")
         values.append(json.dumps(normalized_symbols))
 
@@ -427,7 +416,15 @@ def update_watchlist(user_id, watchlist_id, payload):
     cur.close()
     conn.close()
 
-    return get_watchlist(user_id, watchlist_id)
+    updated_wl = get_watchlist(user_id, watchlist_id)
+    if updated_wl and "symbols" in payload and updated_wl.get("symbols"):
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=updated_wl.get("symbols"))
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist update failed:", e)
+
+    return updated_wl
 
 
 def delete_watchlist(user_id, watchlist_id):
@@ -636,8 +633,9 @@ def get_watchlist_quota_route(user_id):
         "user_id": user_id,
         "unique_symbols": sorted(list(symbols)),
         "used_quota": len(symbols),
-        "max_quota": 10,
-        "remaining_quota": max(0, 10 - len(symbols))
+        "max_quota": None,
+        "remaining_quota": None,
+        "is_unlimited": True
     })
 
 

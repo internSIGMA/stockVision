@@ -14,11 +14,11 @@ class FakeCursor:
 
     def execute(self, query, params=None):
         if "RETURNING id, email, username, name, role, default_ticker" in query:
-            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA")]
+            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "08123456789")]
         elif "SELECT id, email, username, name, role, default_ticker, password" in query:
             self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "hashed-password")]
         elif "SELECT" in query:
-            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA")]
+            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "08123456789")]
         else:
             self.rows = []
 

@@ -26,6 +26,10 @@ app.register_blueprint(user_bp)
 from prescriptive.routes import prescriptive_bp
 app.register_blueprint(prescriptive_bp)
 
+from diagnostic.routes import diagnostic_bp
+app.register_blueprint(diagnostic_bp)
+
+
 from scheduler import (
     start_scheduler, stop_scheduler, pause_scheduler,
     resume_scheduler, trigger_now, get_scheduler_status
@@ -427,7 +431,12 @@ def get_token():
 
 
 # ============================================================
-# FETCH MAJORHOLDER
+# STOCKBIT SCOPE FUNCTIONS (EXCLUSIVELY STOCKBIT API)
+# Scope: Live Orderbook/Stock Info, Majorholder/Insider, Broker Activity
+# ============================================================
+
+# ============================================================
+# FETCH MAJORHOLDER (STOCKBIT INSIDER ACTIVITY)
 # ============================================================
 def fetch_majorholder(token, date_start, date_end, pages):
     headers     = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}

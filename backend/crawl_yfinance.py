@@ -1,3 +1,16 @@
+"""
+yfinance Crawler Module — StockVision
+======================================
+SCOPE CRAWLING:
+1. Historical OHLCV Time-Series -> idxsaham.ohlc_forecasting
+2. Company Profile & Metadata -> idxsaham.company_info
+3. Fundamental Ratios & Metrics -> idxsaham.fundamental
+
+TIDAK DIIZINKAN:
+- Order Book, Bid/Offer, Broker Activity (Bandarmologi), & Insider Activity.
+- Semua data mikro/orderbook & aktivitas broker dikelola EKSKLUSIF oleh modul Stockbit.
+"""
+
 import os
 import psycopg2
 from psycopg2.extras import execute_batch

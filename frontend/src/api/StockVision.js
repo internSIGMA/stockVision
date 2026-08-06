@@ -28,7 +28,8 @@ export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
 /** Memeriksa apakah emiten ada di dalam daftar resmi bursa (simulasi). */
 export function isSupported(ticker) {
   if (!ticker || typeof ticker !== 'string') return false
-  return OFFICIAL_TICKERS.includes(ticker.trim().toUpperCase())
+  const t = ticker.trim().toUpperCase()
+  return /^[A-Z0-9]{4,6}$/.test(t)
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */
