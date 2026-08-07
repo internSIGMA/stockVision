@@ -435,11 +435,12 @@ function nilai(row, ...keys) {
 
           <!-- Input Manual Token -->
           <div class="mt-2 border-t-[0.5px] border-border pt-3">
-            <label class="block text-[11px] font-medium text-muted-foreground mb-1.5">
+            <label for="stockbit-token-input" class="block text-[11px] font-medium text-muted-foreground mb-1.5">
               Atau Input / Paste Token Secara Manual:
             </label>
             <div class="flex items-center gap-2">
               <input
+                id="stockbit-token-input"
                 v-model="tokenManual"
                 type="text"
                 placeholder="Paste Bearer eyJhbGciOi... di sini"
