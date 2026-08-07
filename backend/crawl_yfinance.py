@@ -12,11 +12,16 @@ TIDAK DIIZINKAN:
 """
 
 import os
+import sys
 import psycopg2
 from psycopg2.extras import execute_batch
 import yfinance as yf
 from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
+
+import pandas as pd
+from ta.momentum import RSIIndicator
+from ta.trend import MACD
 
 # Load env variables
 load_dotenv(find_dotenv(), override=True)
@@ -103,6 +108,39 @@ def create_table_fundamental():
     cur.close()
     conn.close()
     print("[yfinance Crawler] Tabel 'idxsaham.fundamental' siap.")
+
+def create_table_technical_indicator():
+    query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.macd_rsi (
+
+        symbol VARCHAR(10),
+
+        tanggal DATE,
+
+        rsi14 NUMERIC(10,4),
+
+        macd NUMERIC(18,8),
+
+        macd_signal NUMERIC(18,8),
+
+        macd_histogram NUMERIC(18,8),
+
+        PRIMARY KEY(symbol, tanggal)
+
+    );
+    """
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(query)
+
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    print("[yfinance Crawler] Tabel 'idxsaham.macd_rsi' siap.")
 
 def crawl_ohlcv(symbol, period="5y"):
     ticker_symbol = f"{symbol}.JK"
@@ -201,6 +239,45 @@ def crawl_fundamental(symbol):
         "dividend_yield": info.get("dividendYield")
 
     }
+
+def calculate_technical_indicator(records):
+
+    if not records:
+        return []
+
+    df = pd.DataFrame(records)
+
+    df["close"] = df["close"].astype(float)
+
+    # ======================
+    # RSI
+    # ======================
+
+    rsi = RSIIndicator(
+        close=df["close"],
+        window=14
+    )
+
+    df["rsi14"] = rsi.rsi()
+
+    # ======================
+    # MACD
+    # ======================
+
+    macd = MACD(
+        close=df["close"],
+        window_fast=12,
+        window_slow=26,
+        window_sign=9
+    )
+
+    df["macd"] = macd.macd()
+
+    df["macd_signal"] = macd.macd_signal()
+
+    df["macd_histogram"] = macd.macd_diff()
+
+    return df
 
 def insert_ohlcv(records):
     if not records:
@@ -354,7 +431,174 @@ def insert_fundamental(record):
 
     conn.close()
 
-def main():
+def insert_technical_indicator(df):
+
+    if df.empty:
+        return
+
+    records = []
+
+    for _, row in df.iterrows():
+
+        records.append({
+
+            "symbol": row["symbol"],
+
+            "tanggal": row["tanggal"],
+
+            "rsi14": None if pd.isna(row["rsi14"]) else float(row["rsi14"]),
+
+            "macd": None if pd.isna(row["macd"]) else float(row["macd"]),
+
+            "macd_signal": None if pd.isna(row["macd_signal"]) else float(row["macd_signal"]),
+
+            "macd_histogram": None if pd.isna(row["macd_histogram"]) else float(row["macd_histogram"])
+
+        })
+
+    query = """
+
+    INSERT INTO idxsaham.macd_rsi(
+
+        symbol,
+
+        tanggal,
+
+        rsi14,
+
+        macd,
+
+        macd_signal,
+
+        macd_histogram
+
+    )
+
+    VALUES(
+
+        %(symbol)s,
+
+        %(tanggal)s,
+
+        %(rsi14)s,
+
+        %(macd)s,
+
+        %(macd_signal)s,
+
+        %(macd_histogram)s
+
+    )
+
+    ON CONFLICT(symbol, tanggal)
+
+    DO UPDATE SET
+
+        rsi14 = EXCLUDED.rsi14,
+
+        macd = EXCLUDED.macd,
+
+        macd_signal = EXCLUDED.macd_signal,
+
+        macd_histogram = EXCLUDED.macd_histogram;
+
+    """
+
+    conn = get_connection()
+
+    cur = conn.cursor()
+
+    execute_batch(cur, query, records)
+
+    conn.commit()
+
+    cur.close()
+
+    conn.close()
+
+    print(f"[Technical Indicator] {records[0]['symbol']} : {len(records)} baris tersimpan.")
+
+def get_target_symbols(cli_args=None):
+    """
+    Mengambil secara DINAMIS seluruh simbol emiten unik dari:
+    1. Argumen Command Line (CLI) jika diberikan (misal: python crawl_yfinance.py BBCA BBNI TLKM)
+    2. Seluruh tabel di Database PostgreSQL (idxsaham.watchlists, stock_info, stock_ohlc, company_info, fundamental, broker_activity, insider_activity)
+    3. File SQLite watchlist.db
+    """
+    symbols = set()
+    
+    # 1. Cek dari Command-Line Arguments (CLI) jika ada
+    args = cli_args if cli_args is not None else sys.argv[1:]
+    for arg in args:
+        if arg and not arg.startswith("-"):
+            for s in arg.split(","):
+                cleaned = s.strip().upper()
+                if cleaned:
+                    symbols.add(cleaned)
+    if symbols:
+        print(f"[yfinance Crawler] Simbol diambil dari argumen CLI ({len(symbols)} emiten).")
+        return sorted(list(symbols))
+
+    # 2. Cek secara DINAMIS dari seluruh tabel PostgreSQL yang menyimpan data emiten
+    db_queries = [
+        "SELECT DISTINCT stock_code FROM idxsaham.watchlists",
+        "SELECT DISTINCT symbol FROM idxsaham.stock_info",
+        "SELECT DISTINCT symbol FROM idxsaham.stock_ohlc",
+        "SELECT DISTINCT symbol FROM idxsaham.company_info",
+        "SELECT DISTINCT symbol FROM idxsaham.fundamental",
+        "SELECT DISTINCT kodesaham FROM idxsaham.broker_activity",
+        "SELECT DISTINCT saham FROM idxsaham.insider_activity"
+    ]
+    
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        for q in db_queries:
+            try:
+                cur.execute(q)
+                rows = cur.fetchall()
+                for r in rows:
+                    if r[0] and str(r[0]).strip():
+                        symbols.add(str(r[0]).strip().upper())
+            except Exception:
+                conn.rollback()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("[yfinance Crawler] Warning: Tidak dapat terhubung ke PostgreSQL untuk mengambil emiten dinamis:", e)
+
+    # 3. Cek dari watchlist.db (SQLite)
+    try:
+        import sqlite3, json
+        db_path = os.path.join(os.path.dirname(os.path.abspath(_file_)), "watchlist.db")
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT symbols FROM watchlists;")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            for r in rows:
+                try:
+                    syms = json.loads(r[0])
+                    for s in syms:
+                        if str(s).strip():
+                            symbols.add(str(s).strip().upper())
+                except Exception:
+                    pass
+    except Exception as e:
+        print("[yfinance Crawler] Warning: Gagal membaca SQLite watchlist.db:", e)
+
+    if symbols:
+        print(f"[yfinance Crawler] Berhasil menemukan {len(symbols)} emiten unik secara dinamis dari Database.")
+    else:
+        print("[yfinance Crawler] Info: Belum ada data emiten di DB/Watchlist. Menggunakan emiten awal.")
+        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
+
+    return sorted(list(symbols))
+
+
+def main(custom_symbols=None):
     print("="*60)
     print("CRAWLER DATA HISTORIS YFINANCE (5 TAHUN)")
     print("="*60)
@@ -363,11 +607,13 @@ def main():
         create_table_ohlcv()
         create_table_company_info()
         create_table_fundamental()
+        create_table_technical_indicator()
     except Exception as e:
         print("[yfinance Crawler] ERROR: Gagal membuat tabel:", e)
         return
         
-    symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
+    symbols = custom_symbols or get_target_symbols()
+    print(f"[yfinance Crawler] Memproses {len(symbols)} emiten: {', '.join(symbols)}")
     total_records = 0
     
     for symbol in symbols:
@@ -380,6 +626,10 @@ def main():
             if records:
 
                 insert_ohlcv(records)
+
+                technical_df = calculate_technical_indicator(records)
+
+                insert_technical_indicator(technical_df)
 
             # Company Info
             company = crawl_company_info(symbol)
