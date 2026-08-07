@@ -28,46 +28,64 @@ DAILY_CRAWL_MINUTE = 0
 
 def get_active_target_symbols():
     """
-    Dapatkan seluruh simbol emiten unik yang aktif di seluruh watchlist pengguna.
-    Jika kosong, gunakan daftar emiten default.
+    Dapatkan seluruh simbol emiten target untuk crawl harian.
+    Menggabungkan:
+    1. Daftar emiten IDX populer (hard-coded)
+    2. Emiten dari watchlists pengguna di PostgreSQL
+    3. Emiten yang sudah ada di tabel-tabel database
     """
-    symbols = set()
-    try:
-        import sqlite3, json
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
-        if os.path.exists(db_path):
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            cur.execute("SELECT symbols FROM watchlists;")
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
-            for r in rows:
-                try:
-                    syms = json.loads(r[0])
-                    for s in syms:
-                        if str(s).strip():
-                            symbols.add(str(s).strip().upper())
-                except Exception:
-                    pass
-    except Exception as e:
-        print("[Scheduler] Error reading dynamic symbols from watchlist.db:", e)
-        
+    # Daftar emiten IDX populer — selalu di-crawl
+    DEFAULT_IDX_TICKERS = {
+        "BBCA", "BBRI", "BMRI", "BBNI", "BJBR", "BBTN", "BRIS",
+        "TLKM", "ISAT", "GOTO",
+        "ASII", "UNVR", "UNTR", "ICBP", "INDF",
+        "ANTM", "PTBA", "ADRO", "INCO", "BRMS", "BSSR",
+        "CTRA", "SMRA", "BSDE", "ASRI",
+        "KLBF", "SIDO", "MYOR",
+        "PGAS", "AKRA", "MEDC",
+        "AMRT", "ACES", "MAPI", "ERAA",
+        "SMGR", "INTP",
+        "CPIN", "INKP", "TKIM",
+        "PTRO", "BUMI", "MDIA", "VIVA",
+    }
+
+    symbols = set(DEFAULT_IDX_TICKERS)
+
+    # Tambahkan emiten dari watchlists pengguna di PostgreSQL
     try:
         conn = _get_connection()
         cur = conn.cursor()
-        cur.execute("SELECT stock_code FROM idxsaham.watchlists;")
-        rows = cur.fetchall()
+
+        # Dari tabel idxsaham.watchlists (JSONB)
+        try:
+            cur.execute("SELECT symbols FROM idxsaham.watchlists;")
+            rows = cur.fetchall()
+            for r in rows:
+                syms = r[0]
+                if isinstance(syms, str):
+                    import json
+                    syms = json.loads(syms)
+                if isinstance(syms, list):
+                    for s in syms:
+                        if str(s).strip():
+                            symbols.add(str(s).strip().upper())
+        except Exception:
+            conn.rollback()
+
+        # Dari tabel ohlc_forecasting (emiten yang sudah pernah di-crawl)
+        try:
+            cur.execute("SELECT DISTINCT symbol FROM idxsaham.ohlc_forecasting;")
+            for r in cur.fetchall():
+                if r[0] and str(r[0]).strip():
+                    symbols.add(str(r[0]).strip().upper())
+        except Exception:
+            conn.rollback()
+
         cur.close()
         conn.close()
-        for r in rows:
-            if r[0] and str(r[0]).strip():
-                symbols.add(str(r[0]).strip().upper())
     except Exception as e:
-        pass
+        print("[Scheduler] Warning: Gagal mengambil emiten dinamis dari DB:", e)
 
-    if not symbols:
-        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
     return sorted(list(symbols))
 
 
@@ -343,7 +361,13 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
 
         # =============================================================
         # PHASE 2: YFINANCE SCOPE (OHLCV, Company Info, Fundamental)
+        # Batch crawl: 10 emiten per batch, jeda 5 detik antar-batch
         # =============================================================
+        BATCH_SIZE = 10
+        BATCH_COOLDOWN = 5  # detik antar-batch
+        MAX_RETRIES = 3     # retry jika rate-limited (429)
+        RETRY_DELAY = 30    # detik delay sebelum retry
+
         try:
             from crawl_yfinance import (
                 crawl_ohlcv, insert_ohlcv,
@@ -351,38 +375,58 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
                 crawl_fundamental, insert_fundamental
             )
             today_str = now_wib.strftime("%Y-%m-%d")
-            print("[Scheduler] --- FASE 2: CRAWL YFINANCE (OHLCV, Company Info & Fundamental) ---")
+            total_batches = (len(target_symbols) + BATCH_SIZE - 1) // BATCH_SIZE
+            print(f"[Scheduler] --- FASE 2: BATCH CRAWL YFINANCE ({len(target_symbols)} emiten, {total_batches} batch) ---")
             
-            for symbol in target_symbols:
-                # 2.1 OHLCV Time Series
-                try:
-                    records = crawl_ohlcv(symbol, period="7d")
-                    if records:
-                        insert_ohlcv(records)
-                        total_records += len(records)
-                        _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", len(records))
-                        print(f"[Scheduler] yfinance OHLC {symbol}: {len(records)} records")
-                    else:
-                        _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", 0)
-                        print(f"[Scheduler] yfinance OHLC {symbol}: 0 records")
-                except Exception as e:
-                    err_msg = f"yfinance OHLC {symbol}: {str(e)}"
-                    errors.append(err_msg)
-                    _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
-                    print(f"[Scheduler] {err_msg}")
-                # 2.2 Company Info & Fundamental
-                try:
-                    c_info = crawl_company_info(symbol)
-                    if c_info:
-                        insert_company_info(c_info)
-                    f_info = crawl_fundamental(symbol)
-                    if f_info:
-                        insert_fundamental(f_info)
-                    print(f"[Scheduler] yfinance Info & Fundamental {symbol}: OK")
-                except Exception as e:
-                    print(f"[Scheduler] yfinance Info & Fundamental {symbol} warning: {e}")
+            for batch_idx in range(0, len(target_symbols), BATCH_SIZE):
+                batch = target_symbols[batch_idx:batch_idx + BATCH_SIZE]
+                batch_num = (batch_idx // BATCH_SIZE) + 1
+                print(f"[Scheduler] Batch {batch_num}/{total_batches}: {', '.join(batch)} (emiten {batch_idx+1}-{batch_idx+len(batch)} dari {len(target_symbols)})")
 
-                time.sleep(1)  # rate limit protection
+                for symbol in batch:
+                    # 2.1 OHLCV Time Series (dengan retry)
+                    for attempt in range(1, MAX_RETRIES + 1):
+                        try:
+                            records = crawl_ohlcv(symbol, period="7d")
+                            if records:
+                                insert_ohlcv(records)
+                                total_records += len(records)
+                                _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", len(records))
+                                print(f"[Scheduler] yfinance OHLC {symbol}: {len(records)} records")
+                            else:
+                                _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", 0)
+                                print(f"[Scheduler] yfinance OHLC {symbol}: 0 records")
+                            break  # sukses, keluar dari retry loop
+                        except Exception as e:
+                            if "429" in str(e) and attempt < MAX_RETRIES:
+                                print(f"[Scheduler] Rate-limited untuk {symbol}. Retry {attempt}/{MAX_RETRIES} setelah {RETRY_DELAY}s...")
+                                time.sleep(RETRY_DELAY)
+                            else:
+                                err_msg = f"yfinance OHLC {symbol}: {str(e)}"
+                                errors.append(err_msg)
+                                _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
+                                print(f"[Scheduler] {err_msg}")
+                                break
+
+                    # 2.2 Company Info & Fundamental
+                    try:
+                        c_info = crawl_company_info(symbol)
+                        if c_info:
+                            insert_company_info(c_info)
+                        f_info = crawl_fundamental(symbol)
+                        if f_info:
+                            insert_fundamental(f_info)
+                        print(f"[Scheduler] yfinance Info & Fundamental {symbol}: OK")
+                    except Exception as e:
+                        print(f"[Scheduler] yfinance Info & Fundamental {symbol} warning: {e}")
+
+                    time.sleep(1)  # jeda 1 detik antar-emiten dalam batch
+
+                # Jeda antar-batch (kecuali batch terakhir)
+                if batch_idx + BATCH_SIZE < len(target_symbols):
+                    print(f"[Scheduler] Batch {batch_num} selesai. Cooldown {BATCH_COOLDOWN}s sebelum batch berikutnya...")
+                    time.sleep(BATCH_COOLDOWN)
+
         except Exception as e:
             err_msg = f"yfinance Pipeline Init: {str(e)}"
             errors.append(err_msg)

@@ -33,8 +33,6 @@ services:
       - .env
     ports:
       - "8080:8080"
-    volumes:
-      - ./backend/watchlist.db:/app/watchlist.db
 
   # Frontend Service (Vue/Vite Development Server)
   frontend:

@@ -5,6 +5,19 @@
 CREATE SCHEMA IF NOT EXISTS idxsaham;
 
 -- =============================================================
+-- TABLE: idxsaham.watchlists
+-- Daftar pantau emiten per user (menggantikan SQLite watchlist.db)
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    symbols JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);
+
+-- =============================================================
 -- TABLE: idxsaham.trading_calendar
 -- Kalender hari trading bursa
 -- =============================================================

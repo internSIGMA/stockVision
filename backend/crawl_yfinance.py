@@ -570,32 +570,10 @@ def get_target_symbols(cli_args=None):
     except Exception as e:
         print("[yfinance Crawler] Warning: Tidak dapat terhubung ke PostgreSQL untuk mengambil emiten dinamis:", e)
 
-    # 3. Cek dari watchlist.db (SQLite)
-    try:
-        import sqlite3, json
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
-        if os.path.exists(db_path):
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            cur.execute("SELECT symbols FROM watchlists;")
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
-            for r in rows:
-                try:
-                    syms = json.loads(r[0])
-                    for s in syms:
-                        if str(s).strip():
-                            symbols.add(str(s).strip().upper())
-                except Exception:
-                    pass
-    except Exception as e:
-        print("[yfinance Crawler] Warning: Gagal membaca SQLite watchlist.db:", e)
-
     if symbols:
         print(f"[yfinance Crawler] Berhasil menemukan {len(symbols)} emiten unik secara dinamis dari Database.")
     else:
-        print("[yfinance Crawler] Info: Belum ada data emiten di DB/Watchlist. Menggunakan emiten awal.")
+        print("[yfinance Crawler] Info: Belum ada data emiten di DB. Menggunakan emiten awal.")
         symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
 
     return sorted(list(symbols))
