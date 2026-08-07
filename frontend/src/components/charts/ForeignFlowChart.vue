@@ -25,8 +25,22 @@ const props = defineProps({
 
 const { isDark } = useTheme()
 
-const UP = '#16a34a'
-const DOWN = '#dc2626'
+/**
+ * Palet diambil dari CSS variable supaya chart ikut token di globals.css.
+ * isDark ikut dibaca agar computed ini dihitung ulang saat tema berganti —
+ * getComputedStyle sendiri bukan sumber reaktif buat Vue.
+ */
+const palet = computed(() => {
+  void isDark.value
+  const style = getComputedStyle(document.documentElement)
+  const ambil = (nama) => style.getPropertyValue(nama).trim()
+  return {
+    up: ambil('--up'),
+    down: ambil('--down'),
+    grid: ambil('--border'),
+    text: ambil('--muted-foreground'),
+  }
+})
 
 const terakhir = computed(() => props.rows.slice(-props.limit))
 
@@ -51,6 +65,7 @@ function alirAsing(r) {
 const chartData = computed(() => {
   const rows = terakhir.value
   const values = rows.map(alirAsing)
+  const { up, down } = palet.value
 
   return {
     labels: rows.map((r) => String(r.tanggal).slice(0, 10)),
@@ -58,7 +73,7 @@ const chartData = computed(() => {
       {
         label: 'Foreign Flow',
         data: values,
-        backgroundColor: values.map((v) => (v >= 0 ? UP : DOWN)),
+        backgroundColor: values.map((v) => (v >= 0 ? up : down)),
         borderWidth: 0,
         borderRadius: 1,
       },
@@ -67,8 +82,7 @@ const chartData = computed(() => {
 })
 
 const chartOptions = computed(() => {
-  const grid = isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-  const text = isDark.value ? '#a1a1a1' : '#737373'
+  const { grid, text } = palet.value
 
   return {
     responsive: true,

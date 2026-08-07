@@ -78,18 +78,28 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
     """
     logger.info("Mengkalkulasi Decision Features & Strategi Teknikal Ganda...")
 
+    # Pastikan kolom numerik valid
+    ema20_num = pd.to_numeric(feature_df["EMA20"], errors="coerce").fillna(0)
+    ema50_num = pd.to_numeric(feature_df["EMA50"], errors="coerce").fillna(0)
+    rsi_num = pd.to_numeric(feature_df["RSI14"], errors="coerce").fillna(50)
+    macd_num = pd.to_numeric(feature_df["MACD"], errors="coerce").fillna(0)
+    macd_sig_num = pd.to_numeric(feature_df["MACD_SIGNAL"], errors="coerce").fillna(0)
+    vol_num = pd.to_numeric(feature_df["volume"], errors="coerce").fillna(0)
+    vol_ma20_num = pd.to_numeric(feature_df["VOL_MA20"], errors="coerce").fillna(0)
+
     # Sinyal Teknikal
-    feature_df["TREND"] = np.where(feature_df["EMA20"] > feature_df["EMA50"], "Bullish", "Bearish")
+    feature_df["TREND"] = np.where(ema20_num > ema50_num, "Bullish", "Bearish")
     feature_df["RSI_SIGNAL"] = np.select(
-        [feature_df["RSI14"] < 30, feature_df["RSI14"] > 70],
+        [rsi_num < 30, rsi_num > 70],
         ["Oversold", "Overbought"], default="Neutral"
     )
     feature_df["MACD_SIGNAL2"] = np.where(
-        feature_df["MACD"] > feature_df["MACD_SIGNAL"], "Bullish", "Bearish"
+        macd_num > macd_sig_num, "Bullish", "Bearish"
     )
     feature_df["VOLUME_SIGNAL"] = np.where(
-        feature_df["volume"] > feature_df["VOL_MA20"], "High", "Normal"
+        vol_num > vol_ma20_num, "High", "Normal"
     )
+
 
     # Gabungkan data broker & insider
     master = feature_df.merge(broker_df, on=["symbol", "tanggal"], how="left")
@@ -98,8 +108,8 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
 
     # 1. Ekstrak Data Historis Terakhir per emiten
     last_hist = master.groupby("symbol").tail(1)[[
-        "symbol", "tanggal", "close", "high", "low", "EMA20", "EMA50",
-        "SWING_HIGH_20", "SWING_LOW_20", "RSI14", "MACD", "MACD_SIGNAL",
+        "symbol", "tanggal", "close", "high", "low", "volume", "VOL_MA20",
+        "EMA20", "EMA50", "SWING_HIGH_20", "SWING_LOW_20", "RSI14", "MACD", "MACD_SIGNAL",
         "TREND", "RSI_SIGNAL", "MACD_SIGNAL2", "VOLUME_SIGNAL",
         "broker_score", "insider_score"
     ]]
@@ -184,6 +194,16 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
         vol_sig = row.get("VOLUME_SIGNAL", "Normal")
         forecast_close = row.get("forecast_close")
         is_fc_valid = row.get("is_forecast_valid", False)
+        total_score = row.get("TOTAL_SCORE", 0)
+
+        # Nilai numerik indikator teknikal
+        ema20_val = round(float(ema20), 2) if pd.notnull(ema20) else None
+        ema50_val = round(float(ema50), 2) if pd.notnull(ema50) else None
+        rsi_val = round(float(row.get("RSI14")), 2) if pd.notnull(row.get("RSI14")) else None
+        macd_val = round(float(row.get("MACD")), 4) if pd.notnull(row.get("MACD")) else None
+        macd_signal_val = round(float(row.get("MACD_SIGNAL")), 4) if pd.notnull(row.get("MACD_SIGNAL")) else None
+        volume_val = int(row.get("volume")) if pd.notnull(row.get("volume")) else None
+        vol_ma20_val = int(row.get("VOL_MA20")) if pd.notnull(row.get("VOL_MA20")) else None
 
         # Level Support & Resistance Utama
         support_price = round(max(ema20, sup_low), 2)
@@ -192,19 +212,18 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
             resistance_price = round(close * 1.06, 2)
 
         # 1. STRATEGI UNTUK PEMBELI BARU (New Buyer Strategy)
-        # Entry Price ditentukan secara TEKNIKAL (Support zone / Breakout level), BUKAN harga close hari ini.
         if trend == "Bullish":
             if rsi_sig == "Overbought":
                 rec_new_buyer = "Wait and See"
-                entry_price = support_price  # Menunggu koreksi mendekati support
+                entry_price = support_price
                 reason_buyer = "Saham dalam kondisi Overbought (jenuh beli). Tunggu koreksi (pullback) mendekati area Support sebelum masuk."
             elif close >= resistance_price * 0.98 and vol_sig == "High":
                 rec_new_buyer = "Buy on Breakout"
-                entry_price = round(resistance_price * 1.01, 2)  # Entry saat terkonfirmasi breakout
+                entry_price = round(resistance_price * 1.01, 2)
                 reason_buyer = "Volume transaksi tinggi di dekat Resistance. Disarankan entry jika harga menembus Resistance secara valid."
             else:
                 rec_new_buyer = "Buy on Weakness"
-                entry_price = support_price  # Entry ideal di area Support EMA20
+                entry_price = support_price
                 reason_buyer = "Tren utama Bullish. Disarankan akumulasi beli bertahap di area Support."
         else:
             if rsi_sig == "Oversold" and macd_sig == "Bullish":
@@ -235,32 +254,52 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
                 rec_holding = "Hold with Trailing Stop"
                 reason_holding = "Tren melemah. Pasang Trailing Stop di area Support untuk mengunci profit."
 
-        # 3. TARGET PRICE & STOP LOSS TEKNO-FUNDAMENTAL
-        # Stop Loss dipasang 3% di bawah Support Level
-        stop_loss = round(support_price * 0.97, 2)
+        # 3. HARMONISASI REKOMENDASI UTAMA (RECOMMENDATION)
+        if rec_new_buyer == "Avoid":
+            if rec_holding == "Sell / Cut Loss":
+                recommendation = "Sell"
+            else:
+                recommendation = "Hold"
+        elif rec_new_buyer == "Wait and See":
+            recommendation = "Hold"
+        elif rec_new_buyer == "Speculative Buy":
+            if total_score >= 60:
+                recommendation = "Speculative Buy"
+            else:
+                recommendation = "Hold"
+        else:  # Buy on Breakout / Buy on Weakness
+            if total_score >= 80:
+                recommendation = "Strong Buy"
+            elif total_score >= 60:
+                recommendation = "Buy"
+            else:
+                recommendation = "Hold"
 
-        # Target Price: gunakan ML Forecast jika valid & > entry, atau Resistance level
-        if is_fc_valid and forecast_close and forecast_close > entry_price:
+        # 4. TARGET PRICE & STOP LOSS TEKNO-FUNDAMENTAL
+        stop_loss = round(support_price * 0.97, 2) if pd.notnull(support_price) else round(close * 0.95, 2)
+
+        has_valid_fc = is_fc_valid and pd.notnull(forecast_close) and pd.notnull(entry_price)
+        if has_valid_fc and float(forecast_close) > float(entry_price):
             target_price = round(float(forecast_close), 2)
         else:
-            target_price = max(resistance_price, round(entry_price * 1.06, 2))
+            target_price = max(resistance_price, round(entry_price * 1.06, 2)) if pd.notnull(resistance_price) and pd.notnull(entry_price) else round(close * 1.05, 2)
 
-        # Risk to Reward Ratio
-        risk = entry_price - stop_loss
-        reward = target_price - entry_price
-        if risk > 0 and reward > 0:
+        risk = (entry_price - stop_loss) if (pd.notnull(entry_price) and pd.notnull(stop_loss)) else 0
+        reward = (target_price - entry_price) if (pd.notnull(target_price) and pd.notnull(entry_price)) else 0
+        if pd.notnull(risk) and pd.notnull(reward) and risk > 0 and reward > 0:
             rrr = round(reward / risk, 2)
         else:
             rrr = 0.0
 
-        # INSIGHT SUMMARY UNTUK PANEL SEBELAH KIRI
+
         pe_str = f"PE {row.get('trailing_pe'):.1f}x" if row.get("trailing_pe") else "PE N/A"
         roe_str = f"ROE {row.get('roe')*100:.1f}%" if row.get("roe") else "ROE N/A"
 
         insight_summary = (
             f"📌 ANALISIS {row['symbol']} ({row.get('company_name', 'Emiten')})\n"
-            f"• Tren: {trend} | Sinyal RSI: {rsi_sig} | MACD: {macd_sig}\n"
+            f"• Tren: {trend} (EMA20: {ema20_val}, EMA50: {ema50_val}) | RSI: {rsi_sig} ({rsi_val}) | MACD: {macd_sig} ({macd_val})\n"
             f"• Fundamental: {pe_str}, {roe_str}. Skor Tekno-Fundamental: {row.get('TOTAL_SCORE')}/100.\n\n"
+            f"💡 REKOMENDASI UTAMA: [{recommendation}]\n"
             f"💡 STRATEGI PEMBELI BARU: [{rec_new_buyer}]\n"
             f"{reason_buyer}\n"
             f"Ideal Entry Price: Rp {entry_price:,.0f} (Support: Rp {support_price:,.0f} | Resistance: Rp {resistance_price:,.0f}).\n\n"
@@ -269,9 +308,9 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
             f"Area Risk Management: Target Price Rp {target_price:,.0f} | Cut Loss < Rp {stop_loss:,.0f} (RRR: {rrr}:1)."
         )
 
-        # Hasilkan ringkasan naratif LLM Gemini
         row_dict = row.to_dict()
         row_dict.update({
+            "recommendation": recommendation,
             "support_price": support_price,
             "resistance_price": resistance_price,
             "entry_price": entry_price,
@@ -282,6 +321,13 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
             "rec_holding": rec_holding,
             "reason_buyer": reason_buyer,
             "reason_holding": reason_holding,
+            "ema20_val": ema20_val,
+            "ema50_val": ema50_val,
+            "rsi_val": rsi_val,
+            "macd_val": macd_val,
+            "macd_signal_val": macd_signal_val,
+            "volume_val": volume_val,
+            "vol_ma20_val": vol_ma20_val,
         })
 
         try:
@@ -292,6 +338,14 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
             llm_summary = insight_summary
 
         return pd.Series({
+            "RECOMMENDATION": recommendation,
+            "ema20_val": ema20_val,
+            "ema50_val": ema50_val,
+            "rsi_val": rsi_val,
+            "macd_val": macd_val,
+            "macd_signal_val": macd_signal_val,
+            "volume_val": volume_val,
+            "vol_ma20_val": vol_ma20_val,
             "support_price": support_price,
             "resistance_price": resistance_price,
             "entry_price": entry_price,
@@ -307,7 +361,9 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
         })
 
     tech_setup = score_df.apply(compute_technical_setup, axis=1)
-    score_df = pd.concat([score_df, tech_setup], axis=1)
+    # Timpa RECOMMENDATION lama dengan RECOMMENDATION harmonis dari tech_setup
+    for col in tech_setup.columns:
+        score_df[col] = tech_setup[col]
 
     return score_df
 

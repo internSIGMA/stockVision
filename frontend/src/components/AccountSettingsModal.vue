@@ -20,7 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
-const { user } = storeToRefs(authStore)
+const { user, isAdmin } = storeToRefs(authStore)
 
 const modalBody = ref(null)
 const saving = ref(false)
@@ -401,7 +401,7 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div class="form-group form-group-full">
+            <div v-if="!isAdmin" class="form-group form-group-full">
               <label for="default-ticker">
                 Saham utama
               </label>
@@ -544,8 +544,8 @@ onBeforeUnmount(() => {
 
   overflow: hidden;
 
-  color: #111827;
-  background: #ffffff;
+  color: var(--foreground);
+  background: var(--card);
 
   border-radius: 18px;
 
@@ -567,8 +567,8 @@ onBeforeUnmount(() => {
 
   padding: 24px 28px;
 
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
 }
 
 .modal-header h2 {
@@ -581,7 +581,7 @@ onBeforeUnmount(() => {
 .modal-header p {
   margin: 6px 0 0;
 
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 
@@ -598,8 +598,8 @@ onBeforeUnmount(() => {
   border: none;
   border-radius: 10px;
 
-  color: #111827;
-  background: #f3f4f6;
+  color: var(--foreground);
+  background: var(--card-hover);
 
   font-size: 24px;
   line-height: 1;
@@ -608,7 +608,7 @@ onBeforeUnmount(() => {
 }
 
 .close-button:hover {
-  background: #e5e7eb;
+  background: var(--border);
 }
 
 .close-button:disabled {
@@ -641,7 +641,7 @@ onBeforeUnmount(() => {
 
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #9ca3af transparent;
+  scrollbar-color: var(--disabled) transparent;
 
   -webkit-overflow-scrolling: touch;
 }
@@ -662,12 +662,12 @@ onBeforeUnmount(() => {
   border: 3px solid transparent;
   border-radius: 999px;
 
-  background: #9ca3af;
+  background: var(--disabled);
   background-clip: padding-box;
 }
 
 .modal-body::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: var(--muted-foreground);
   background-clip: padding-box;
 }
 
@@ -694,7 +694,7 @@ onBeforeUnmount(() => {
 
   border-radius: 50%;
 
-  background: #f3f4f6;
+  background: var(--card-hover);
 
   font-size: 24px;
   font-weight: 700;
@@ -714,10 +714,10 @@ onBeforeUnmount(() => {
 
   padding: 9px 14px;
 
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 9px;
 
-  background: #ffffff;
+  background: var(--card);
 
   font-size: 14px;
   font-weight: 600;
@@ -726,7 +726,7 @@ onBeforeUnmount(() => {
 }
 
 .upload-button:hover {
-  background: #f9fafb;
+  background: var(--card-hover);
 }
 
 /* FORM */
@@ -765,28 +765,28 @@ onBeforeUnmount(() => {
 
   padding: 11px 13px;
 
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 9px;
 
   outline: none;
 
-  color: #111827;
-  background: #ffffff;
+  color: var(--foreground);
+  background: var(--card);
 
   font-size: 14px;
 }
 
 .form-group input:focus {
-  border-color: #2563eb;
+  border-color: var(--ring);
 
   box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.12);
+    0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
 }
 
 .input-hint {
   margin: 7px 0 0;
 
-  color: #9ca3af;
+  color: var(--disabled);
   font-size: 12px;
 }
 
@@ -803,7 +803,7 @@ onBeforeUnmount(() => {
   margin-top: 26px;
   padding: 17px;
 
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -811,7 +811,7 @@ onBeforeUnmount(() => {
 .password-section p {
   margin: 5px 0 0;
 
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
@@ -841,7 +841,7 @@ onBeforeUnmount(() => {
 
   border-radius: 999px;
 
-  background: #d1d5db;
+  background: var(--disabled);
 
   cursor: pointer;
 
@@ -861,13 +861,13 @@ onBeforeUnmount(() => {
 
   border-radius: 50%;
 
-  background: #ffffff;
+  background: var(--card);
 
   transition: 0.2s;
 }
 
 .switch input:checked + .slider {
-  background: #2563eb;
+  background: var(--primary);
 }
 
 .switch input:checked + .slider::before {
@@ -875,7 +875,7 @@ onBeforeUnmount(() => {
 }
 
 .switch input:focus-visible + .slider {
-  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline: 3px solid color-mix(in srgb, var(--ring) 30%, transparent);
   outline-offset: 2px;
 }
 
@@ -889,8 +889,8 @@ onBeforeUnmount(() => {
 
   padding: 20px 28px;
 
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-top: 1px solid var(--border);
+  background: var(--card);
 }
 
 .cancel-button,
@@ -907,25 +907,25 @@ onBeforeUnmount(() => {
 
 .cancel-button,
 .secondary-button {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
 
-  color: #111827;
-  background: #ffffff;
+  color: var(--foreground);
+  background: var(--card);
 }
 
 .cancel-button:hover {
-  background: #f9fafb;
+  background: var(--card-hover);
 }
 
 .save-button {
-  border: 1px solid #111827;
+  border: 1px solid var(--primary);
 
-  color: #ffffff;
-  background: #111827;
+  color: var(--primary-foreground);
+  background: var(--primary);
 }
 
 .save-button:hover {
-  background: #1f2937;
+  background: var(--primary-hover);
 }
 
 .cancel-button:disabled,
@@ -935,7 +935,7 @@ onBeforeUnmount(() => {
 }
 
 .secondary-button:disabled {
-  color: #9ca3af;
+  color: var(--disabled);
   cursor: not-allowed;
 }
 

@@ -24,13 +24,29 @@ user_bp = Blueprint("user_bp", __name__)
 
 
 def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "postgres"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432)),
-    )
+    db_host = os.getenv("DB_HOST") or "db"
+    db_port = int(os.getenv("DB_PORT") or 5432)
+    db_name = os.getenv("DB_NAME") or "stockVision"
+    db_user = os.getenv("DB_USER") or "stockvision"
+    db_pass = os.getenv("DB_PASSWORD") or "stockvision_pass"
+    try:
+        return psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
+            port=db_port,
+        )
+    except psycopg2.OperationalError as e:
+        if db_host == "db":
+            return psycopg2.connect(
+                host="localhost",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5434,
+            )
+        raise e
 
 
 def _ensure_users_table():
@@ -38,20 +54,28 @@ def _ensure_users_table():
     cur = conn.cursor()
     cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
     cur.execute(
-    """
-    CREATE TABLE IF NOT EXISTS idxsaham.users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        username VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        name VARCHAR(255),
-        role VARCHAR(255),
-        access_role VARCHAR(20) NOT NULL DEFAULT 'user',
-        default_ticker VARCHAR(20),
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-    );
-    """
-)
+        """
+        CREATE TABLE IF NOT EXISTS idxsaham.users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            username VARCHAR(100) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(255),
+            role VARCHAR(255),
+            access_role VARCHAR(20) NOT NULL DEFAULT 'user',
+            default_ticker VARCHAR(20),
+            phone_number VARCHAR(50),
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    # Ensure phone_number column exists if table is already created
+    cur.execute(
+        """
+        ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+        """
+    )
     conn.commit()
 
     # Check if table is empty
@@ -107,9 +131,9 @@ def create_user(payload):
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING id, email, username, name, role, default_ticker;
+        INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker, phone_number)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id, email, username, name, role, default_ticker, phone_number;
         """,
         (
             str(payload["email"]).strip().lower(),
@@ -118,6 +142,7 @@ def create_user(payload):
             str(payload.get("name") or "").strip() or None,
             str(payload.get("role") or "").strip() or None,
             str(payload.get("default_ticker") or "").strip().upper() or None,
+            str(payload.get("phone_number") or "").strip() or None,
         ),
     )
     row = cur.fetchone()
@@ -132,6 +157,7 @@ def create_user(payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -143,7 +169,7 @@ def get_user(user_id):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE id = %s;",
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE id = %s;",
         (user_id,),
     )
     row = cur.fetchone()
@@ -160,6 +186,7 @@ def get_user(user_id):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -168,7 +195,7 @@ def get_users():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users ORDER BY id ASC;"
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users ORDER BY id ASC;"
     )
     rows = cur.fetchall()
     cur.close()
@@ -182,6 +209,7 @@ def get_users():
             "name": row[3],
             "role": row[4],
             "default_ticker": row[5],
+            "phone_number": row[6],
         }
         for row in rows
     ]
@@ -215,6 +243,30 @@ def _ensure_watchlist_db():
     conn.close()
 
 
+def get_user_unique_symbols(user_id, exclude_watchlist_id=None):
+    _ensure_watchlist_db()
+    conn = get_sqlite_connection()
+    cur = conn.cursor()
+    if exclude_watchlist_id:
+        cur.execute("SELECT symbols FROM watchlists WHERE user_id = ? AND id != ?;", (user_id, exclude_watchlist_id))
+    else:
+        cur.execute("SELECT symbols FROM watchlists WHERE user_id = ?;", (user_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    unique_symbols = set()
+    for row in rows:
+        try:
+            syms = json.loads(row["symbols"])
+            for s in syms:
+                if str(s).strip():
+                    unique_symbols.add(str(s).strip().upper())
+        except Exception:
+            pass
+    return unique_symbols
+
+
 def create_watchlist(user_id, payload):
     if not payload:
         raise ValueError("request body is required")
@@ -238,6 +290,13 @@ def create_watchlist(user_id, payload):
     conn.commit()
     cur.close()
     conn.close()
+
+    if normalized_symbols:
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=normalized_symbols)
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist creation failed:", e)
 
     return {
         "id": watchlist_id,
@@ -339,6 +398,7 @@ def update_watchlist(user_id, watchlist_id, payload):
         if not isinstance(symbols, list):
             raise ValueError("symbols must be a list")
         normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
+
         fields.append("symbols = ?")
         values.append(json.dumps(normalized_symbols))
 
@@ -356,7 +416,15 @@ def update_watchlist(user_id, watchlist_id, payload):
     cur.close()
     conn.close()
 
-    return get_watchlist(user_id, watchlist_id)
+    updated_wl = get_watchlist(user_id, watchlist_id)
+    if updated_wl and "symbols" in payload and updated_wl.get("symbols"):
+        try:
+            from scheduler import trigger_now
+            trigger_now(symbols=updated_wl.get("symbols"))
+        except Exception as e:
+            print("[User] Auto-trigger crawl after watchlist update failed:", e)
+
+    return updated_wl
 
 
 def delete_watchlist(user_id, watchlist_id):
@@ -409,13 +477,16 @@ def update_user(user_id, payload):
     if "default_ticker" in payload:
         fields.append("default_ticker = %s")
         values.append(str(payload.get("default_ticker") or "").strip().upper() or None)
+    if "phone_number" in payload:
+        fields.append("phone_number = %s")
+        values.append(str(payload.get("phone_number") or "").strip() or None)
 
     if not fields:
         raise ValueError("no fields provided for update")
 
     values.extend([user_id])
     cur.execute(
-        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker;",
+        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker, phone_number;",
         values,
     )
     row = cur.fetchone()
@@ -433,6 +504,7 @@ def update_user(user_id, payload):
         "name": row[3],
         "role": row[4],
         "default_ticker": row[5],
+        "phone_number": row[6],
     }
 
 
@@ -461,6 +533,7 @@ def login_user(payload):
             role,
             access_role,
             default_ticker,
+            phone_number,
             password
         FROM idxsaham.users
         WHERE email = %s;
@@ -484,6 +557,7 @@ def login_user(payload):
         role,
         access_role,
         default_ticker,
+        phone_number,
         stored_hash,
     ) = row
 
@@ -498,6 +572,7 @@ def login_user(payload):
         "role": role,
         "access_role": access_role,
         "default_ticker": default_ticker,
+        "phone_number": phone_number,
     }
 
 
@@ -549,6 +624,19 @@ def update_user_route(user_id):
 @user_bp.route("/users/<int:user_id>/watchlists", methods=["GET"])
 def list_watchlists_route(user_id):
     return jsonify(get_watchlists(user_id))
+
+
+@user_bp.route("/users/<int:user_id>/watchlist-quota", methods=["GET"])
+def get_watchlist_quota_route(user_id):
+    symbols = get_user_unique_symbols(user_id)
+    return jsonify({
+        "user_id": user_id,
+        "unique_symbols": sorted(list(symbols)),
+        "used_quota": len(symbols),
+        "max_quota": None,
+        "remaining_quota": None,
+        "is_unlimited": True
+    })
 
 
 @user_bp.route("/users/<int:user_id>/watchlists", methods=["POST"])
@@ -792,13 +880,13 @@ def google_login_route():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker FROM idxsaham.users WHERE email = %s;",
+        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE email = %s;",
         (email,),
     )
     row = cur.fetchone()
 
     if row:
-        user_id, email_val, username, name_val, role, default_ticker = row
+        user_id, email_val, username, name_val, role, default_ticker, phone_number = row
         cur.close()
         conn.close()
         return jsonify({
@@ -807,7 +895,8 @@ def google_login_route():
             "username": username,
             "name": name_val,
             "role": role,
-            "default_ticker": default_ticker
+            "default_ticker": default_ticker,
+            "phone_number": phone_number
         })
     else:
         # Create a new user since they don't exist
@@ -835,7 +924,7 @@ def google_login_route():
             """
             INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
             VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id, email, username, name, role, default_ticker;
+            RETURNING id, email, username, name, role, default_ticker, phone_number;
             """,
             (email, username, password_hash, name, "Trader — Umum", "BBCA")
         )
@@ -850,7 +939,8 @@ def google_login_route():
             "username": new_row[2],
             "name": new_row[3],
             "role": new_row[4],
-            "default_ticker": new_row[5]
+            "default_ticker": new_row[5],
+            "phone_number": new_row[6]
         }), 201
 @user_bp.route("/test-ui")
 def test_ui():

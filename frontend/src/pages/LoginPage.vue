@@ -1,8 +1,11 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { Eye, EyeOff } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useGoogleSignIn } from '@/composables/useGoogleSignIn'
+import { useLandingSpotlight } from '@/composables/useLandingSpotlight'
+import { formatDate, formatNumber, formatPercent, trendClass } from '@/utils/format'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -12,6 +15,7 @@ const email = ref(typeof route.query.email === 'string' ? route.query.email : ''
 const password = ref('')
 const remember = ref(true)
 const error = ref('')
+const lihatSandi = ref(false)
 
 function lanjut() {
   const redirect =
@@ -58,71 +62,147 @@ function googleTidakSiap() {
   error.value = googleError.value || 'Google Sign-In belum siap, coba beberapa saat lagi.'
 }
 
-// ---- Ilustrasi grafik di panel kiri (statis, bukan data pasar sungguhan) ----
+// ---- Panel kiri: emiten berperforma terbaik, sama untuk semua pengunjung ----
 
-const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const SERI_HARGA = [6, 14, 22, 20, 30, 27, 40, 52, 48, 66, 80, 95]
-const SERI_RATA = [5, 9, 13, 17, 21, 24, 27, 31, 34, 37, 40, 44]
+const {
+  ticker: sorotanTicker,
+  rows: sorotanRows,
+  hargaTerakhir,
+  perubahanPersen,
+  loading: sorotanLoading,
+  error: sorotanError,
+} = useLandingSpotlight()
+
+/** Sesi yang digambar di grafik panel kiri. */
+const SESI = 90
+const PERIODE_MA = 20
 
 const LEBAR = 340
 const ATAS = 8
 const BAWAH = 104
 const SISI = 6
 
-/** Nilai 0–100 dipetakan ke koordinat SVG, sumbu Y dibalik. */
-function titik(seri) {
+const jendela = computed(() => sorotanRows.value.slice(-SESI))
+
+/** Rata-rata bergerak, disejajarkan ke ekor jendela yang sama. */
+const seriRata = computed(() => {
+  const closes = jendela.value.map((r) => r.close)
+  if (closes.length < PERIODE_MA) return []
+  return closes.map((_, i) =>
+    i < PERIODE_MA - 1
+      ? null
+      : closes.slice(i - PERIODE_MA + 1, i + 1).reduce((a, b) => a + b, 0) / PERIODE_MA,
+  )
+})
+
+/**
+ * Kedua garis dinormalkan pada skala yang sama supaya posisi harga terhadap
+ * rata-ratanya terbaca jujur — bukan dua garis yang masing-masing dipaskan.
+ */
+const skala = computed(() => {
+  const nilai = [
+    ...jendela.value.map((r) => r.close),
+    ...seriRata.value.filter((v) => v != null),
+  ]
+  if (!nilai.length) return null
+  const min = Math.min(...nilai)
+  const max = Math.max(...nilai)
+  return { min, span: max - min || 1 }
+})
+
+function garis(seri) {
+  const s = skala.value
+  if (!s || seri.length < 2) return ''
   const jarak = (LEBAR - SISI * 2) / (seri.length - 1)
   return seri
     .map((v, i) => {
+      if (v == null) return null
       const x = SISI + i * jarak
-      const y = BAWAH - (v / 100) * (BAWAH - ATAS)
+      const y = BAWAH - ((v - s.min) / s.span) * (BAWAH - ATAS)
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
+    .filter(Boolean)
     .join(' ')
 }
+
+const garisHarga = computed(() => garis(jendela.value.map((r) => r.close)))
+const garisRata = computed(() => garis(seriRata.value))
+
+/** Empat tanggal merata sebagai sumbu X. */
+const labelTanggal = computed(() => {
+  const w = jendela.value
+  if (w.length < 2) return []
+  return [0, 1, 2, 3].map((i) => {
+    const r = w[Math.round((i / 3) * (w.length - 1))]
+    return formatDate(r.tanggal)
+  })
+})
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-[#1c1c1c]">
-    <!-- Panel kiri: ilustrasi (disembunyikan di layar kecil) -->
+  <div class="flex min-h-screen bg-background">
+    <!-- Panel kiri: ilustrasi. Baru muncul di lg supaya form tidak terhimpit. -->
     <section
-      class="hidden w-1/2 flex-col justify-center gap-12 bg-[#e9e9e9] px-14 py-12 text-[#171717] md:flex"
+      class="hidden w-1/2 flex-col justify-center gap-12 bg-[var(--background-secondary)] px-10 py-12 text-foreground lg:flex xl:px-16"
     >
       <header>
-        <p class="text-[15px] font-semibold">◆StockVision</p>
-        <p class="tabular mt-1 text-[11px] text-[#171717]/45">
+        <p class="text-[20px] font-semibold tracking-tight xl:text-[22px]">◆StockVision</p>
+        <p class="tabular mt-1.5 text-[13px] text-muted-foreground">
           Dashboard Pasar Saham Indonesia
         </p>
       </header>
 
-      <div>
+      <div class="w-full max-w-[440px]">
         <div class="flex items-baseline gap-2">
-          <span class="text-[22px] font-bold tracking-tight">BBCA</span>
-          <span class="tabular text-[10px] uppercase text-[#171717]/40">IDX</span>
+          <span class="text-[26px] font-bold tracking-tight">
+            {{ sorotanTicker ?? '—' }}
+          </span>
+          <span class="tabular text-[11px] uppercase text-muted-foreground">IDX</span>
+          <span
+            v-if="sorotanTicker"
+            class="rounded bg-[var(--color-info-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-info-ink)]"
+          >
+            Performa terbaik
+          </span>
         </div>
 
-        <p class="tabular mt-2 text-[40px] font-bold leading-none tracking-[0.06em]">
-          9.875
+        <p class="tabular mt-2.5 text-[44px] font-bold leading-none tracking-[0.04em] xl:text-[52px]">
+          {{ hargaTerakhir != null ? formatNumber(hargaTerakhir) : '—' }}
         </p>
 
-        <p class="tabular mt-2 text-[13px] font-medium text-[#16a34a]">
-          +125 (+1,28)
+        <p
+          v-if="perubahanPersen != null"
+          class="tabular mt-2.5 text-[15px] font-medium"
+          :class="trendClass(perubahanPersen)"
+        >
+          {{ formatPercent(perubahanPersen) }} · {{ jendela.length }} sesi terakhir
         </p>
 
         <figure
           class="mt-8"
-          aria-label="Ilustrasi pergerakan harga sepanjang tahun"
+          :aria-label="`Pergerakan harga ${sorotanTicker ?? ''} beserta rata-rata bergerak ${PERIODE_MA} sesi`"
         >
+          <div v-if="sorotanLoading" class="h-[140px] w-full animate-pulse rounded bg-muted" />
+
+          <p
+            v-else-if="sorotanError || !garisHarga"
+            class="flex h-[140px] items-center text-[13px] text-muted-foreground"
+          >
+            {{ sorotanError || 'Data pasar belum tersedia.' }}
+          </p>
+
           <svg
+            v-else
             :viewBox="`0 0 ${LEBAR} 112`"
-            class="h-[120px] w-full"
+            class="h-[140px] w-full"
             fill="none"
             preserveAspectRatio="none"
             aria-hidden="true"
           >
             <polyline
-              :points="titik(SERI_HARGA)"
-              stroke="#3b6fd4"
+              v-if="garisRata"
+              :points="garisRata"
+              stroke="var(--chart-2)"
               stroke-width="1.6"
               stroke-linejoin="round"
               stroke-linecap="round"
@@ -130,8 +210,8 @@ function titik(seri) {
             />
 
             <polyline
-              :points="titik(SERI_RATA)"
-              stroke="#1f8a4c"
+              :points="garisHarga"
+              stroke="var(--chart-1)"
               stroke-width="1.6"
               stroke-linejoin="round"
               stroke-linecap="round"
@@ -139,46 +219,43 @@ function titik(seri) {
             />
           </svg>
 
-          <div class="h-px w-full bg-[#171717]/25"></div>
+          <div class="h-px w-full bg-border"></div>
 
           <figcaption
-            class="tabular mt-2 flex justify-between text-[9px] text-[#171717]/45"
+            v-if="labelTanggal.length"
+            class="tabular mt-2 flex justify-between text-[11px] text-muted-foreground"
           >
-            <span
-              v-for="bulan in BULAN"
-              :key="bulan"
-            >
-              {{ bulan }}
-            </span>
+            <span v-for="(tgl, i) in labelTanggal" :key="i">{{ tgl }}</span>
           </figcaption>
         </figure>
       </div>
 
-      <p class="max-w-md text-[12px] leading-relaxed text-[#171717]/50">
+      <p class="max-w-[440px] text-[14px] leading-relaxed text-muted-foreground">
         Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan
         crawling data saham Indonesia secara real-time.
       </p>
     </section>
 
     <!-- Panel kanan: form login -->
-    <section class="flex w-full items-center justify-center px-6 py-12 md:w-1/2">
-      <div class="w-full max-w-[320px]">
-        <h1 class="text-[24px] font-semibold text-white">
+    <section class="flex w-full items-center justify-center px-5 py-10 sm:px-6 sm:py-14 lg:w-1/2">
+      <div class="w-full max-w-[400px]">
+        <!-- Identitas produk untuk layar yang tidak menampilkan panel kiri. -->
+        <p class="mb-6 text-[20px] font-semibold tracking-tight text-foreground lg:hidden">
+          ◆StockVision
+        </p>
+
+        <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-foreground sm:text-[30px]">
           Masuk ke StockVision
         </h1>
 
-        <p class="mt-1 text-[11px] text-white/40">
-          Gunakan akun demo untuk mencoba
-        </p>
-
         <form
-          class="mt-9 flex flex-col gap-4"
+          class="mt-7 flex flex-col gap-5"
           @submit.prevent="onSubmit"
         >
           <div class="space-y-2">
             <label
               for="email"
-              class="block text-[12px] font-medium text-white/85"
+              class="block text-[13px] font-medium text-foreground sm:text-sm"
             >
               Email
             </label>
@@ -190,37 +267,48 @@ function titik(seri) {
               autocomplete="email"
               placeholder="email@contoh.com"
               required
-              class="h-10 w-full rounded-md border border-white/10 bg-[#2b2b2b] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/30"
+              class="field"
             />
           </div>
 
           <div class="space-y-2">
             <label
               for="password"
-              class="block text-[12px] font-medium text-white/85"
+              class="block text-[13px] font-medium text-foreground sm:text-sm"
             >
               Password
             </label>
 
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="••••••••"
-              required
-              class="h-10 w-full rounded-md border border-white/10 bg-[#2b2b2b] px-3 text-[13px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/30"
-            />
+            <div class="relative">
+              <input
+                id="password"
+                v-model="password"
+                :type="lihatSandi ? 'text' : 'password'"
+                autocomplete="current-password"
+                placeholder="••••••••"
+                required
+                class="field field-aksi"
+              />
+
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
+                :aria-label="lihatSandi ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+                @click="lihatSandi = !lihatSandi"
+              >
+                <component :is="lihatSandi ? EyeOff : Eye" class="size-[18px]" aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <label
-              class="flex cursor-pointer items-center gap-2 text-[12px] text-white/70"
+              class="flex cursor-pointer items-center gap-2 text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
               <input
                 v-model="remember"
                 type="checkbox"
-                class="size-3.5 cursor-pointer accent-white"
+                class="size-4 cursor-pointer accent-[var(--primary)]"
               />
 
               ingat saya
@@ -228,7 +316,7 @@ function titik(seri) {
 
             <RouterLink
               to="/forgot-password"
-              class="text-[12px] text-white/40 transition-colors hover:text-white/80"
+              class="text-[14px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
             >
               Lupa Password?
             </RouterLink>
@@ -237,7 +325,7 @@ function titik(seri) {
           <p
             v-if="error"
             role="alert"
-            class="text-[12px] text-[#f87171]"
+            class="rounded-lg bg-[var(--color-down-bg)] px-3.5 py-2.5 text-[13px] text-[var(--color-down-ink)]"
           >
             {{ error }}
           </p>
@@ -245,31 +333,31 @@ function titik(seri) {
           <button
             type="submit"
             :disabled="auth.loading"
-            class="h-10 w-full rounded-md bg-white text-[13px] font-semibold text-[#171717] transition-colors hover:bg-white/90 disabled:opacity-60"
+            class="h-11 w-full rounded-lg bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-foreground)] transition-[background-color,transform] hover:bg-[var(--primary-hover)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:h-12"
           >
             {{ auth.loading ? 'Memverifikasi...' : 'Masuk' }}
           </button>
         </form>
 
         <div class="my-7 flex items-center gap-3">
-          <span class="h-px flex-1 bg-white/12"></span>
+          <span class="h-px flex-1 bg-border"></span>
 
-          <span class="text-[10px] font-medium tracking-[0.14em] text-white/35">
+          <span class="text-[11px] font-medium tracking-[0.12em] text-muted-foreground">
             OR SIGN IN WITH
           </span>
 
-          <span class="h-px flex-1 bg-white/12"></span>
+          <span class="h-px flex-1 bg-border"></span>
         </div>
 
         <div class="relative">
           <button
             type="button"
             :disabled="auth.loading"
-            class="flex h-10 w-full items-center justify-center gap-2.5 rounded-md bg-white text-[13px] font-medium text-[#171717] transition-colors hover:bg-white/90 disabled:opacity-60"
+            class="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-card text-[15px] font-medium text-foreground transition-[background-color,transform] hover:bg-[var(--card-hover)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-60 sm:h-12"
             @click="googleTidakSiap"
           >
             <svg
-              class="size-[18px]"
+              class="size-5 shrink-0"
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
@@ -304,16 +392,97 @@ function titik(seri) {
           ></div>
         </div>
 
-        <p class="mt-7 text-center text-[12px] text-white/40">
+        <p class="register-text">
           Belum punya akun?
           <RouterLink
             to="/register"
-            class="text-white/80 transition-colors hover:text-white"
+            class="register-link"
           >
-            Daftar
+            Daftar Sekarang
           </RouterLink>
         </p>
       </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+/* Satu gaya input dipakai semua field supaya tinggi dan fokusnya seragam. */
+.field {
+  height: 44px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--card);
+  padding: 0 14px;
+  color: var(--foreground);
+  font-size: 15px;
+  outline: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+@media (min-width: 640px) {
+  .field {
+    height: 48px;
+  }
+}
+
+/* Ruang untuk tombol lihat/sembunyikan sandi di dalam input. */
+.field-aksi {
+  padding-right: 46px;
+}
+
+.field::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Sembunyikan ikon mata bawaan dari browser (khususnya MS Edge) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+.field:hover {
+  border-color: var(--primary-light);
+}
+
+.field:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.register-text {
+  margin-top: 28px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.register-link {
+  margin-left: 4px;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
+}
+
+.register-link:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.register-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+</style>

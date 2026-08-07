@@ -26,6 +26,10 @@ app.register_blueprint(user_bp)
 from prescriptive.routes import prescriptive_bp
 app.register_blueprint(prescriptive_bp)
 
+from diagnostic.routes import diagnostic_bp
+app.register_blueprint(diagnostic_bp)
+
+
 from scheduler import (
     start_scheduler, stop_scheduler, pause_scheduler,
     resume_scheduler, trigger_now, get_scheduler_status
@@ -427,7 +431,12 @@ def get_token():
 
 
 # ============================================================
-# FETCH MAJORHOLDER
+# STOCKBIT SCOPE FUNCTIONS (EXCLUSIVELY STOCKBIT API)
+# Scope: Live Orderbook/Stock Info, Majorholder/Insider, Broker Activity
+# ============================================================
+
+# ============================================================
+# FETCH MAJORHOLDER (STOCKBIT INSIDER ACTIVITY)
 # ============================================================
 def fetch_majorholder(token, date_start, date_end, pages):
     headers     = {**FETCH_HEADERS_BASE, "Authorization": f"Bearer {token}"}
@@ -603,6 +612,7 @@ def parse_stock_info(d):
 # ============================================================
 # ENDPOINTS
 # ============================================================
+@app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
     token_status = "no_token"
@@ -621,7 +631,18 @@ def health():
     })
 
 
+@app.errorhandler(404)
+def handle_404(e):
+    return jsonify({"status": "error", "message": "Resource not found"}), 404
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"status": "error", "message": "Internal server error"}), 500
+
+
 @app.route("/auth/login", methods=["GET"])
+
 def force_login():
     try:
         with _token_cache["lock"]:
@@ -941,9 +962,12 @@ def update_token():
         if not data or "token" not in data:
             return jsonify({"error": "Token is required"}), 400
         
-        new_token = data["token"]
+        new_token = str(data["token"]).strip()
+        if new_token.lower().startswith("bearer "):
+            new_token = new_token[7:].strip()
+            
         if not new_token.startswith("eyJhbGciOi"):
-            return jsonify({"error": "Invalid token format"}), 400
+            return jsonify({"error": "Invalid token format (must start with eyJhbGciOi)"}), 400
         
         # Decode expiry from JWT payload
         import base64

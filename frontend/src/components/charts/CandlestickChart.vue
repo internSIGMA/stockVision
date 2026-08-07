@@ -16,12 +16,20 @@ const { isDark } = useTheme()
 const chart = shallowRef(null)
 const series = shallowRef(null)
 
-const UP = '#16a34a'
-const DOWN = '#dc2626'
+/** Palet diambil dari CSS variable supaya chart ikut token di globals.css. */
+function warna() {
+  const style = getComputedStyle(document.documentElement)
+  const ambil = (nama) => style.getPropertyValue(nama).trim()
+  return {
+    up: ambil('--up'),
+    down: ambil('--down'),
+    grid: ambil('--border'),
+    text: ambil('--muted-foreground'),
+  }
+}
 
 function tema() {
-  const grid = isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-  const text = isDark.value ? '#a1a1a1' : '#737373'
+  const { grid, text } = warna()
   return {
     layout: {
       background: { type: ColorType.Solid, color: 'transparent' },
@@ -35,6 +43,18 @@ function tema() {
     rightPriceScale: { borderColor: grid },
     timeScale: { borderColor: grid },
     crosshair: { mode: 0 },
+  }
+}
+
+function temaSeri() {
+  const { up, down } = warna()
+  return {
+    upColor: up,
+    downColor: down,
+    borderUpColor: up,
+    borderDownColor: down,
+    wickUpColor: up,
+    wickDownColor: down,
   }
 }
 
@@ -66,14 +86,7 @@ onMounted(() => {
     handleScale: true,
   })
 
-  series.value = chart.value.addSeries(CandlestickSeries, {
-    upColor: UP,
-    downColor: DOWN,
-    borderUpColor: UP,
-    borderDownColor: DOWN,
-    wickUpColor: UP,
-    wickDownColor: DOWN,
-  })
+  series.value = chart.value.addSeries(CandlestickSeries, temaSeri())
 
   render()
 })
@@ -85,7 +98,10 @@ onBeforeUnmount(() => {
 })
 
 watch(() => props.rows, render, { deep: false })
-watch(isDark, () => chart.value?.applyOptions(tema()))
+watch(isDark, () => {
+  chart.value?.applyOptions(tema())
+  series.value?.applyOptions(temaSeri())
+})
 
 function resetZoom() {
   chart.value?.timeScale().fitContent()

@@ -26,4 +26,5 @@ COPY . .
 EXPOSE 8080
 
 # Command to run the generator and then the Flask application
-CMD ["sh", "-c", "python db/trading_date.py && python app.py"]
+CMD ["sh", "-c", "python db/trading_date.py || true; exec python app.py"]
+

@@ -9,13 +9,29 @@ load_dotenv(find_dotenv(), override=True)
 data_bp = Blueprint("data_bp", __name__)
 
 def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "postgres"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432))
-    )
+    db_host = os.getenv("DB_HOST") or "db"
+    db_port = int(os.getenv("DB_PORT") or 5432)
+    db_name = os.getenv("DB_NAME") or "stockVision"
+    db_user = os.getenv("DB_USER") or "stockvision"
+    db_pass = os.getenv("DB_PASSWORD") or "stockvision_pass"
+    try:
+        return psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
+            port=db_port
+        )
+    except psycopg2.OperationalError as e:
+        if db_host == "db":
+            return psycopg2.connect(
+                host="localhost",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5434
+            )
+        raise e
 
 def decimal_to_float(val):
     if val is None:
@@ -33,10 +49,6 @@ def get_historical_ohlc():
     symbol = request.args.get("symbol", "").upper()
     if not symbol:
         return jsonify({"error": "Parameter 'symbol' wajib diisi"}), 400
-        
-    allowed_symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
-    if symbol not in allowed_symbols:
-        return jsonify({"error": f"Emiten '{symbol}' tidak didukung. Pendukung: {', '.join(allowed_symbols)}"}), 400
         
     from_date = request.args.get("from")
     to_date = request.args.get("to")
@@ -63,6 +75,19 @@ def get_historical_ohlc():
         cur = conn.cursor()
         cur.execute(query, params)
         rows = cur.fetchall()
+        
+        # On-demand crawl via yfinance if symbol has no historical records in DB
+        if not rows:
+            try:
+                from crawl_yfinance import crawl_ohlcv, insert_ohlcv
+                records = crawl_ohlcv(symbol, period="5y")
+                if records:
+                    insert_ohlcv(records)
+                    cur.execute(query, params)
+                    rows = cur.fetchall()
+            except Exception as e:
+                print(f"[On-Demand Crawl] Failed to fetch yfinance data for {symbol}: {e}")
+
         cur.close()
         conn.close()
         
@@ -167,7 +192,73 @@ def get_stock_info():
         conn.close()
         
         if not row:
-            return jsonify({"error": f"Data snapshot untuk {symbol} tidak ditemukan"}), 404
+            # Fallback 1: Ambil data snapshot dari idxsaham.ohlc_forecasting (yfinance historical data)
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT symbol, tanggal, open, high, low, close, volume
+                FROM idxsaham.ohlc_forecasting
+                WHERE symbol = %s
+                ORDER BY tanggal DESC
+                LIMIT 2;
+            """, (symbol,))
+            ohlc_rows = cur.fetchall()
+            cur.close()
+            conn.close()
+
+            # Fallback 2: Jika ohlc_forecasting belum ada data untuk symbol ini, lakukan on-demand yfinance crawl secara dinamis
+            if not ohlc_rows:
+                try:
+                    from crawl_yfinance import crawl_ohlcv, insert_ohlcv, crawl_company_info, insert_company_info
+                    recs = crawl_ohlcv(symbol, period="5y")
+                    if recs:
+                        insert_ohlcv(recs)
+                        c_info = crawl_company_info(symbol)
+                        if c_info:
+                            insert_company_info(c_info)
+                        conn = get_connection()
+                        cur = conn.cursor()
+                        cur.execute("""
+                            SELECT symbol, tanggal, open, high, low, close, volume
+                            FROM idxsaham.ohlc_forecasting
+                            WHERE symbol = %s
+                            ORDER BY tanggal DESC
+                            LIMIT 2;
+                        """, (symbol,))
+                        ohlc_rows = cur.fetchall()
+                        cur.close()
+                        conn.close()
+                except Exception as e:
+                    print(f"[Stock-Info Fallback] Dynamic yfinance crawl error for {symbol}: {e}")
+
+
+            if ohlc_rows:
+                latest = ohlc_rows[0]
+                prev = ohlc_rows[1] if len(ohlc_rows) > 1 else latest
+                c_close = decimal_to_float(latest[5]) or 0.0
+                p_close = decimal_to_float(prev[5]) or decimal_to_float(latest[2]) or c_close
+                diff = round(c_close - p_close, 2)
+                diff_pct = round((diff / p_close * 100), 2) if p_close > 0 else 0.0
+                
+                return jsonify({
+                    "symbol": latest[0],
+                    "nama": latest[0],
+                    "tanggal": str(latest[1]),
+                    "waktu_update": "16:00:00",
+                    "harga": c_close,
+                    "harga_sebelumnya": p_close,
+                    "perubahan": diff,
+                    "perubahan_persen": diff_pct,
+                    "volume": latest[6],
+                    "rata_rata": c_close,
+                    "bid_price": decimal_to_float(latest[4]),
+                    "bid_volume": 0,
+                    "offer_price": decimal_to_float(latest[3]),
+                    "offer_volume": 0,
+                    "status_pasar": "CLOSED"
+                })
+            else:
+                return jsonify({"error": f"Data snapshot untuk {symbol} tidak ditemukan"}), 404
             
         result = {
             "symbol": row[0],
@@ -189,6 +280,7 @@ def get_stock_info():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # ============================================================
 # ENDPOINT: GET MAJORHOLDER / INSIDER ACTIVITY
@@ -256,7 +348,8 @@ def get_stock_forecast():
         SELECT symbol, tanggal, open, high, low, close, volume
         FROM idxsaham.stock_forecasting
         WHERE symbol = %s
-        ORDER BY tanggal ASC;
+        ORDER BY tanggal DESC
+        LIMIT 30;
     """
     try:
         conn = get_connection()
@@ -266,6 +359,20 @@ def get_stock_forecast():
         cur.close()
         conn.close()
         
+        # Fallback if no stored forecast is found
+        if not rows:
+            try:
+                from forecasting.dynamic_forecast import generate_dynamic_forecast
+                forecast_items = generate_dynamic_forecast(symbol, horizon_days=7)
+                if forecast_items:
+                    return jsonify(forecast_items)
+            except Exception as e:
+                print(f"[Forecast Endpoint] Dynamic forecast generation failed for {symbol}: {e}")
+
+        # Sort ascending for chart display
+        if rows:
+            rows = sorted(rows, key=lambda x: x[1])
+
         result = []
         for r in rows:
             result.append({
@@ -280,3 +387,4 @@ def get_stock_forecast():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+

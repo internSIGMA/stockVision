@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue'
-import { Building2, Plus, Star } from '@lucide/vue'
+import { ref, watch } from 'vue'
+import { Building2, Inbox, Plus } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useNotify } from '@/composables/useNotify'
@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+
 
 const auth = useAuthStore()
 const market = useMarketStore()
@@ -47,14 +48,9 @@ async function watchlistBaru() {
   }
 }
 
-async function jadikanUtama(ticker) {
-  try {
-    await auth.setEmitenUtama(ticker)
-    notify.success(`${ticker} jadi emiten utama`)
-  } catch (err) {
-    notify.error('Gagal menyimpan emiten utama', err.message)
-  }
-}
+
+
+
 </script>
 
 <template>
@@ -94,7 +90,7 @@ async function jadikanUtama(ticker) {
         </Button>
 
         <Button variant="outline" size="sm" class="h-8 shrink-0" @click="editorTerbuka = true">
-          Edit
+          Kelola
         </Button>
       </div>
     </div>
@@ -104,20 +100,24 @@ async function jadikanUtama(ticker) {
       <div class="flex items-center gap-1.5">
         <Building2 class="size-3.5 text-muted-foreground" aria-hidden="true" />
         <p class="text-[12px] font-medium">Focus Emiten</p>
+
+
       </div>
+
       <p class="text-[11px] leading-relaxed text-muted-foreground">
-        Emiten yang kamu pantau. Klik untuk membuka, klik bintang untuk menjadikannya utama.
+        Emiten yang kamu pantau. Klik untuk membuka.
       </p>
 
       <EmptyState
-        v-if="!auth.watchlist.length"
-        title="Belum ada emiten"
-        description="Tambahkan emiten lewat tombol Edit di atas."
+        v-if="!auth.watchlistTersimpan.length"
+        :icon="Inbox"
+        title="Watchlist kosong"
+        description="Tambahkan emiten lewat tombol Kelola di atas."
       />
 
       <ul v-else class="flex flex-col gap-1">
         <li
-          v-for="ticker in auth.watchlist"
+          v-for="ticker in auth.watchlistTersimpan"
           :key="ticker"
           class="flex items-center justify-between rounded-md border px-2.5 py-2 transition-colors"
           :class="
@@ -135,22 +135,9 @@ async function jadikanUtama(ticker) {
             {{ ticker }}
           </button>
 
-          <!-- Padding, bukan ikon lebih besar: ikon 14px tetap proporsional,
-               tapi area kliknya naik dari 14px ke 32px. -->
-          <button
-            type="button"
-            class="-mr-1 flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent"
-            :class="
-              auth.emitenUtama === ticker
-                ? 'text-[var(--color-skip)]'
-                : 'text-muted-foreground/50 hover:text-[var(--color-skip)]'
-            "
-            :aria-label="`Jadikan ${ticker} emiten utama`"
-            :aria-pressed="auth.emitenUtama === ticker"
-            @click="jadikanUtama(ticker)"
-          >
-            <Star class="size-3.5" :class="{ 'fill-current': auth.emitenUtama === ticker }" />
-          </button>
+
+
+
         </li>
       </ul>
 
@@ -174,9 +161,11 @@ async function jadikanUtama(ticker) {
         </SheetHeader>
 
         <div class="min-h-0 flex-1 overflow-y-auto" data-lenis-prevent>
-          <WatchlistManagerPage />
+          <WatchlistManagerPage @close="editorTerbuka = false" />
         </div>
       </SheetContent>
     </Sheet>
+
+
   </div>
 </template>

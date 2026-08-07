@@ -1,5 +1,17 @@
+"""
+yfinance Crawler Module — StockVision
+======================================
+SCOPE CRAWLING:
+1. Historical OHLCV Time-Series -> idxsaham.ohlc_forecasting
+2. Company Profile & Metadata -> idxsaham.company_info
+3. Fundamental Ratios & Metrics -> idxsaham.fundamental
+
+TIDAK DIIZINKAN:
+- Order Book, Bid/Offer, Broker Activity (Bandarmologi), & Insider Activity.
+- Semua data mikro/orderbook & aktivitas broker dikelola EKSKLUSIF oleh modul Stockbit.
+"""
+
 import os
-import json
 import psycopg2
 from psycopg2.extras import execute_batch
 import yfinance as yf
@@ -43,12 +55,62 @@ def create_table_ohlcv():
     conn.close()
     print("[yfinance Crawler] Tabel 'idxsaham.ohlc_forecasting' siap.")
 
-def crawl_ohlcv(symbol):
+def create_table_company_info():
+    query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.company_info (
+        symbol VARCHAR(10) PRIMARY KEY,
+        company_name VARCHAR(255),
+        sector VARCHAR(100),
+        industry VARCHAR(150),
+        country VARCHAR(100),
+        currency VARCHAR(20),
+        exchange VARCHAR(50),
+        shares_outstanding BIGINT,
+        beta NUMERIC(10,4),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(query)
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("[yfinance Crawler] Tabel 'idxsaham.company_info' siap.")
+
+def create_table_fundamental():
+    query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.fundamental (
+        symbol VARCHAR(10),
+        report_date DATE,
+        market_cap BIGINT,
+        trailing_pe NUMERIC(20,6),
+        forward_pe NUMERIC(20,6),
+        price_to_book NUMERIC(20,6),
+        roe NUMERIC(20,6),
+        roa NUMERIC(20,6),
+        earnings_growth NUMERIC(20,6),
+        revenue_growth NUMERIC(20,6),
+        dividend_yield NUMERIC(20,6),
+        PRIMARY KEY(symbol, report_date)
+    );
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(query)
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("[yfinance Crawler] Tabel 'idxsaham.fundamental' siap.")
+
+def crawl_ohlcv(symbol, period="5y"):
     ticker_symbol = f"{symbol}.JK"
-    print(f"[yfinance Crawler] Mengunduh data historis 5 tahun untuk {ticker_symbol}...")
+    print(f"[yfinance Crawler] Mengunduh data historis {period} untuk {ticker_symbol}...")
     
     ticker = yf.Ticker(ticker_symbol)
-    df = ticker.history(period="5y", auto_adjust=False)
+    df = ticker.history(period=period, auto_adjust=False)
+
     
     if df.empty:
         print(f"[yfinance Crawler] Warning: Data untuk {ticker_symbol} kosong.")
@@ -72,6 +134,73 @@ def crawl_ohlcv(symbol):
             "volume": int(row["Volume"]) if not hasattr(row["Volume"], "isnull") or not row["Volume"].isnull() else 0
         })
     return records
+
+def crawl_company_info(symbol):
+
+    ticker = yf.Ticker(f"{symbol}.JK")
+
+    info = ticker.info
+
+    return {
+
+        "symbol": symbol,
+
+        "company_name": info.get("longName"),
+
+        "sector": info.get("sector"),
+
+        "industry": info.get("industry"),
+
+        "country": info.get("country"),
+
+        "currency": info.get("currency"),
+
+        "exchange": info.get("exchange"),
+
+        "shares_outstanding": info.get("sharesOutstanding"),
+
+        "beta": info.get("beta")
+
+    }
+
+def crawl_fundamental(symbol):
+
+    ticker = yf.Ticker(f"{symbol}.JK")
+
+    info = ticker.info
+
+    most_recent = info.get("mostRecentQuarter")
+
+    if most_recent:
+        report_date = datetime.fromtimestamp(most_recent).date()
+    else:
+        report_date = datetime.today().date()
+
+    return {
+
+        "symbol": symbol,
+
+        "report_date": report_date,
+
+        "market_cap": info.get("marketCap"),
+
+        "trailing_pe": info.get("trailingPE"),
+
+        "forward_pe": info.get("forwardPE"),
+
+        "price_to_book": info.get("priceToBook"),
+
+        "roe": info.get("returnOnEquity"),
+
+        "roa": info.get("returnOnAssets"),
+
+        "earnings_growth": info.get("earningsGrowth"),
+
+        "revenue_growth": info.get("revenueGrowth"),
+
+        "dividend_yield": info.get("dividendYield")
+
+    }
 
 def insert_ohlcv(records):
     if not records:
@@ -102,6 +231,128 @@ def insert_ohlcv(records):
     conn.close()
     print(f"[yfinance Crawler] Berhasil menyimpan {len(records)} data untuk {records[0]['symbol']}.")
 
+def insert_company_info(record):
+
+    query = """
+    INSERT INTO idxsaham.company_info (
+
+        symbol,
+        company_name,
+        sector,
+        industry,
+        country,
+        currency,
+        exchange,
+        shares_outstanding,
+        beta
+
+    )
+
+    VALUES (
+
+        %(symbol)s,
+        %(company_name)s,
+        %(sector)s,
+        %(industry)s,
+        %(country)s,
+        %(currency)s,
+        %(exchange)s,
+        %(shares_outstanding)s,
+        %(beta)s
+
+    )
+
+    ON CONFLICT(symbol)
+
+    DO UPDATE SET
+
+        company_name = EXCLUDED.company_name,
+        sector = EXCLUDED.sector,
+        industry = EXCLUDED.industry,
+        country = EXCLUDED.country,
+        currency = EXCLUDED.currency,
+        exchange = EXCLUDED.exchange,
+        shares_outstanding = EXCLUDED.shares_outstanding,
+        beta = EXCLUDED.beta,
+        updated_at = NOW();
+
+    """
+
+    conn = get_connection()
+
+    cur = conn.cursor()
+
+    cur.execute(query, record)
+
+    conn.commit()
+
+    cur.close()
+
+    conn.close()
+
+def insert_fundamental(record):
+
+    query = """
+
+    INSERT INTO idxsaham.fundamental(
+
+        symbol,
+        report_date,
+        market_cap,
+        trailing_pe,
+        forward_pe,
+        price_to_book,
+        roe,
+        roa,
+        earnings_growth,
+        revenue_growth,
+        dividend_yield
+
+    )
+
+    VALUES(
+
+        %(symbol)s,
+        %(report_date)s,
+        %(market_cap)s,
+        %(trailing_pe)s,
+        %(forward_pe)s,
+        %(price_to_book)s,
+        %(roe)s,
+        %(roa)s,
+        %(earnings_growth)s,
+        %(revenue_growth)s,
+        %(dividend_yield)s
+
+    )
+
+    ON CONFLICT(symbol, report_date)
+
+    DO UPDATE SET
+
+        market_cap = EXCLUDED.market_cap,
+        trailing_pe = EXCLUDED.trailing_pe,
+        forward_pe = EXCLUDED.forward_pe,
+        price_to_book = EXCLUDED.price_to_book,
+        roe = EXCLUDED.roe,
+        roa = EXCLUDED.roa,
+        earnings_growth = EXCLUDED.earnings_growth,
+        revenue_growth = EXCLUDED.revenue_growth,
+        dividend_yield = EXCLUDED.dividend_yield;
+
+    """
+
+    conn = get_connection()
+
+    cur = conn.cursor()
+
+    cur.execute(query, record)
+
+    conn.commit()
+
+    cur.close()
+
+    conn.close()
 
 def main():
     print("="*60)
@@ -110,6 +361,8 @@ def main():
     
     try:
         create_table_ohlcv()
+        create_table_company_info()
+        create_table_fundamental()
     except Exception as e:
         print("[yfinance Crawler] ERROR: Gagal membuat tabel:", e)
         return
@@ -127,6 +380,16 @@ def main():
             if records:
 
                 insert_ohlcv(records)
+
+            # Company Info
+            company = crawl_company_info(symbol)
+
+            insert_company_info(company)
+
+            # Fundamental
+            fundamental = crawl_fundamental(symbol)
+
+            insert_fundamental(fundamental)
 
         except Exception as e:
 

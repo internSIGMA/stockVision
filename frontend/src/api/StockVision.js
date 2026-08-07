@@ -10,11 +10,26 @@ import api, { BASE_URL } from './index'
  * Endpoint crawl memakai method GET, bukan POST.
  */
 
-/** Backend menolak emiten di luar daftar ini dengan HTTP 400. */
-export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR']
+/**
+ * Daftar sebagian emiten resmi di BEI (untuk simulasi Frontend).
+ * Berisi 9 emiten prioritas + puluhan emiten populer lainnya.
+ */
+export const OFFICIAL_TICKERS = [
+  'BBCA', 'BBRI', 'BMRI', 'TLKM', 'ANTM', 'PTBA', 'GOTO', 'BSSR', 'PTRO',
+  'ASII', 'UNVR', 'ICBP', 'INDF', 'KLBF', 'PGAS', 'UNTR', 'CPIN', 'MYOR', 
+  'INKP', 'TKIM', 'SMGR', 'INTP', 'BRPT', 'TPIA', 'AMMN', 'BREN', 'CUAN',
+  'MDKA', 'INCO', 'ADRO', 'ITMG', 'HRUM', 'AKRA', 'MEDC', 'SIDO', 'AMRT',
+  'MIDI', 'ACES', 'MAPI', 'ERAA', 'CTRA', 'BSDE', 'SMRA', 'PWON', 'ASRI',
+  'BBNI', 'BJBR', 'BBTN', 'BRIS', 'ARTO', 'MEGA', 'PNBN'
+]
 
+export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM', 'GOTO']
+
+/** Memeriksa apakah emiten ada di dalam daftar resmi bursa (simulasi). */
 export function isSupported(ticker) {
-  return SUPPORTED_TICKERS.includes(String(ticker || '').toUpperCase())
+  if (!ticker || typeof ticker !== 'string') return false
+  const t = ticker.trim().toUpperCase()
+  return /^[A-Z0-9]{4,6}$/.test(t)
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */
@@ -98,6 +113,23 @@ export function getForecast(symbol, days) {
   if (days != null) params.days = days
 
   return api.get('/api/data/forecast', { params })
+}
+
+/**
+ * Hasil analisis prescriptive terbaru: rekomendasi, skor tekno-fundamental,
+ * level entry/target/stop loss, strategi pembeli baru vs pemegang, dan
+ * ringkasan naratif dari LLM.
+ *
+ * Ringkasannya dibuat di backend — kunci Gemini tidak pernah menyentuh
+ * browser. Jangan pindahkan pemanggilan LLM ke sini: variabel VITE_* ikut
+ * ter-bundle ke berkas publik dan kuncinya akan terbaca semua pengunjung.
+ *
+ * → { symbol, recommendation, total_score, trade_setup, scores, signals,
+ *     new_buyer_strategy, holding_strategy, llm_summary, ... } | null
+ */
+export async function getPrescriptive(symbol) {
+  const res = await api.get('/api/prescriptive/results', { params: { symbol } })
+  return res?.results?.[0] ?? null
 }
 
 // ============================================================
@@ -391,6 +423,14 @@ export function createWatchlist(userId, payload) {
 
 export function deleteWatchlist(userId, watchlistId) {
   return api.delete(`/users/${userId}/watchlists/${watchlistId}`)
+}
+
+/**
+ * Kuota emiten unik per akun (maks 10).
+ * → { user_id, unique_symbols: [...], used_quota, max_quota, remaining_quota }
+ */
+export function getWatchlistQuota(userId) {
+  return api.get(`/users/${userId}/watchlist-quota`)
 }
 
 /** Emiten utama tersimpan sebagai kolom default_ticker di tabel users. */

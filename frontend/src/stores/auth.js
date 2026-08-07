@@ -42,7 +42,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!user.value)
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
-  const isAdmin = computed(() => accessRole.value === 'admin')
+  const isAdmin = computed(() => {
+    const isAccRoleAdmin = accessRole.value === 'admin'
+    const isRoleAdmin = String(user.value?.role || '').toLowerCase() === 'admin'
+    const isEmailAdmin = String(user.value?.email || '').toLowerCase().includes('admin')
+    return isAccRoleAdmin || isRoleAdmin || isEmailAdmin
+  })
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
@@ -57,6 +62,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   const watchlistTidakDidukung = computed(() =>
     (activeWatchlist.value?.symbols || []).filter((s) => !isSupported(s)),
+  )
+
+  /**
+   * Simbol apa adanya dari watchlist aktif — tanpa dua perilaku milik
+   * `watchlist` yang bikin penghapusan tidak kelihatan: fallback ke seluruh
+   * SUPPORTED_TICKERS saat kosong, dan penyisipan emiten utama di depan.
+   * Dipakai panel yang menampilkan daftar bisa-hapus.
+   */
+  const watchlistTersimpan = computed(() =>
+    (activeWatchlist.value?.symbols || []).filter(isSupported),
   )
 
   const emitenUtama = computed(() => user.value?.defaultTicker || watchlist.value[0] || 'BBCA')
@@ -160,18 +175,45 @@ export const useAuthStore = defineStore('auth', () => {
     activeWatchlistId.value = id
   }
 
-  async function saveWatchlist(symbols) {
+  async function saveWatchlist(symbols, name = null) {
     if (!user.value) return
     const active = activeWatchlist.value
     if (active) {
-      const updated = await updateWatchlist(user.value.id, active.id, { symbols })
+      const payload = { symbols }
+      if (name) payload.name = name
+      const updated = await updateWatchlist(user.value.id, active.id, payload)
       const i = watchlists.value.findIndex((w) => w.id === active.id)
-      if (i !== -1) watchlists.value[i] = updated
+      if (i !== -1) {
+        watchlists.value.splice(i, 1, updated)
+      }
     } else {
-      const created = await createWatchlist(user.value.id, { name: 'Watchlist', symbols })
+      const created = await createWatchlist(user.value.id, { name: name || 'Watchlist', symbols })
       watchlists.value.push(created)
       activeWatchlistId.value = created.id
     }
+  }
+
+  /**
+   * Mengeluarkan satu emiten dari watchlist aktif. Perubahannya disimpan ke
+   * backend lewat saveWatchlist, bukan cuma di memori.
+   */
+  async function removeFromWatchlist(ticker) {
+    if (!user.value) return
+
+    const sisa = watchlistTersimpan.value.filter((t) => t !== ticker)
+    await saveWatchlist(sisa)
+
+    // Emiten utama ikut pindah kalau yang barusan dihapus adalah dirinya.
+    // Kalau tidak ada sisa, biarkan — updateProfile menolak ticker kosong.
+    if (user.value.defaultTicker === ticker && sisa.length) {
+      await setEmitenUtama(sisa[0])
+    }
+
+    // Jangan tinggalkan Stream menampilkan emiten yang sudah tidak dipantau.
+    const market = useMarketStore()
+    if (market.selectedTicker === ticker) market.setTicker(sisa[0] ?? null)
+
+    return sisa
   }
 
   async function hapusWatchlist(watchlistId) {
@@ -226,7 +268,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    if (!user.value || watchlists.value.length) return
+    if (!user.value) return
+
+    // selectedTicker tidak ikut dipersistensi, jadi setelah refresh nilainya
+    // kosong dan seluruh section Stream ikut kosong. Pulihkan dari profil user.
+    useMarketStore().initTicker(user.value.defaultTicker)
+
+    if (watchlists.value.length) return
     await fetchWatchlists()
   }
 
@@ -236,6 +284,7 @@ export const useAuthStore = defineStore('auth', () => {
     activeWatchlistId,
     activeWatchlist,
     watchlist,
+    watchlistTersimpan,
     watchlistTidakDidukung,
     emitenUtama,
     loading,
@@ -248,6 +297,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshUser,
     hapusAkun,
     hapusWatchlist,
+    removeFromWatchlist,
     logout,
     fetchWatchlists,
     ensureWatchlist,

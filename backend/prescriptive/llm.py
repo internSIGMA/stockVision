@@ -13,14 +13,19 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        llm_model = genai.GenerativeModel("gemini-3.5-flash")
-        logger.info("Google Gemini AI (gemini-3.5-flash) berhasil terkonfigurasi.")
+        try:
+            llm_model = genai.GenerativeModel("gemini-2.5-flash")
+        except Exception:
+            llm_model = genai.GenerativeModel("gemini-flash-latest")
+        logger.info("Google Gemini AI (gemini-2.5-flash) berhasil terkonfigurasi.")
     except Exception as e:
         logger.warning(f"Gagal mengonfigurasi Gemini AI: {e}")
         llm_model = None
+
 else:
     logger.warning("GEMINI_API_KEY tidak ditemukan.")
     llm_model = None
+
 
 
 def generate_fallback_summary(row: dict) -> str:
