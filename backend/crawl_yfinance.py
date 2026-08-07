@@ -431,6 +431,9 @@ def insert_fundamental(record):
 
     conn.close()
 
+<<<<<<< HEAD
+import sys
+=======
 def insert_technical_indicator(df):
 
     if df.empty:
@@ -570,7 +573,7 @@ def get_target_symbols(cli_args=None):
     # 3. Cek dari watchlist.db (SQLite)
     try:
         import sqlite3, json
-        db_path = os.path.join(os.path.dirname(os.path.abspath(_file_)), "watchlist.db")
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
         if os.path.exists(db_path):
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
@@ -596,7 +599,6 @@ def get_target_symbols(cli_args=None):
         symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
 
     return sorted(list(symbols))
-
 
 def main(custom_symbols=None):
     print("="*60)
@@ -626,6 +628,7 @@ def main(custom_symbols=None):
             if records:
 
                 insert_ohlcv(records)
+                total_records += len(records)
 
                 technical_df = calculate_technical_indicator(records)
 
