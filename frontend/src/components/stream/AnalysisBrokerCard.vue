@@ -27,18 +27,11 @@ const ringkasan = computed(() => {
   const highs = rows.map((r) => Number(r.high)).filter((n) => !Number.isNaN(n))
   const lows = rows.map((r) => Number(r.low)).filter((n) => !Number.isNaN(n))
   const volumes = rows.map((r) => Number(r.volume) || 0)
-  // Sama seperti ForeignFlowChart: buy-sell dulu, foreign_flow cuma cadangan.
-  const flows = rows.map((r) => {
-    const beli = Number(r.foreign_buy)
-    const jual = Number(r.foreign_sell)
-    return Number.isFinite(beli) && Number.isFinite(jual) ? beli - jual : Number(r.foreign_flow) || 0
-  })
-
   return {
     tertinggi: highs.length ? Math.max(...highs) : null,
     terendah: lows.length ? Math.min(...lows) : null,
     volumeRata: volumes.length ? volumes.reduce((a, b) => a + b, 0) / volumes.length : null,
-    flowTotal: flows.reduce((a, b) => a + b, 0),
+
     hari: rows.length,
   }
 })
@@ -77,7 +70,7 @@ const bisaDiperluas = computed(
 
     <template v-else>
       <!-- Ringkasan turunan dari OHLC -->
-      <dl v-if="ringkasan" class="grid grid-cols-2 gap-x-3 gap-y-2.5 border-b-[0.5px] border-border p-3.5">
+      <dl v-if="ringkasan" class="grid grid-cols-3 gap-x-3 gap-y-2.5 border-b-[0.5px] border-border p-3.5">
         <div>
           <dt class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Tertinggi</dt>
           <dd class="tabular mt-0.5 text-[13px] font-medium">
@@ -98,17 +91,7 @@ const bisaDiperluas = computed(
             {{ formatCompact(ringkasan.volumeRata) }}
           </dd>
         </div>
-        <div>
-          <dt class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            Total Foreign Flow
-          </dt>
-          <dd
-            class="tabular mt-0.5 text-[13px] font-medium"
-            :class="ringkasan.flowTotal >= 0 ? 'text-up' : 'text-down'"
-          >
-            {{ formatCompact(ringkasan.flowTotal) }}
-          </dd>
-        </div>
+
       </dl>
 
       <EmptyState
