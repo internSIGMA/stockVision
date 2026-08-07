@@ -54,7 +54,7 @@ async function crawlSekarang() {
         {{ market.selectedTicker ?? '—' }}
       </h1>
       <Star
-        v-if="isUtama"
+        v-if="isUtama && !auth.isAdmin"
         class="size-[15px] fill-current text-[var(--color-skip)]"
         aria-label="Emiten utama"
       />

@@ -7,7 +7,7 @@ on:
 
 jobs:
   zap_scan:
-    name: OWASP ZAP Baseline Scan
+    name: OWASP ZAP Security Audit (Frontend & Backend)
     runs-on: ubuntu-latest
 
     steps:
@@ -27,21 +27,38 @@ jobs:
       - name: Start Docker Containers
         run: |
           docker compose up -d --build
-          sleep 20 # Menunggu kontainer selesai inisialisasi
 
-      - name: Run OWASP ZAP Baseline Scan
+      - name: Wait for Services Health Check
+        run: |
+          echo "Menunggu layanan backend dan frontend siap..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/health > /dev/null && curl -s http://localhost:80 > /dev/null; then
+              echo "Seluruh layanan siap!"
+              exit 0
+            fi
+            echo "Menunggu container startup ($i/30)..."
+            sleep 2
+          done
+          echo "Warning: Timeout menunggu healthcheck, melanjutkan scan..."
+
+      - name: Run OWASP ZAP Scan - Frontend (Port 80)
         run: |
           mkdir -p zap-reports
           sudo chmod 777 zap-reports
           docker run --rm -v $(pwd)/zap-reports:/zap/wrk/:rw --network=host \
             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-            -t http://localhost:80 -r zap_report.html -a || true
+            -t http://localhost:80 -r zap_frontend_report.html -m 2 || true
 
-      - name: Upload Security Report Artifact
+      - name: Run OWASP ZAP Scan - Backend API (Port 8080)
+        run: |
+          docker run --rm -v $(pwd)/zap-reports:/zap/wrk/:rw --network=host \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:8080 -r zap_backend_report.html -m 2 || true
+
+      - name: Upload Security Report Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: owasp-zap-report
+          name: owasp-zap-security-reports
           path: |
             zap-reports/*.html
-            *.html

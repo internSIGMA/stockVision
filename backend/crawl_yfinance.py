@@ -12,11 +12,16 @@ TIDAK DIIZINKAN:
 """
 
 import os
+import sys
 import psycopg2
 from psycopg2.extras import execute_batch
 import yfinance as yf
 from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
+
+import pandas as pd
+from ta.momentum import RSIIndicator
+from ta.trend import MACD
 
 # Load env variables
 load_dotenv(find_dotenv(), override=True)
@@ -103,6 +108,39 @@ def create_table_fundamental():
     cur.close()
     conn.close()
     print("[yfinance Crawler] Tabel 'idxsaham.fundamental' siap.")
+
+def create_table_technical_indicator():
+    query = """
+    CREATE TABLE IF NOT EXISTS idxsaham.macd_rsi (
+
+        symbol VARCHAR(10),
+
+        tanggal DATE,
+
+        rsi14 NUMERIC(10,4),
+
+        macd NUMERIC(18,8),
+
+        macd_signal NUMERIC(18,8),
+
+        macd_histogram NUMERIC(18,8),
+
+        PRIMARY KEY(symbol, tanggal)
+
+    );
+    """
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(query)
+
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    print("[yfinance Crawler] Tabel 'idxsaham.macd_rsi' siap.")
 
 def crawl_ohlcv(symbol, period="5y"):
     ticker_symbol = f"{symbol}.JK"
@@ -201,6 +239,45 @@ def crawl_fundamental(symbol):
         "dividend_yield": info.get("dividendYield")
 
     }
+
+def calculate_technical_indicator(records):
+
+    if not records:
+        return []
+
+    df = pd.DataFrame(records)
+
+    df["close"] = df["close"].astype(float)
+
+    # ======================
+    # RSI
+    # ======================
+
+    rsi = RSIIndicator(
+        close=df["close"],
+        window=14
+    )
+
+    df["rsi14"] = rsi.rsi()
+
+    # ======================
+    # MACD
+    # ======================
+
+    macd = MACD(
+        close=df["close"],
+        window_fast=12,
+        window_slow=26,
+        window_sign=9
+    )
+
+    df["macd"] = macd.macd()
+
+    df["macd_signal"] = macd.macd_signal()
+
+    df["macd_histogram"] = macd.macd_diff()
+
+    return df
 
 def insert_ohlcv(records):
     if not records:
@@ -354,7 +431,95 @@ def insert_fundamental(record):
 
     conn.close()
 
+<<<<<<< HEAD
 import sys
+=======
+def insert_technical_indicator(df):
+
+    if df.empty:
+        return
+
+    records = []
+
+    for _, row in df.iterrows():
+
+        records.append({
+
+            "symbol": row["symbol"],
+
+            "tanggal": row["tanggal"],
+
+            "rsi14": None if pd.isna(row["rsi14"]) else float(row["rsi14"]),
+
+            "macd": None if pd.isna(row["macd"]) else float(row["macd"]),
+
+            "macd_signal": None if pd.isna(row["macd_signal"]) else float(row["macd_signal"]),
+
+            "macd_histogram": None if pd.isna(row["macd_histogram"]) else float(row["macd_histogram"])
+
+        })
+
+    query = """
+
+    INSERT INTO idxsaham.macd_rsi(
+
+        symbol,
+
+        tanggal,
+
+        rsi14,
+
+        macd,
+
+        macd_signal,
+
+        macd_histogram
+
+    )
+
+    VALUES(
+
+        %(symbol)s,
+
+        %(tanggal)s,
+
+        %(rsi14)s,
+
+        %(macd)s,
+
+        %(macd_signal)s,
+
+        %(macd_histogram)s
+
+    )
+
+    ON CONFLICT(symbol, tanggal)
+
+    DO UPDATE SET
+
+        rsi14 = EXCLUDED.rsi14,
+
+        macd = EXCLUDED.macd,
+
+        macd_signal = EXCLUDED.macd_signal,
+
+        macd_histogram = EXCLUDED.macd_histogram;
+
+    """
+
+    conn = get_connection()
+
+    cur = conn.cursor()
+
+    execute_batch(cur, query, records)
+
+    conn.commit()
+
+    cur.close()
+
+    conn.close()
+
+    print(f"[Technical Indicator] {records[0]['symbol']} : {len(records)} baris tersimpan.")
 
 def get_target_symbols(cli_args=None):
     """
@@ -444,6 +609,7 @@ def main(custom_symbols=None):
         create_table_ohlcv()
         create_table_company_info()
         create_table_fundamental()
+        create_table_technical_indicator()
     except Exception as e:
         print("[yfinance Crawler] ERROR: Gagal membuat tabel:", e)
         return
@@ -463,6 +629,10 @@ def main(custom_symbols=None):
 
                 insert_ohlcv(records)
                 total_records += len(records)
+
+                technical_df = calculate_technical_indicator(records)
+
+                insert_technical_indicator(technical_df)
 
             # Company Info
             company = crawl_company_info(symbol)

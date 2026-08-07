@@ -370,7 +370,6 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
                     errors.append(err_msg)
                     _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "FAILED", 0, str(e))
                     print(f"[Scheduler] {err_msg}")
-
                 # 2.2 Company Info & Fundamental
                 try:
                     c_info = crawl_company_info(symbol)

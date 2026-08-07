@@ -4,6 +4,8 @@ import { RouterLink, useRouter } from 'vue-router'
 import { Eye, EyeOff } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useGoogleSignIn } from '@/composables/useGoogleSignIn'
+import { useLandingSpotlight } from '@/composables/useLandingSpotlight'
+import { formatDate, formatNumber, formatPercent, trendClass } from '@/utils/format'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -81,14 +83,187 @@ onMounted(() => pasang(wadahGoogle.value, wadahGoogle.value?.offsetWidth))
 function googleTidakSiap() {
   error.value = googleError.value || 'Google Sign-In belum siap, coba beberapa saat lagi.'
 }
+
+// ---- Panel kiri: emiten berperforma terbaik, sama untuk semua pengunjung ----
+
+const {
+  ticker: sorotanTicker,
+  rows: sorotanRows,
+  hargaTerakhir,
+  perubahanPersen,
+  loading: sorotanLoading,
+  error: sorotanError,
+} = useLandingSpotlight()
+
+/** Sesi yang digambar di grafik panel kiri. */
+const SESI = 90
+const PERIODE_MA = 20
+
+const LEBAR = 340
+const ATAS = 8
+const BAWAH = 104
+const SISI = 6
+
+const jendela = computed(() => sorotanRows.value.slice(-SESI))
+
+/** Rata-rata bergerak, disejajarkan ke ekor jendela yang sama. */
+const seriRata = computed(() => {
+  const closes = jendela.value.map((r) => r.close)
+  if (closes.length < PERIODE_MA) return []
+  return closes.map((_, i) =>
+    i < PERIODE_MA - 1
+      ? null
+      : closes.slice(i - PERIODE_MA + 1, i + 1).reduce((a, b) => a + b, 0) / PERIODE_MA,
+  )
+})
+
+const skala = computed(() => {
+  const nilai = [
+    ...jendela.value.map((r) => r.close),
+    ...seriRata.value.filter((v) => v != null),
+  ]
+  if (!nilai.length) return null
+  const min = Math.min(...nilai)
+  const max = Math.max(...nilai)
+  return { min, span: max - min || 1 }
+})
+
+function garis(seri) {
+  const s = skala.value
+  if (!s || seri.length < 2) return ''
+  const jarak = (LEBAR - SISI * 2) / (seri.length - 1)
+  return seri
+    .map((v, i) => {
+      if (v == null) return null
+      const x = SISI + i * jarak
+      const y = BAWAH - ((v - s.min) / s.span) * (BAWAH - ATAS)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+const garisHarga = computed(() => garis(jendela.value.map((r) => r.close)))
+const garisRata = computed(() => garis(seriRata.value))
+
+const labelTanggal = computed(() => {
+  const w = jendela.value
+  if (w.length < 2) return []
+  return [0, 1, 2, 3].map((i) => {
+    const r = w[Math.round((i / 3) * (w.length - 1))]
+    return formatDate(r.tanggal)
+  })
+})
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-background px-5 py-10 sm:px-6 sm:py-14">
-    <div class="w-full max-w-[400px] sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:p-9 sm:shadow-[0_1px_2px_rgba(17,24,39,0.04),0_12px_32px_-12px_rgba(17,24,39,0.12)]">
-      <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-foreground sm:text-[30px]">
-        Buat akun StockVision
-      </h1>
+  <div class="flex min-h-screen bg-background">
+    <!-- Panel kiri: ilustrasi. Baru muncul di lg supaya form tidak terhimpit. -->
+    <section
+      class="hidden w-1/2 flex-col justify-center gap-12 bg-[var(--background-secondary)] px-10 py-12 text-foreground lg:flex xl:px-16"
+    >
+      <header>
+        <p class="text-[20px] font-semibold tracking-tight xl:text-[22px]">◆StockVision</p>
+        <p class="tabular mt-1.5 text-[13px] text-muted-foreground">
+          Dashboard Pasar Saham Indonesia
+        </p>
+      </header>
+
+      <div class="w-full max-w-[440px]">
+        <div class="flex items-baseline gap-2">
+          <span class="text-[26px] font-bold tracking-tight">
+            {{ sorotanTicker ?? '—' }}
+          </span>
+          <span class="tabular text-[11px] uppercase text-muted-foreground">IDX</span>
+          <span
+            v-if="sorotanTicker"
+            class="rounded bg-[var(--color-info-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-info-ink)]"
+          >
+            Performa terbaik
+          </span>
+        </div>
+
+        <p class="tabular mt-2.5 text-[44px] font-bold leading-none tracking-[0.04em] xl:text-[52px]">
+          {{ hargaTerakhir != null ? formatNumber(hargaTerakhir) : '—' }}
+        </p>
+
+        <p
+          v-if="perubahanPersen != null"
+          class="tabular mt-2.5 text-[15px] font-medium"
+          :class="trendClass(perubahanPersen)"
+        >
+          {{ formatPercent(perubahanPersen) }} · {{ jendela.length }} sesi terakhir
+        </p>
+
+        <figure
+          class="mt-8"
+          :aria-label="`Pergerakan harga ${sorotanTicker ?? ''} beserta rata-rata bergerak ${PERIODE_MA} sesi`"
+        >
+          <div v-if="sorotanLoading" class="h-[140px] w-full animate-pulse rounded bg-muted" />
+
+          <p
+            v-else-if="sorotanError || !garisHarga"
+            class="flex h-[140px] items-center text-[13px] text-muted-foreground"
+          >
+            {{ sorotanError || 'Data pasar belum tersedia.' }}
+          </p>
+
+          <svg
+            v-else
+            :viewBox="`0 0 ${LEBAR} 112`"
+            class="h-[140px] w-full"
+            fill="none"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <polyline
+              v-if="garisRata"
+              :points="garisRata"
+              stroke="var(--chart-2)"
+              stroke-width="1.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
+
+            <polyline
+              :points="garisHarga"
+              stroke="var(--chart-1)"
+              stroke-width="1.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+
+          <div class="h-px w-full bg-border"></div>
+
+          <figcaption
+            v-if="labelTanggal.length"
+            class="tabular mt-2 flex justify-between text-[11px] text-muted-foreground"
+          >
+            <span v-for="(tgl, i) in labelTanggal" :key="i">{{ tgl }}</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <p class="max-w-[440px] text-[14px] leading-relaxed text-muted-foreground">
+        Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan
+        crawling data saham Indonesia secara real-time.
+      </p>
+    </section>
+
+    <!-- Panel kanan: form register -->
+    <section class="flex w-full items-center justify-center px-5 py-10 sm:px-6 sm:py-14 lg:w-1/2">
+      <div class="w-full max-w-[400px]">
+        <!-- Identitas produk untuk layar yang tidak menampilkan panel kiri. -->
+        <p class="mb-6 text-[20px] font-semibold tracking-tight text-foreground lg:hidden">
+          ◆StockVision
+        </p>
+
+        <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-foreground sm:text-[30px]">
+          Buat akun StockVision
+        </h1>
 
       <form class="mt-7 flex flex-col gap-5" @submit.prevent="onSubmit">
         <div class="space-y-2">
@@ -232,7 +407,8 @@ function googleTidakSiap() {
           Masuk
         </RouterLink>
       </p>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 

@@ -26,6 +26,10 @@ app.register_blueprint(user_bp)
 from prescriptive.routes import prescriptive_bp
 app.register_blueprint(prescriptive_bp)
 
+from diagnostic.routes import diagnostic_bp
+app.register_blueprint(diagnostic_bp)
+
+
 from scheduler import (
     start_scheduler, stop_scheduler, pause_scheduler,
     resume_scheduler, trigger_now, get_scheduler_status
@@ -608,6 +612,7 @@ def parse_stock_info(d):
 # ============================================================
 # ENDPOINTS
 # ============================================================
+@app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
     token_status = "no_token"
@@ -626,7 +631,18 @@ def health():
     })
 
 
+@app.errorhandler(404)
+def handle_404(e):
+    return jsonify({"status": "error", "message": "Resource not found"}), 404
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"status": "error", "message": "Internal server error"}), 500
+
+
 @app.route("/auth/login", methods=["GET"])
+
 def force_login():
     try:
         with _token_cache["lock"]:
