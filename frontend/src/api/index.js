@@ -1,6 +1,19 @@
 import axios from 'axios'
 
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol
+    const hostname = window.location.hostname
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8080'
+    }
+    return `${protocol}//${hostname}:8080`
+  }
+  return 'http://localhost:8080'
+}
+
+export const BASE_URL = getBaseUrl()
 
 // Database berada di server remote — kueri pertama bisa memakan ~10 detik.
 const api = axios.create({
