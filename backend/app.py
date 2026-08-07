@@ -1007,7 +1007,5 @@ if __name__ == "__main__":
         print("\n[App] Starting auto-crawl scheduler...")
         start_scheduler()
         print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
-    else:
-        print("\n[App] Flask starting parent process (skipping scheduler start for parent)...")
-        
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
+    app.run(host="0.0.0.0", port=8080, debug=debug_mode)
