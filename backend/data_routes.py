@@ -344,6 +344,16 @@ def get_stock_forecast():
     if not symbol:
         return jsonify({"error": "Parameter 'symbol' wajib diisi"}), 400
         
+    # Utamakan generate_dynamic_forecast agar tanggal prediksi selalu mutakhir mengikuti data historis terbaru
+    try:
+        from forecasting.dynamic_forecast import generate_dynamic_forecast
+        forecast_items = generate_dynamic_forecast(symbol, horizon_days=7)
+        if forecast_items:
+            return jsonify(forecast_items)
+    except Exception as e:
+        print(f"[Forecast Endpoint] Dynamic forecast generation failed for {symbol}: {e}")
+
+    # Fallback jika dynamic generation gagal: ambil dari tabel stock_forecasting
     query = """
         SELECT symbol, tanggal, open, high, low, close, volume
         FROM idxsaham.stock_forecasting
@@ -359,17 +369,6 @@ def get_stock_forecast():
         cur.close()
         conn.close()
         
-        # Fallback if no stored forecast is found
-        if not rows:
-            try:
-                from forecasting.dynamic_forecast import generate_dynamic_forecast
-                forecast_items = generate_dynamic_forecast(symbol, horizon_days=7)
-                if forecast_items:
-                    return jsonify(forecast_items)
-            except Exception as e:
-                print(f"[Forecast Endpoint] Dynamic forecast generation failed for {symbol}: {e}")
-
-        # Sort ascending for chart display
         if rows:
             rows = sorted(rows, key=lambda x: x[1])
 
