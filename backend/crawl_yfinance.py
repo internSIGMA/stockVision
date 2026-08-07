@@ -354,7 +354,88 @@ def insert_fundamental(record):
 
     conn.close()
 
-def main():
+import sys
+
+def get_target_symbols(cli_args=None):
+    """
+    Mengambil secara DINAMIS seluruh simbol emiten unik dari:
+    1. Argumen Command Line (CLI) jika diberikan (misal: python crawl_yfinance.py BBCA BBNI TLKM)
+    2. Seluruh tabel di Database PostgreSQL (idxsaham.watchlists, stock_info, stock_ohlc, company_info, fundamental, broker_activity, insider_activity)
+    3. File SQLite watchlist.db
+    """
+    symbols = set()
+    
+    # 1. Cek dari Command-Line Arguments (CLI) jika ada
+    args = cli_args if cli_args is not None else sys.argv[1:]
+    for arg in args:
+        if arg and not arg.startswith("-"):
+            for s in arg.split(","):
+                cleaned = s.strip().upper()
+                if cleaned:
+                    symbols.add(cleaned)
+    if symbols:
+        print(f"[yfinance Crawler] Simbol diambil dari argumen CLI ({len(symbols)} emiten).")
+        return sorted(list(symbols))
+
+    # 2. Cek secara DINAMIS dari seluruh tabel PostgreSQL yang menyimpan data emiten
+    db_queries = [
+        "SELECT DISTINCT stock_code FROM idxsaham.watchlists",
+        "SELECT DISTINCT symbol FROM idxsaham.stock_info",
+        "SELECT DISTINCT symbol FROM idxsaham.stock_ohlc",
+        "SELECT DISTINCT symbol FROM idxsaham.company_info",
+        "SELECT DISTINCT symbol FROM idxsaham.fundamental",
+        "SELECT DISTINCT kodesaham FROM idxsaham.broker_activity",
+        "SELECT DISTINCT saham FROM idxsaham.insider_activity"
+    ]
+    
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        for q in db_queries:
+            try:
+                cur.execute(q)
+                rows = cur.fetchall()
+                for r in rows:
+                    if r[0] and str(r[0]).strip():
+                        symbols.add(str(r[0]).strip().upper())
+            except Exception:
+                conn.rollback()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("[yfinance Crawler] Warning: Tidak dapat terhubung ke PostgreSQL untuk mengambil emiten dinamis:", e)
+
+    # 3. Cek dari watchlist.db (SQLite)
+    try:
+        import sqlite3, json
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT symbols FROM watchlists;")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            for r in rows:
+                try:
+                    syms = json.loads(r[0])
+                    for s in syms:
+                        if str(s).strip():
+                            symbols.add(str(s).strip().upper())
+                except Exception:
+                    pass
+    except Exception as e:
+        print("[yfinance Crawler] Warning: Gagal membaca SQLite watchlist.db:", e)
+
+    if symbols:
+        print(f"[yfinance Crawler] Berhasil menemukan {len(symbols)} emiten unik secara dinamis dari Database.")
+    else:
+        print("[yfinance Crawler] Info: Belum ada data emiten di DB/Watchlist. Menggunakan emiten awal.")
+        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
+
+    return sorted(list(symbols))
+
+def main(custom_symbols=None):
     print("="*60)
     print("CRAWLER DATA HISTORIS YFINANCE (5 TAHUN)")
     print("="*60)
@@ -367,7 +448,8 @@ def main():
         print("[yfinance Crawler] ERROR: Gagal membuat tabel:", e)
         return
         
-    symbols = ["BBCA", "BBNI", "BBRI", "BMRI", "BJBR"]
+    symbols = custom_symbols or get_target_symbols()
+    print(f"[yfinance Crawler] Memproses {len(symbols)} emiten: {', '.join(symbols)}")
     total_records = 0
     
     for symbol in symbols:
@@ -380,6 +462,7 @@ def main():
             if records:
 
                 insert_ohlcv(records)
+                total_records += len(records)
 
             # Company Info
             company = crawl_company_info(symbol)
