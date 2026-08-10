@@ -118,7 +118,7 @@ class UserCrudTests(unittest.TestCase):
         # 6. Fetching empty watchlists auto-seeds a default watchlist
         wls_after_delete = user.get_watchlists(1)
         self.assertEqual(len(wls_after_delete), 1)
-        self.assertEqual(wls_after_delete[0]["name"], "Daftar Pantau Utama")
+        self.assertEqual(wls_after_delete[0]["name"], "Daftar Utama")
 
 
 if __name__ == "__main__":

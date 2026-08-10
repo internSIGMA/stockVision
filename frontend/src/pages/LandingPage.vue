@@ -2,7 +2,10 @@
 import { RouterLink } from 'vue-router'
 import { TrendingUp } from '@lucide/vue'
 import { useLandingSpotlight } from '@/composables/useLandingSpotlight'
+import { useAuthStore } from '@/stores/auth'
 import { formatNumber, formatPercent, trendClass } from '@/utils/format'
+
+const auth = useAuthStore()
 
 const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
   useLandingSpotlight()
@@ -23,11 +26,13 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
         </span>
       </RouterLink>
 
+      <div v-if="auth.isInitializing" class="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
       <RouterLink
-        to="/login"
+        v-else
+        :to="auth.isLoggedIn ? '/stream' : '/login'"
         class="rounded-md bg-primary px-6 py-2 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
       >
-        Login
+        {{ auth.isLoggedIn ? 'Dashboard' : 'Login' }}
       </RouterLink>
     </header>
 
@@ -109,11 +114,13 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
         </div>
       </div>
 
+      <div v-if="auth.isInitializing" class="mt-12 h-[52px] w-[240px] animate-pulse rounded-full bg-muted"></div>
       <RouterLink
-        to="/login"
-        class="mt-12 rounded-full bg-primary px-8 py-3.5 text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        v-else
+        :to="auth.isLoggedIn ? '/stream' : '/login'"
+        class="mt-12 inline-flex h-[52px] items-center justify-center rounded-full bg-primary px-8 text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
       >
-        Mulai Sekarang (Login)
+        {{ auth.isLoggedIn ? 'Lanjut ke Dashboard' : 'Mulai Sekarang' }}
       </RouterLink>
     </main>
   </div>

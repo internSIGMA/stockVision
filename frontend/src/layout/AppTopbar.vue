@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import AccountSettingsModal from '@/components/AccountSettingsModal.vue'
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -11,6 +12,7 @@ const market = useMarketStore()
 
 const menuOpen = ref(false)
 const settingsOpen = ref(false)
+const showLogoutDialog = ref(false)
 
 const initials = computed(() => {
   const name = auth.user?.name || auth.user?.username || 'User'
@@ -23,8 +25,13 @@ function openSettings() {
 }
 
 function logout() {
+  menuOpen.value = false
+  showLogoutDialog.value = true
+}
+
+function performLogout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
@@ -134,9 +141,14 @@ function logout() {
 </div>
     </div>
     <AccountSettingsModal
-  :open="settingsOpen"
-  @close="settingsOpen = false"
-/>
+      :open="settingsOpen"
+      @close="settingsOpen = false"
+    />
+
+    <LogoutConfirmDialog
+      v-model:open="showLogoutDialog"
+      @confirm="performLogout"
+    />
   </header>
 </template>
 

@@ -36,7 +36,7 @@ async function watchlistBaru() {
 
   membuat.value = true
   try {
-    const nama = `Daftar Pantau ${auth.watchlists.length + 1}`
+    const nama = `Daftar ${auth.watchlists.length + 1}`
     const created = await createWatchlist(auth.user.id, { name: nama, symbols: [] })
     await auth.fetchWatchlists()
     auth.selectWatchlist(created.id)
