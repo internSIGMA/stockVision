@@ -25,6 +25,6 @@ COPY . .
 # Expose the Flask port
 EXPOSE 8080
 
-# Command to run the generator and then the Flask application
-CMD ["sh", "-c", "python db/trading_date.py || true; exec python app.py"]
+# Command to run the trading date generator, yfinance crawler, and then the Flask application
+CMD ["sh", "-c", "python db/trading_date.py || true; python crawl_yfinance.py || true; exec python app.py"]
 
