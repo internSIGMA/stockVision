@@ -39,6 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
   const watchlists = ref([])
   const activeWatchlistId = ref(null)
   const loading = ref(false)
+  const isInitializing = ref(true)
 
   const isLoggedIn = computed(() => !!user.value)
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
@@ -268,14 +269,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    if (!user.value) return
+    isInitializing.value = true
+    try {
+      if (!user.value) return
 
-    // selectedTicker tidak ikut dipersistensi, jadi setelah refresh nilainya
-    // kosong dan seluruh section Stream ikut kosong. Pulihkan dari profil user.
-    useMarketStore().initTicker(user.value.defaultTicker)
+      // selectedTicker tidak ikut dipersistensi, jadi setelah refresh nilainya
+      // kosong dan seluruh section Stream ikut kosong. Pulihkan dari profil user.
+      useMarketStore().initTicker(user.value.defaultTicker)
 
-    if (watchlists.value.length) return
-    await fetchWatchlists()
+      if (watchlists.value.length) return
+      await fetchWatchlists()
+    } finally {
+      isInitializing.value = false
+    }
   }
 
   return {
@@ -288,6 +294,7 @@ export const useAuthStore = defineStore('auth', () => {
     watchlistTidakDidukung,
     emitenUtama,
     loading,
+    isInitializing,
     accessRole,
     isAdmin,
     isLoggedIn,
