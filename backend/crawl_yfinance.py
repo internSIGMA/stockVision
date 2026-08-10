@@ -431,7 +431,6 @@ def insert_fundamental(record):
 
     conn.close()
 
-
 import sys
 def insert_technical_indicator(df):
 
