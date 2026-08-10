@@ -29,6 +29,10 @@ app.register_blueprint(prescriptive_bp)
 from diagnostic.routes import diagnostic_bp
 app.register_blueprint(diagnostic_bp)
 
+from analytics.routes import analytics_bp
+app.register_blueprint(analytics_bp)
+
+
 
 from scheduler import (
     start_scheduler, stop_scheduler, pause_scheduler,
