@@ -1,58 +1,78 @@
-# SahamScope — Frontend
+# StockVision — Frontend 📈
 
-Front-end (Vue 3) untuk aplikasi crawling & analisis data saham dari Stockbit.
-Fokus emiten: **BBRI, BBCA, BBNI**.
+Antarmuka pengguna (Frontend) untuk aplikasi dashboard analisis & crawling data saham pasar Indonesia (IDX).
 
-> ⚠️ Ini **frontend saja**. Seluruh data (broker summary, harga harian, insider
-> activity, status crawler, forecasting) masih **mock** yang dihasilkan di
-> `src/data/market.js`. Backend crawler Python tinggal disambungkan dengan
-> mengganti fungsi-fungsi di sana / `src/services/authService.js` menjadi
-> pemanggilan API.
+Aplikasi dibangun sebagai **halaman stream tunggal (single-page stream)** yang responsif dengan fitur visualisasi grafik interaktif, pemantauan aliran dana asing, analisis teknikal, serta manajemen akun & watchlist.
 
-## Menjalankan
+---
 
+## 🚀 Prasyarat & Cara Menjalankan
+
+### Prasyarat
+- **Node.js 20+**
+- **npm** (atau pnpm/yarn)
+
+### Menjalankan Dev Server
 ```bash
+cd frontend
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # build produksi ke dist/
+npm run dev
+```
+Dev server akan berjalan di `http://localhost:5173`. Frontend terhubung ke backend Flask via `VITE_API_URL` (default: `http://localhost:8080`).
+
+### Build Produksi
+```bash
+npm run build
+```
+Hasil build tersimpan di direktori `dist/`.
+
+---
+
+## 🛠️ Tech Stack Frontend
+
+- **Framework**: Vue 3 (Composition API) + Vite 6
+- **State Management**: Pinia
+- **Routing**: Vue Router
+- **Styling**: Tailwind CSS v4 + shadcn-vue (`reka-ui`) + Lucide Icons
+- **Grafik & Visualisasi**: Chart.js + `lightweight-charts`
+- **UX & Animasi**: Lenis Smooth Scroll + `vue-sonner` (Toast Notifications)
+- **Tipografi**: **Archivo** (Heading/UI) & **Spline Sans Mono** (Angka & Data Tabular)
+
+---
+
+## 📈 Emiten Terdukung
+
+Sistem backend dan frontend secara resmi mendukung 5 emiten utama IDX:
+`BBCA` · `BBNI` · `BBRI` · `BMRI` · `BJBR`
+
+---
+
+## 🔑 Akun Demo
+
+Backend menyediakan akun demo secara otomatis:
+- `fariz@sahamscope.id` / `password123` (Watchlist: BBCA, BMRI)
+- `dewi@sahamscope.id` / `password123` (Watchlist: BBNI, BBCA, BBRI, BMRI)
+
+---
+
+## 📂 Struktur Direktori Frontend
+
+```text
+frontend/src/
+├── api/              # Klien HTTP Axios & kontrak API (StockVision.js)
+├── components/
+│   ├── charts/       # CandlestickChart, ForeignFlowChart, ForecastChart
+│   ├── stream/       # Komponen kartu penyusun halaman Stream
+│   └── ui/           # Komponen UI (shadcn-vue, StatCard, EmptyState, StatusPill)
+├── composables/      # Logic composables (useEmitenData, useForecastData, useAuthReset, dll)
+├── pages/            # Halaman StreamPage, LoginPage, ForgotPasswordPage, dll
+├── stores/           # Store Pinia (auth.js, market.js)
+├── utils/            # Helper format angka/rupiah, kalkulasi indikator teknikal, export CSV
+└── vite.config.js
 ```
 
-**Login demo:** `analis@sahamscope.id` / `password123`
-(atau klik tombol "Isi kredensial demo" di halaman login)
+---
 
-## Fitur
+## 🔗 Integrasi Backend API
 
-| Halaman | Isi |
-|---|---|
-| **Login** | Validasi field, format email, kredensial salah + sisa percobaan, lockout, simulasi error jaringan, state loading |
-| **Dashboard** | Ringkasan 3 emiten pantauan, statistik crawler, candlestick, top net buyer, insider terbaru, status job |
-| **Broker Summary** | Net lot per broker, top buyer/seller, net flow (bandarmology) |
-| **Harga Emiten** | Candlestick OHLC + MA20/MA50, volume, filter periode |
-| **Insider / Backdoor** | Tabel transaksi orang dalam, filter beli/jual, deteksi net distribusi |
-| **Technical Analysis** | 4 tab: Descriptive, Diagnostic (RSI + sinyal), Predictive (forecast band), Prescriptive (rekomendasi + target/stop) |
-| **Forecasting** | Proyeksi harga + confidence band, pilihan horizon |
-| **Crawling Monitor** | Status job real-time, progress bar, retry, run-all |
-| **Watchlist Crawler** | CRUD emiten yang di-crawl (sumber data, interval, aktif/nonaktif) — persist ke localStorage |
-
-## Struktur
-
-```
-src/
-  views/         Halaman (Login, Dashboard, Broker, Prices, Insider, Technical, Forecasting, Crawling, Watchlist)
-  layout/        AppLayout + Sidebar + Topbar (chrome bersama)
-  components/
-    ui/          StatCard
-    charts/      CandleChart, AreaChart, BarChart (wrapper ApexCharts) + chartTheme
-  stores/        auth.js, market.js (Pinia)
-  services/      authService.js (mock auth: error, lockout, network)
-  data/          market.js (generator data mock — TITIK SAMBUNG API)
-  utils/         format.js (rupiah, angka, persen, timeAgo)
-  router/        route + auth guard
-```
-
-## Menyambung ke backend nanti
-
-- **Auth:** ganti `login()` di `src/services/authService.js` dengan `fetch`/axios ke endpoint login.
-- **Data pasar:** ganti fungsi di `src/data/market.js` (`generateOHLC`, `brokerSummary`,
-  `insiderActivity`, `seedCrawlJobs`, `forecast`) agar memanggil API crawler.
-  Bentuk return sudah didokumentasikan lewat penggunaannya di komponen.
+Seluruh panggilan API dikelola di `src/api/StockVision.js` dan composables. Untuk panduan lengkap spesifikasi endpoint backend, lihat **[Panduan Integrasi REST API](../docs/api-integration.md)**.
