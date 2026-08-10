@@ -225,30 +225,34 @@ def get_users():
 
 def _ensure_watchlists_table():
     """Pastikan tabel idxsaham.watchlists ada di PostgreSQL dan memiliki kolom name dan symbols."""
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama',
-            symbols JSONB NOT NULL DEFAULT '[]',
-            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    )
-    cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama';")
-    cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS symbols JSONB NOT NULL DEFAULT '[]'::jsonb;")
     try:
-        cur.execute("ALTER TABLE idxsaham.watchlists ALTER COLUMN stock_code DROP NOT NULL;")
-    except Exception:
-        conn.rollback()
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);")
-    conn.commit()
-    cur.close()
-    conn.close()
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama',
+                symbols JSONB NOT NULL DEFAULT '[]',
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama';")
+        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS symbols JSONB NOT NULL DEFAULT '[]'::jsonb;")
+        try:
+            cur.execute("ALTER TABLE idxsaham.watchlists ALTER COLUMN stock_code DROP NOT NULL;")
+        except Exception:
+            conn.rollback()
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Warning: _ensure_watchlists_table skipped due to DB connection: {e}")
+
 
 
 def get_user_unique_symbols(user_id, exclude_watchlist_id=None):
