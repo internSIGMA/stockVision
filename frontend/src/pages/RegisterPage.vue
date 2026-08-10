@@ -40,6 +40,14 @@ const masalah = computed(() => {
   return ''
 })
 
+function lanjut() {
+  if (auth.user && !localStorage.getItem(`onboarded_${auth.user.id}`)) {
+    router.push('/onboarding')
+    return
+  }
+  router.push('/stream')
+}
+
 async function onSubmit() {
   error.value = masalah.value
   if (error.value) return
@@ -51,7 +59,7 @@ async function onSubmit() {
       username: form.value.username.trim(),
       name: form.value.name.trim(),
     })
-    router.push('/stream')
+    lanjut()
   } catch (err) {
     // Email/username kembar melanggar UNIQUE constraint dan muncul sebagai 500.
     error.value = /duplicate|unique/i.test(err.message)
@@ -69,7 +77,7 @@ const { siap, error: googleError, pasang } = useGoogleSignIn(async (credential) 
   error.value = ''
   try {
     await auth.googleLogin(credential)
-    router.push('/stream')
+    lanjut()
   } catch (err) {
     error.value = err.message
   }

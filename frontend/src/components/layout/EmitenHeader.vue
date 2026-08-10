@@ -53,11 +53,6 @@ async function crawlSekarang() {
       <h1 class="tabular text-[18px] font-semibold tracking-[-0.01em]">
         {{ market.selectedTicker ?? '—' }}
       </h1>
-      <Star
-        v-if="isUtama && !auth.isAdmin"
-        class="size-[15px] fill-current text-[var(--color-skip)]"
-        aria-label="Emiten utama"
-      />
     </div>
 
     <!-- Di layar sempit sidebar disembunyikan, jadi pemilih emiten harus ada di sini. -->
@@ -75,16 +70,6 @@ async function crawlSekarang() {
     </Select>
 
     <div class="ml-auto flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        :disabled="sibuk"
-        title="Menjalankan crawl untuk seluruh emiten target scheduler"
-        @click="crawlSekarang"
-      >
-        <RefreshCw class="size-3.5" :class="{ 'animate-spin': sibuk }" />
-        {{ sibuk ? 'Meng-crawl…' : 'Trigger Crawler' }}
-      </Button>
     </div>
   </header>
 </template>
