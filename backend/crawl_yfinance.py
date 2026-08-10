@@ -431,10 +431,8 @@ def insert_fundamental(record):
 
     conn.close()
 
-<<<<<<< HEAD
-import sys
-=======
 def insert_technical_indicator(df):
+
 
     if df.empty:
         return

@@ -26,14 +26,22 @@ load_dotenv(find_dotenv())
 # DATABASE CONNECTION
 # =============================================================
 def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "postgres"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432)),
-        connect_timeout=3,
-    )
+    h = os.getenv("DB_HOST", "db")
+    db = os.getenv("DB_NAME", "stockVision")
+    u = os.getenv("DB_USER", "stockvision")
+    p = os.getenv("DB_PASSWORD", "stockvision_pass")
+    port = int(os.getenv("DB_PORT", 5432))
+    try:
+        return psycopg2.connect(host=h, database=db, user=u, password=p, port=port, connect_timeout=3)
+    except psycopg2.OperationalError:
+        targets = [("db", 5432), ("localhost", 5433), ("localhost", 5434), ("127.0.0.1", 5433)]
+        for host_cand, port_cand in targets:
+            try:
+                return psycopg2.connect(host=host_cand, database=db, user=u, password=p, port=port_cand, connect_timeout=3)
+            except psycopg2.OperationalError:
+                continue
+        raise
+
 
 
 
