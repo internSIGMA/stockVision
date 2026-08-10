@@ -505,8 +505,99 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "7. Analytics API",
+			"item": [
+				{
+					"name": "Run Analytics Processing Pipeline",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symbols\": [\"BBCA\", \"BMRI\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/analytics/run",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "run"]
+						}
+					}
+				},
+				{
+					"name": "Get Stock Analytics (Unified)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/analytics/stock?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "stock"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Technical Analytics",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/analytics/technical?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "technical"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Risk & Performance Metrics",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/analytics/risk-performance?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "risk-performance"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Flow & Bandarmology Analytics",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/analytics/flow?symbol=BBCA",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "flow"],
+							"query": [
+								{ "key": "symbol", "value": "BBCA" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Market Summary Analytics",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/analytics/summary",
+							"host": ["{{base_url}}"],
+							"path": ["api", "analytics", "summary"]
+						}
+					}
+				}
+			]
 		}
 	],
+
 	"variable": [
 		{
 			"key": "base_url",

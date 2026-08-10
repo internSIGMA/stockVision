@@ -5,6 +5,19 @@
 CREATE SCHEMA IF NOT EXISTS idxsaham;
 
 -- =============================================================
+-- TABLE: idxsaham.watchlists
+-- Daftar pantau emiten per user (menggantikan SQLite watchlist.db)
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    symbols JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);
+
+-- =============================================================
 -- TABLE: idxsaham.trading_calendar
 -- Kalender hari trading bursa
 -- =============================================================
@@ -184,3 +197,59 @@ CREATE TABLE IF NOT EXISTS idxsaham.crawl_logs (
     error_message TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- =============================================================
+-- TABLE: idxsaham.analytics_results
+-- Snapshot & cached metrics dari Analytics Processing Layer
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.analytics_results (
+    symbol VARCHAR(10) NOT NULL,
+    tanggal_analisis DATE NOT NULL,
+    last_close NUMERIC(15,2),
+    change_pct_1d NUMERIC(8,4),
+    change_pct_7d NUMERIC(8,4),
+    change_pct_30d NUMERIC(8,4),
+    rsi_14 NUMERIC(8,4),
+    rsi_signal VARCHAR(20),
+    macd_line NUMERIC(15,4),
+    macd_signal NUMERIC(15,4),
+    macd_hist NUMERIC(15,4),
+    macd_trend VARCHAR(20),
+    sma_5 NUMERIC(15,2),
+    sma_20 NUMERIC(15,2),
+    sma_50 NUMERIC(15,2),
+    sma_200 NUMERIC(15,2),
+    ema_12 NUMERIC(15,2),
+    ema_26 NUMERIC(15,2),
+    bb_upper NUMERIC(15,2),
+    bb_middle NUMERIC(15,2),
+    bb_lower NUMERIC(15,2),
+    atr_14 NUMERIC(15,2),
+    pivot_point NUMERIC(15,2),
+    support_1 NUMERIC(15,2),
+    support_2 NUMERIC(15,2),
+    resistance_1 NUMERIC(15,2),
+    resistance_2 NUMERIC(15,2),
+    volatility_ann NUMERIC(8,4),
+    sharpe_ratio NUMERIC(8,4),
+    sortino_ratio NUMERIC(8,4),
+    max_drawdown NUMERIC(8,4),
+    beta NUMERIC(8,4),
+    cagr NUMERIC(8,4),
+    net_foreign_flow_1d NUMERIC(20,2),
+    net_foreign_flow_5d NUMERIC(20,2),
+    net_foreign_flow_20d NUMERIC(20,2),
+    big_money_status VARCHAR(50),
+    broker_hhi NUMERIC(8,4),
+    insider_net_vol_30d NUMERIC(20,2),
+    insider_sentiment_score NUMERIC(8,4),
+    insider_trx_count INT,
+    market_breadth_score NUMERIC(8,4),
+    composite_sentiment_score NUMERIC(8,4),
+    composite_sentiment_label VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (symbol, tanggal_analisis)
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_results_symbol ON idxsaham.analytics_results (symbol);
+CREATE INDEX IF NOT EXISTS idx_analytics_results_tanggal ON idxsaham.analytics_results (tanggal_analisis);

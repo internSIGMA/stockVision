@@ -141,10 +141,11 @@ function onKeydown(e) {
 
     <!-- Input Nama Watchlist -->
     <div class="flex flex-col gap-1.5">
-      <label class="text-[11px] font-medium text-muted-foreground">
+      <label for="watchlist-name-input" class="text-[11px] font-medium text-muted-foreground">
         Nama Daftar Pantau
       </label>
       <input
+        id="watchlist-name-input"
         v-model="inputName"
         type="text"
         placeholder="Contoh: Saham Teknologi"
@@ -154,11 +155,12 @@ function onKeydown(e) {
 
     <!-- Pencarian & Tambah Emiten -->
     <div class="flex flex-col gap-1.5">
-      <label class="text-[11px] font-medium text-muted-foreground">
+      <label for="watchlist-ticker-input" class="text-[11px] font-medium text-muted-foreground">
         Cari & Tambah Emiten IDX (contoh: TLKM, GOTO)
       </label>
       <div class="flex flex-col gap-2">
         <input
+          id="watchlist-ticker-input"
           v-model="inputTicker"
           type="text"
           maxlength="6"

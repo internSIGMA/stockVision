@@ -156,107 +156,109 @@ async function bagikan() {
 
 <template>
   <section class="flex flex-col gap-3.5">
-    <!-- Bar judul: identitas panel di kiri, aksi dan waktu data di kanan -->
-    <header class="flex flex-wrap items-start justify-between gap-3">
-      <h2
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground"
-      >
-        <Sparkles class="size-3.5 text-[var(--primary)]" aria-hidden="true" />
-        Analisis Preskriptif AI
-      </h2>
-
-      <div class="flex flex-col items-end gap-1">
-        <button
-          type="button"
-          :disabled="menyalin || !backend?.llm_summary"
-          class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--primary-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50"
-          @click="bagikan"
+    <!-- Box utama yang menyatukan header dan ringkasan AI -->
+    <div class="flex flex-col gap-4 sm:gap-5 rounded-xl border-[0.5px] border-[var(--primary-light)]/50 bg-[var(--background-secondary)] p-4 sm:p-5">
+      <!-- Bar judul: identitas panel di kiri, aksi dan waktu data di kanan -->
+      <header class="flex flex-wrap items-start justify-between gap-3">
+        <h2
+          class="flex items-center gap-1.5 rounded-full border-[0.5px] border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground"
         >
-          <Share2 class="size-3.5" aria-hidden="true" />
-          Bagikan
-        </button>
+          <Sparkles class="size-3.5 text-[var(--primary)]" aria-hidden="true" />
+          Analisis Preskriptif AI
+        </h2>
 
-        <p class="text-[10px] text-muted-foreground">
-          Data terakhir diupdate:
-          <span class="tabular">{{ backend?.tanggal_analisis ? formatDate(backend.tanggal_analisis) : '—' }}</span>
-        </p>
-      </div>
-    </header>
+        <div class="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            :disabled="menyalin || !backend?.llm_summary"
+            class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--primary-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50"
+            @click="bagikan"
+          >
+            <Share2 class="size-3.5" aria-hidden="true" />
+            Bagikan
+          </button>
 
-    <div v-if="loading" class="flex flex-col gap-3.5">
-      <div class="h-[180px] animate-pulse rounded-xl bg-muted" />
-      <div class="grid gap-3.5 lg:grid-cols-2">
-        <div v-for="i in 2" :key="i" class="h-[190px] animate-pulse rounded-xl bg-muted" />
+          <p class="text-[10px] text-muted-foreground">
+            Data terakhir diupdate:
+            <span class="tabular">{{ backend?.tanggal_analisis ? formatDate(backend.tanggal_analisis) : '—' }}</span>
+          </p>
+        </div>
+      </header>
+
+      <!-- State Loading untuk ringkasan -->
+      <div v-if="loading" class="h-[120px] animate-pulse rounded-lg bg-muted" />
+
+      <!-- State Kosong untuk ringkasan -->
+      <EmptyState
+        v-else-if="!hasil"
+        title="Belum ada data OHLC"
+        description="Analisis muncul setelah emiten ini punya histori harga."
+      />
+
+      <!-- Konten Ringkasan AI -->
+      <div v-else class="flex gap-4 sm:gap-5">
+        <!-- Maskot ikut menandai bahwa teks ini tulisan mesin, bukan analis -->
+        <svg
+          class="hidden size-[84px] shrink-0 sm:block lg:size-[96px]"
+          viewBox="0 0 96 96"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle cx="48" cy="10" r="4.5" fill="var(--primary-light)" />
+          <path d="M48 14v9" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" />
+          <rect x="5" y="40" width="9" height="20" rx="4.5" fill="var(--primary-light)" />
+          <rect x="82" y="40" width="9" height="20" rx="4.5" fill="var(--primary-light)" />
+          <rect x="14" y="23" width="68" height="56" rx="19" fill="var(--primary)" />
+          <rect x="25" y="34" width="46" height="29" rx="12" fill="var(--chart-5)" />
+          <circle cx="39" cy="48.5" r="5.5" fill="var(--primary-light)" />
+          <circle cx="57" cy="48.5" r="5.5" fill="var(--primary-light)" />
+          <rect x="40" y="69" width="16" height="4" rx="2" fill="var(--primary-light)" opacity="0.55" />
+        </svg>
+
+        <div class="min-w-0 flex-1">
+          <div v-if="backendLoading" class="flex flex-col gap-2">
+            <div v-for="i in 5" :key="i" class="h-3 animate-pulse rounded bg-muted" />
+          </div>
+
+          <template v-else-if="ringkasan.length">
+            <p
+              v-for="p in ringkasan"
+              :key="p.id"
+              class="mb-3 text-[12.5px] leading-[1.75] text-[var(--foreground-body)] last:mb-0"
+            >
+              <!-- Tag ditutup rapat di baris yang sama: baris baru di dalam
+                   elemen ikut jadi spasi dan merusak tanda kutip serta kurung. -->
+              <template v-for="(b, i) in p.bagian" :key="i">
+                <strong
+                  v-if="b.gaya === 'tebal'"
+                  class="font-semibold text-foreground"
+                >{{ b.teks }}</strong>
+                <em
+                  v-else-if="b.gaya === 'miring'"
+                  class="font-medium not-italic text-foreground"
+                >“{{ b.teks }}”</em>
+                <template v-else>{{ b.teks }}</template>
+              </template>
+            </p>
+          </template>
+
+          <p v-else class="text-[12.5px] text-muted-foreground">
+            Ringkasan AI belum tersedia untuk emiten ini.
+          </p>
+
+          <p class="mt-4 border-t-[0.5px] border-border pt-2.5 text-[10px] text-muted-foreground">
+            Disclaimer: AI tidak 100% akurat. Gunakan analisis ini sebagai referensi tambahan.
+          </p>
+        </div>
       </div>
     </div>
 
-    <EmptyState
-      v-else-if="!hasil"
-      title="Belum ada data OHLC"
-      description="Analisis muncul setelah emiten ini punya histori harga."
-    />
+    <!-- State Loading untuk grid strategi bawah -->
+    <div v-if="loading" class="grid gap-3.5 lg:grid-cols-2">
+      <div v-for="i in 2" :key="i" class="h-[190px] animate-pulse rounded-xl bg-muted" />
+    </div>
 
-    <template v-else>
-      <!-- 0 — Ringkasan AI: naratif panjang, jadi diberi panggung sendiri -->
-      <article
-        class="rounded-xl border-[0.5px] border-[var(--primary-light)]/50 bg-[var(--background-secondary)] p-4 sm:p-5"
-      >
-        <div class="flex gap-4 sm:gap-5">
-          <!-- Maskot ikut menandai bahwa teks ini tulisan mesin, bukan analis -->
-          <svg
-            class="hidden size-[84px] shrink-0 sm:block lg:size-[96px]"
-            viewBox="0 0 96 96"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle cx="48" cy="10" r="4.5" fill="var(--primary-light)" />
-            <path d="M48 14v9" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" />
-            <rect x="5" y="40" width="9" height="20" rx="4.5" fill="var(--primary-light)" />
-            <rect x="82" y="40" width="9" height="20" rx="4.5" fill="var(--primary-light)" />
-            <rect x="14" y="23" width="68" height="56" rx="19" fill="var(--primary)" />
-            <rect x="25" y="34" width="46" height="29" rx="12" fill="var(--chart-5)" />
-            <circle cx="39" cy="48.5" r="5.5" fill="var(--primary-light)" />
-            <circle cx="57" cy="48.5" r="5.5" fill="var(--primary-light)" />
-            <rect x="40" y="69" width="16" height="4" rx="2" fill="var(--primary-light)" opacity="0.55" />
-          </svg>
-
-          <div class="min-w-0 flex-1">
-            <div v-if="backendLoading" class="flex flex-col gap-2">
-              <div v-for="i in 5" :key="i" class="h-3 animate-pulse rounded bg-muted" />
-            </div>
-
-            <template v-else-if="ringkasan.length">
-              <p
-                v-for="p in ringkasan"
-                :key="p.id"
-                class="mb-3 text-[12.5px] leading-[1.75] text-[var(--foreground-body)] last:mb-0"
-              >
-                <!-- Tag ditutup rapat di baris yang sama: baris baru di dalam
-                     elemen ikut jadi spasi dan merusak tanda kutip serta kurung. -->
-                <template v-for="(b, i) in p.bagian" :key="i">
-                  <strong
-                    v-if="b.gaya === 'tebal'"
-                    class="font-semibold text-foreground"
-                  >{{ b.teks }}</strong>
-                  <em
-                    v-else-if="b.gaya === 'miring'"
-                    class="font-medium not-italic text-foreground"
-                  >“{{ b.teks }}”</em>
-                  <template v-else>{{ b.teks }}</template>
-                </template>
-              </p>
-            </template>
-
-            <p v-else class="text-[12.5px] text-muted-foreground">
-              Ringkasan AI belum tersedia untuk emiten ini.
-            </p>
-
-            <p class="mt-4 border-t-[0.5px] border-border pt-2.5 text-[10px] text-muted-foreground">
-              Disclaimer: AI tidak 100% akurat. Gunakan analisis ini sebagai referensi tambahan.
-            </p>
-          </div>
-        </div>
-      </article>
+    <template v-else-if="hasil">
 
       <!-- 1 — Keputusan di kiri, angka level di kanan -->
       <div class="grid gap-3.5 lg:grid-cols-2">

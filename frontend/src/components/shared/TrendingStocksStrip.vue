@@ -112,6 +112,13 @@ function sparklinePath(values, width = 140, height = 22) {
     })
     .join(' ')
 }
+
+function getColumns(count) {
+  if (count === 0) return 1
+  if (count <= 5) return count
+  if (count <= 10) return Math.ceil(count / 2)
+  return 5
+}
 </script>
 
 <template>
@@ -120,6 +127,7 @@ function sparklinePath(values, width = 140, height = 22) {
     <div
       v-if="loading"
       class="trend-strip"
+      :style="{ '--cols': 5 }"
     >
       <div
         v-for="index in 5"
@@ -132,6 +140,7 @@ function sparklinePath(values, width = 140, height = 22) {
     <div
       v-else
       class="trend-strip"
+      :style="{ '--cols': getColumns(items.length) }"
     >
       <button
         v-for="item in items"
@@ -217,9 +226,7 @@ function sparklinePath(values, width = 140, height = 22) {
 }
 
 .trend-card {
-  flex: 1 1 calc(20% - 12px); /* Memaksa maksimal 5 kartu per baris */
-  max-width: 500px; /* Diperbesar agar 4 kartu bisa full layar di monitor lebar */
-  
+  flex: 1 1 calc(100% / var(--cols, 5) - 12px);
   display: block;
   min-width: 0;
 
@@ -296,31 +303,28 @@ function sparklinePath(values, width = 140, height = 22) {
 }
 
 .trend-skel {
-  flex: 1 1 calc(20% - 12px);
-  max-width: 500px;
-  min-width: 0;
+  flex: 1 1 calc(100% / var(--cols, 5) - 12px);
   height: 68px;
   border-radius: 10px;
   box-sizing: border-box;
 }
 
-/* Tablet / Mobile */
-@media (max-width: 760px) {
+/* Responsif */
+@media (max-width: 640px) {
   .trend-strip {
     padding: 12px;
   }
   .trend-card, .trend-skel {
-    flex: 1 1 45%;
-    max-width: none;
+    flex-basis: calc(50% - 12px);
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 400px) {
   .trend-strip {
     gap: 10px;
   }
   .trend-card, .trend-skel {
-    flex: 1 1 100%;
+    flex-basis: 100%;
   }
 }
 </style>

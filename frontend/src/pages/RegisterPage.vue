@@ -248,7 +248,7 @@ const labelTanggal = computed(() => {
       </div>
 
       <p class="max-w-[440px] text-[14px] leading-relaxed text-muted-foreground">
-        Pantau Data OHLC, Foreign Flow, Insider transaction, dan jalankan
+        Pantau Data OHLC, Insider transaction, dan jalankan
         crawling data saham Indonesia secara real-time.
       </p>
     </section>

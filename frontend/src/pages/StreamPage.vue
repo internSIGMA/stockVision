@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Eye, EyeOff } from '@lucide/vue'
+
 import { useAuthStore } from '@/stores/auth'
 import { useEmitenData } from '@/composables/useEmitenData'
 import EmitenHeader from '@/components/layout/EmitenHeader.vue'
@@ -11,7 +11,7 @@ import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
 import CandlestickChart from '@/components/charts/CandlestickChart.vue'
-import ForeignFlowChart from '@/components/charts/ForeignFlowChart.vue'
+
 import ForecastChart from '@/components/charts/ForecastChart.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -37,26 +37,6 @@ const authStore = useAuthStore()
 const strip = ref(null)
 const candle = ref(null)
 
-// ---- Tampil/sembunyi Foreign Flow ----
-
-const FF_KEY = 'stockvision.foreignflow'
-
-/** Default tersembunyi; pilihannya diingat antar kunjungan. */
-const ffTampil = ref(localStorage.getItem(FF_KEY) === 'true')
-
-/**
- * Chart baru dipasang saat pertama kali ditampilkan, lalu dipertahankan
- * (v-show, bukan v-if) supaya tidak dibongkar-pasang tiap kali disembunyikan.
- * Kalau dipasang sejak awal di dalam container tersembunyi, canvas-nya lahir
- * dengan lebar 0 dan bisa tetap kosong saat akhirnya ditampilkan.
- */
-const ffPernahTampil = ref(ffTampil.value)
-
-function toggleForeignFlow() {
-  ffTampil.value = !ffTampil.value
-  if (ffTampil.value) ffPernahTampil.value = true
-  localStorage.setItem(FF_KEY, String(ffTampil.value))
-}
 
 function segarkan() {
   reload()
@@ -123,7 +103,7 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
       </p>
 
       <!-- 2 — Watchlist di kiri; statistik dan candlestick berbagi kolom kanan -->
-      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[260px_1fr]'">
+      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[300px_1fr]'">
         <WatchlistPanel v-if="!authStore.isAdmin" />
 
         <div class="flex min-w-0 flex-col gap-4">
@@ -290,51 +270,6 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         </div>
       </section>
 
-      <!-- 5 — Foreign flow -->
-      <section class="rounded-lg border-[0.5px] border-border bg-card">
-        <header
-          class="flex items-start justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5"
-        >
-          <div class="min-w-0">
-            <h2 class="text-[13px] font-medium">Foreign Flow Activity (IDR)</h2>
-            <p class="mt-0.5 text-[10px] text-muted-foreground">
-              Selisih beli dan jual asing per hari, dalam miliar rupiah.
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8 shrink-0"
-            :aria-expanded="ffTampil"
-            @click="toggleForeignFlow"
-          >
-            <component :is="ffTampil ? Eye : EyeOff" class="size-3.5" />
-            {{ ffTampil ? 'Sembunyikan' : 'Tampilkan' }}
-          </Button>
-        </header>
-
-        <p
-          v-if="!ffTampil"
-          class="px-3.5 py-6 text-center text-[11px] text-muted-foreground"
-        >
-          Grafik disembunyikan. Klik Tampilkan untuk melihat aliran dana asing.
-        </p>
-
-        <div v-show="ffTampil">
-          <div v-if="loading" class="h-[300px] animate-pulse bg-muted/50" />
-
-          <EmptyState
-            v-else-if="!ohlc.length"
-            title="Belum ada data foreign flow"
-            description="Foreign flow ikut terambil bersama histori OHLC."
-          />
-
-          <div v-else-if="ffPernahTampil" class="p-3.5">
-            <ForeignFlowChart :rows="ohlc" />
-          </div>
-        </div>
-      </section>
 
       <!-- 6 — Prescriptive -->
       <PrescriptivePanel

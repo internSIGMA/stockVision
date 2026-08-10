@@ -1,5 +1,4 @@
 import os
-import sqlite3
 import json
 import psycopg2
 import string
@@ -37,16 +36,25 @@ def get_connection():
             password=db_pass,
             port=db_port,
         )
-    except psycopg2.OperationalError as e:
-        if db_host == "db":
+    except psycopg2.OperationalError:
+        # Fallback 1: Coba hostname 'db' (Docker container)
+        try:
+            return psycopg2.connect(
+                host="db",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5432,
+            )
+        except psycopg2.OperationalError:
+            # Fallback 2: Coba 'localhost'
             return psycopg2.connect(
                 host="localhost",
                 database=db_name,
                 user=db_user,
                 password=db_pass,
-                port=5434,
+                port=5433,
             )
-        raise e
 
 
 def _ensure_users_table():
@@ -215,55 +223,59 @@ def get_users():
     ]
 
 
-SQLITE_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.db")
+def _ensure_watchlists_table():
+    """Pastikan tabel idxsaham.watchlists ada di PostgreSQL dan memiliki kolom name dan symbols."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                name VARCHAR(255) NOT NULL DEFAULT 'Daftar Utama',
+                symbols JSONB NOT NULL DEFAULT '[]',
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Utama';")
+        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS symbols JSONB NOT NULL DEFAULT '[]'::jsonb;")
+        try:
+            cur.execute("ALTER TABLE idxsaham.watchlists ALTER COLUMN stock_code DROP NOT NULL;")
+        except Exception:
+            conn.rollback()
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Warning: _ensure_watchlists_table skipped due to DB connection: {e}")
 
-
-def get_sqlite_connection():
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def _ensure_watchlist_db():
-    conn = get_sqlite_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS watchlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            symbols TEXT NOT NULL DEFAULT '[]',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
 
 
 def get_user_unique_symbols(user_id, exclude_watchlist_id=None):
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
     if exclude_watchlist_id:
-        cur.execute("SELECT symbols FROM watchlists WHERE user_id = ? AND id != ?;", (user_id, exclude_watchlist_id))
+        cur.execute("SELECT symbols FROM idxsaham.watchlists WHERE user_id = %s AND id != %s;", (user_id, exclude_watchlist_id))
     else:
-        cur.execute("SELECT symbols FROM watchlists WHERE user_id = ?;", (user_id,))
+        cur.execute("SELECT symbols FROM idxsaham.watchlists WHERE user_id = %s;", (user_id,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
     unique_symbols = set()
     for row in rows:
-        try:
-            syms = json.loads(row["symbols"])
+        syms = row[0]  # JSONB langsung menjadi list Python
+        if isinstance(syms, str):
+            syms = json.loads(syms)
+        if isinstance(syms, list):
             for s in syms:
                 if str(s).strip():
                     unique_symbols.add(str(s).strip().upper())
-        except Exception:
-            pass
     return unique_symbols
 
 
@@ -279,24 +291,17 @@ def create_watchlist(user_id, payload):
 
     normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
 
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO watchlists (user_id, name, symbols) VALUES (?, ?, ?);",
+        "INSERT INTO idxsaham.watchlists (user_id, name, symbols) VALUES (%s, %s, %s) RETURNING id;",
         (user_id, name, json.dumps(normalized_symbols))
     )
-    watchlist_id = cur.lastrowid
+    watchlist_id = cur.fetchone()[0]
     conn.commit()
     cur.close()
     conn.close()
-
-    if normalized_symbols:
-        try:
-            from scheduler import trigger_now
-            trigger_now(symbols=normalized_symbols)
-        except Exception as e:
-            print("[User] Auto-trigger crawl after watchlist creation failed:", e)
 
     return {
         "id": watchlist_id,
@@ -307,21 +312,21 @@ def create_watchlist(user_id, payload):
 
 
 def get_watchlists(user_id):
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? ORDER BY id ASC;", (user_id,))
+    cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
     rows = cur.fetchall()
 
     if not rows:
-        default_name = "Daftar Pantau Utama"
+        default_name = "Daftar Utama"
         default_symbols = ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA"]
         cur.execute(
-            "INSERT INTO watchlists (user_id, name, symbols) VALUES (?, ?, ?);",
+            "INSERT INTO idxsaham.watchlists (user_id, name, symbols) VALUES (%s, %s, %s) RETURNING id, user_id, name, symbols, created_at;",
             (user_id, default_name, json.dumps(default_symbols))
         )
         conn.commit()
-        cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? ORDER BY id ASC;", (user_id,))
+        cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
         rows = cur.fetchall()
 
     cur.close()
@@ -329,25 +334,27 @@ def get_watchlists(user_id):
 
     result = []
     for row in rows:
-        try:
-            symbols = json.loads(row["symbols"])
-        except Exception:
-            symbols = []
+        syms = row[3]  # JSONB → Python list
+        if isinstance(syms, str):
+            try:
+                syms = json.loads(syms)
+            except Exception:
+                syms = []
         result.append({
-            "id": row["id"],
-            "user_id": row["user_id"],
-            "name": row["name"],
-            "symbols": symbols,
-            "created_at": row["created_at"]
+            "id": row[0],
+            "user_id": row[1],
+            "name": row[2],
+            "symbols": syms if isinstance(syms, list) else [],
+            "created_at": str(row[4]) if row[4] else None
         })
     return result
 
 
 def get_watchlist(user_id, watchlist_id):
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, user_id, name, symbols, created_at FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s AND id = %s;", (user_id, watchlist_id))
     row = cur.fetchone()
     cur.close()
     conn.close()
@@ -355,17 +362,19 @@ def get_watchlist(user_id, watchlist_id):
     if not row:
         return None
 
-    try:
-        symbols = json.loads(row["symbols"])
-    except Exception:
-        symbols = []
+    syms = row[3]
+    if isinstance(syms, str):
+        try:
+            syms = json.loads(syms)
+        except Exception:
+            syms = []
 
     return {
-        "id": row["id"],
-        "user_id": row["user_id"],
-        "name": row["name"],
-        "symbols": symbols,
-        "created_at": row["created_at"]
+        "id": row[0],
+        "user_id": row[1],
+        "name": row[2],
+        "symbols": syms if isinstance(syms, list) else [],
+        "created_at": str(row[4]) if row[4] else None
     }
 
 
@@ -373,11 +382,11 @@ def update_watchlist(user_id, watchlist_id, payload):
     if not payload:
         raise ValueError("request body is required")
 
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    cur.execute("SELECT id FROM idxsaham.watchlists WHERE user_id = %s AND id = %s;", (user_id, watchlist_id))
     if not cur.fetchone():
         cur.close()
         conn.close()
@@ -390,7 +399,7 @@ def update_watchlist(user_id, watchlist_id, payload):
         name = str(payload["name"]).strip()
         if not name:
             raise ValueError("name cannot be empty")
-        fields.append("name = ?")
+        fields.append("name = %s")
         values.append(name)
 
     if "symbols" in payload:
@@ -399,7 +408,7 @@ def update_watchlist(user_id, watchlist_id, payload):
             raise ValueError("symbols must be a list")
         normalized_symbols = [str(s).strip().upper() for s in symbols if str(s).strip()]
 
-        fields.append("symbols = ?")
+        fields.append("symbols = %s")
         values.append(json.dumps(normalized_symbols))
 
     if not fields:
@@ -409,36 +418,28 @@ def update_watchlist(user_id, watchlist_id, payload):
 
     values.extend([user_id, watchlist_id])
     cur.execute(
-        f"UPDATE watchlists SET {', '.join(fields)} WHERE user_id = ? AND id = ?;",
+        f"UPDATE idxsaham.watchlists SET {', '.join(fields)} WHERE user_id = %s AND id = %s;",
         values
     )
     conn.commit()
     cur.close()
     conn.close()
 
-    updated_wl = get_watchlist(user_id, watchlist_id)
-    if updated_wl and "symbols" in payload and updated_wl.get("symbols"):
-        try:
-            from scheduler import trigger_now
-            trigger_now(symbols=updated_wl.get("symbols"))
-        except Exception as e:
-            print("[User] Auto-trigger crawl after watchlist update failed:", e)
-
-    return updated_wl
+    return get_watchlist(user_id, watchlist_id)
 
 
 def delete_watchlist(user_id, watchlist_id):
-    _ensure_watchlist_db()
-    conn = get_sqlite_connection()
+    _ensure_watchlists_table()
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    cur.execute("SELECT id FROM idxsaham.watchlists WHERE user_id = %s AND id = %s;", (user_id, watchlist_id))
     row = cur.fetchone()
     if not row:
         cur.close()
         conn.close()
         return None
 
-    cur.execute("DELETE FROM watchlists WHERE user_id = ? AND id = ?;", (user_id, watchlist_id))
+    cur.execute("DELETE FROM idxsaham.watchlists WHERE user_id = %s AND id = %s;", (user_id, watchlist_id))
     conn.commit()
     cur.close()
     conn.close()
