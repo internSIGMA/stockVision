@@ -250,10 +250,13 @@ def _ensure_watchlists_table():
         )
         cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Utama';")
         cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS symbols JSONB NOT NULL DEFAULT '[]'::jsonb;")
-        try:
+        cur.execute("""
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'idxsaham' AND table_name = 'watchlists' AND column_name = 'stock_code';
+        """)
+        if cur.fetchone():
             cur.execute("ALTER TABLE idxsaham.watchlists ALTER COLUMN stock_code DROP NOT NULL;")
-        except Exception:
-            conn.rollback()
+
         cur.execute("CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON idxsaham.watchlists (user_id);")
         conn.commit()
         cur.close()

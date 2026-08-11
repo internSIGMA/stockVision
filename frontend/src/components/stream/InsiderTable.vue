@@ -45,7 +45,7 @@ function aksiLabel(aksi) {
     <EmptyState
       v-else-if="!terbaru.length"
       title="Belum ada transaksi insider"
-      description="Data majorholder untuk emiten ini belum tersedia di database."
+      description="Tidak ada transaksi insider terbaru untuk emiten ini."
     />
 
     <!-- data-lenis-prevent: tabel punya scroll sendiri, jangan dibajak Lenis. -->

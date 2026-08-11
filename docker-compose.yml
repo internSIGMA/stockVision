@@ -31,8 +31,12 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
     ports:
       - "8080:8080"
+
 
   # Frontend Service (Vue/Vite Development Server)
   frontend:

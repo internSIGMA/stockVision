@@ -12,19 +12,30 @@ def get_db_engine():
     user = os.getenv("DB_USER", "stockvision")
     password = os.getenv("DB_PASSWORD", "stockvision_pass")
     host = os.getenv("DB_HOST", "localhost")
-    port = os.getenv("DB_PORT", "5432")
+    port = os.getenv("DB_PORT", "5433")
     db_name = os.getenv("DB_NAME", "stockVision")
 
-    connection_string = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}"
+    conn_str = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db_name}"
     try:
-        engine = create_engine(connection_string)
+        engine = create_engine(conn_str)
+        with engine.connect() as c:
+            pass
         return engine
     except Exception as e:
-        logger.warning(f"Error creating engine for host {host}:{port}: {e}. Retrying fallback...")
-        if host == "db" or host == "postgres":
-            fallback_url = f"postgresql+psycopg2://{user}:{password}@localhost:5434/{db_name}"
-            return create_engine(fallback_url)
-        raise e
+        logger.warning(f"Failed connecting to DB at {host}:{port}. Trying fallback connection configurations...")
+        targets = [("db", 5432), ("localhost", 5433), ("localhost", 5434), ("127.0.0.1", 5433)]
+        for h, p in targets:
+            try:
+                fallback_str = f"postgresql+psycopg2://{user}:{password}@{h}:{p}/{db_name}"
+                engine = create_engine(fallback_str)
+                with engine.connect() as c:
+                    pass
+                return engine
+            except Exception:
+                continue
+        # Default back to primary engine
+        return create_engine(conn_str)
+
 
 def load_ohlc_data(engine=None) -> pd.DataFrame:
     """Memuat data OHLC historis lengkap dengan foreign flow."""
