@@ -3,7 +3,7 @@ import { ref } from 'vue'
 const STORAGE_KEY = 'stockvision.theme'
 
 // State modul — dibagi ke semua komponen yang memanggil useTheme().
-const isDark = ref(document.documentElement.classList.contains('dark'))
+const isDark = ref(localStorage.getItem(STORAGE_KEY) === 'dark')
 
 function apply(dark) {
   isDark.value = dark

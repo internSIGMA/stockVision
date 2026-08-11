@@ -29,7 +29,7 @@ export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM'
 export function isSupported(ticker) {
   if (!ticker || typeof ticker !== 'string') return false
   const t = ticker.trim().toUpperCase()
-  return /^[A-Z0-9]{4,6}$/.test(t)
+  return OFFICIAL_TICKERS.includes(t)
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */

@@ -40,7 +40,7 @@ async function watchlistBaru() {
     const created = await createWatchlist(auth.user.id, { name: nama, symbols: [] })
     await auth.fetchWatchlists()
     auth.selectWatchlist(created.id)
-    notify.success(`"${nama}" dibuat`, 'Tambahkan emiten lewat tombol Edit.')
+    notify.success(`"${nama}" dibuat`, 'Silakan tambahkan emiten.')
   } catch (err) {
     notify.error('Gagal membuat watchlist', err.message)
   } finally {
@@ -82,15 +82,10 @@ async function watchlistBaru() {
           variant="outline"
           size="icon"
           class="size-8 shrink-0"
-          :disabled="membuat"
-          aria-label="Tambah watchlist baru"
-          @click="watchlistBaru"
+          aria-label="Kelola Watchlist"
+          @click="editorTerbuka = true"
         >
           <Plus class="size-3.5" />
-        </Button>
-
-        <Button variant="outline" size="sm" class="h-8 shrink-0" @click="editorTerbuka = true">
-          Kelola
         </Button>
       </div>
     </div>
@@ -156,12 +151,16 @@ async function watchlistBaru() {
         <SheetHeader>
           <SheetTitle>Kelola Watchlist</SheetTitle>
           <SheetDescription>
-            Pilih emiten yang ingin kamu pantau. Perubahan langsung tersimpan.
+            Pilih emiten yang ingin kamu pantau. Jangan lupa klik Simpan Perubahan.
           </SheetDescription>
         </SheetHeader>
 
         <div class="min-h-0 flex-1 overflow-y-auto" data-lenis-prevent>
-          <WatchlistManagerPage @close="editorTerbuka = false" />
+          <WatchlistManagerPage
+            :key="auth.activeWatchlistId"
+            @close="editorTerbuka = false"
+            @create-new="watchlistBaru"
+          />
         </div>
       </SheetContent>
     </Sheet>

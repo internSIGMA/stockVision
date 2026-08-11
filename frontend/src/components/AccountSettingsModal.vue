@@ -156,10 +156,7 @@ async function saveProfile() {
     return
   }
 
-  if (!form.defaultTicker.trim()) {
-    alert('Saham utama tidak boleh kosong.')
-    return
-  }
+
 
   saving.value = true
 
@@ -401,53 +398,10 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div v-if="!isAdmin" class="form-group form-group-full">
-              <label for="default-ticker">
-                Saham utama
-              </label>
 
-              <input
-                id="default-ticker"
-                v-model="form.defaultTicker"
-                type="text"
-                maxlength="8"
-                autocapitalize="characters"
-                placeholder="Contoh: BJBR"
-                @input="
-                  form.defaultTicker =
-                    form.defaultTicker.toUpperCase()
-                "
-              />
-
-              <span class="input-hint">
-                Saham yang otomatis dibuka setelah
-                pengguna masuk.
-              </span>
-            </div>
           </section>
 
-          <section class="preference-section">
-            <div>
-              <strong>
-                Notifikasi email
-              </strong>
 
-              <p>
-                Dapatkan informasi crawler dan perubahan
-                saham.
-              </p>
-            </div>
-
-            <label class="switch">
-              <input
-                v-model="form.emailNotification"
-                type="checkbox"
-                aria-label="Aktifkan notifikasi email"
-              />
-
-              <span class="slider"></span>
-            </label>
-          </section>
 
           <section class="password-section">
             <div>
@@ -517,7 +471,8 @@ onBeforeUnmount(() => {
 
   overflow: hidden;
 
-  background: rgba(15, 23, 42, 0.48);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
 
   pointer-events: auto;
   overscroll-behavior: none;
@@ -547,6 +502,7 @@ onBeforeUnmount(() => {
   color: var(--foreground);
   background: var(--card);
 
+  border: 1px solid var(--border);
   border-radius: 18px;
 
   box-shadow:

@@ -56,7 +56,7 @@ function unduh() {
     <EmptyState
       v-else-if="!terbaru.length"
       title="Belum ada histori harga"
-      description="Jalankan Trigger Crawler untuk mengambil data OHLC emiten ini."
+      description="Emiten ini belum memiliki data historis OHLC."
     />
 
     <div v-else class="max-h-[320px] overflow-auto" data-lenis-prevent>
