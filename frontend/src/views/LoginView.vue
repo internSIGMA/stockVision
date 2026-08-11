@@ -39,7 +39,7 @@ async function handleSubmit() {
   formError.value = ''
   if (!isValid.value) return
   try {
-    const user = await auth.login({ email: form.email, password: form.password }, form.remember)
+    const user = await auth.login(form.email, form.password)
     if (user?.defaultTicker) market.select(user.defaultTicker)
     router.push(route.query.redirect || '/')
   } catch (err) {
@@ -47,15 +47,15 @@ async function handleSubmit() {
   }
 }
 
-// Two demo accounts with different favorites. `ticker` is the top favorite
+// Demo accounts with different favorites. `ticker` is the top favorite
 // shown in the preview when that account is selected.
 const demos = [
-  { name: 'Fariz', email: 'fariz@sahamscope.id', tag: 'Perbankan', ticker: 'BBCA', favs: 'BBCA · BBRI · BMRI · TLKM' },
+  { name: 'Admin', email: 'admin@sahamscope.id', tag: 'Administrator', ticker: 'BBCA', favs: 'BBCA · BBRI · BMRI · TLKM' },
   { name: 'Dewi', email: 'dewi@sahamscope.id', tag: 'Properti & Energi', ticker: 'BBNI', favs: 'BBNI · BJBR · ASII · GOTO' },
 ]
 function fillDemo(d) {
   form.email = d.email
-  form.password = 'password123'
+  form.password = d.email === 'admin@sahamscope.id' ? 'admin123' : 'password123'
   formError.value = ''
   preview.value = d.ticker
 }

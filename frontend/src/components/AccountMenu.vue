@@ -27,7 +27,7 @@ const displayName = computed(() => {
   return (
     user.value?.name ||
     user.value?.username ||
-    'Fariz'
+    'User'
   )
 })
 

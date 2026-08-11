@@ -50,7 +50,7 @@ Sistem backend dan frontend secara resmi mendukung 5 emiten utama IDX:
 ## 🔑 Akun Demo
 
 Backend menyediakan akun demo secara otomatis:
-- `fariz@sahamscope.id` / `password123` (Watchlist: BBCA, BMRI)
+- `admin@sahamscope.id` / `admin123` (Admin Role, Watchlist: BBCA, BMRI)
 - `dewi@sahamscope.id` / `password123` (Watchlist: BBNI, BBCA, BBRI, BMRI)
 
 ---

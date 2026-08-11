@@ -10,11 +10,12 @@ import { BASE_URL } from '@/api/index'
 
 const USERS = [
   {
-    email: 'fariz@sahamscope.id',
-    password: 'password123',
-    name: 'Fariz',
-    role: 'Trader — Perbankan',
-    avatar: 'https://i.pravatar.cc/100?img=68',
+    email: 'admin@sahamscope.id',
+    password: 'admin123',
+    name: 'Admin',
+    role: 'admin',
+    accessRole: 'admin',
+    avatar: 'https://i.pravatar.cc/100?img=12',
     defaultTicker: 'BBCA',
     favorites: ['BBCA', 'BBRI', 'BMRI', 'TLKM', 'ANTM', 'PTBA', 'ADRO', 'INDF', 'SMGR'],
   },
@@ -23,6 +24,7 @@ const USERS = [
     password: 'password123',
     name: 'Dewi',
     role: 'Trader — Properti & Energi',
+    accessRole: 'user',
     avatar: 'https://i.pravatar.cc/100?img=47',
     defaultTicker: 'BBNI',
     favorites: ['BBNI', 'BJBR', 'ASII', 'GOTO', 'SMRA', 'ASRI', 'CTRA', 'INCO', 'MAPI'],
@@ -69,13 +71,14 @@ export async function login({ email, password }) {
     // Map backend snake_case keys to camelCase keys for Vue store
     const token = `jwt-${btoa(data.email)}-${Date.now()}`;
     const user = {
+      id: data.id,
       email: data.email,
+      username: data.username,
       name: data.name,
       role: data.role,
+      accessRole: data.access_role || data.accessRole || (data.email.toLowerCase().includes('admin') ? 'admin' : 'user'),
       defaultTicker: data.default_ticker || 'BBCA',
-      avatar: data.email.toLowerCase() === 'fariz@sahamscope.id'
-        ? 'https://i.pravatar.cc/100?img=68'
-        : (data.email.toLowerCase() === 'dewi@sahamscope.id' ? 'https://i.pravatar.cc/100?img=47' : 'https://i.pravatar.cc/100?img=1')
+      avatar: data.email.toLowerCase() === 'dewi@sahamscope.id' ? 'https://i.pravatar.cc/100?img=47' : 'https://i.pravatar.cc/100?img=12'
     };
 
     return { token, user };

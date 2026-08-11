@@ -18,15 +18,6 @@ def setup_access_roles():
             """
         )
 
-        # Fariz dijadikan admin untuk pengujian.
-        cur.execute(
-            """
-            UPDATE idxsaham.users
-            SET access_role = 'admin'
-            WHERE email = 'fariz@sahamscope.id';
-            """
-        )
-
         # Dewi tetap menjadi user biasa.
         cur.execute(
             """
@@ -36,13 +27,14 @@ def setup_access_roles():
             """
         )
 
+        # admin@sahamscope.id dijadikan admin.
         cur.execute(
-                    """
-                    UPDATE idxsaham.users
-                    SET access_role = 'admin'
-                    WHERE email = 'admin@sahamscope.id';
-                    """
-                )
+            """
+            UPDATE idxsaham.users
+            SET access_role = 'admin', role = 'admin'
+            WHERE email = 'admin@sahamscope.id';
+            """
+        )
 
         conn.commit()
 

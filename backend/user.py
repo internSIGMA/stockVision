@@ -86,46 +86,54 @@ def _ensure_users_table():
     )
     conn.commit()
 
-    # Check if table is empty
+    # Seed default users if table is empty
     cur.execute("SELECT COUNT(*) FROM idxsaham.users;")
     count = cur.fetchone()[0]
     if count == 0:
-        # Seed default users
         users_to_seed = [
-            {
-                "email": "fariz@sahamscope.id",
-                "username": "fariz",
-                "password": generate_password_hash("password123"),
-                "name": "Fariz",
-                "role": "Trader — Perbankan",
-                "default_ticker": "BBCA"
-            },
             {
                 "email": "dewi@sahamscope.id",
                 "username": "dewi",
                 "password": generate_password_hash("password123"),
                 "name": "Dewi",
                 "role": "Trader — Properti & Energi",
+                "access_role": "user",
                 "default_ticker": "BBNI"
             },
-{
+            {
                 "email": "admin@sahamscope.id",
                 "username": "admin",
-                "password": generate_password_hash("password123"),
-                "name": "admin",
+                "password": generate_password_hash("admin123"),
+                "name": "Admin",
                 "role": "admin",
-                "default_ticker": "BBNI"
+                "access_role": "admin",
+                "default_ticker": "BBCA"
             }
         ]
         for u in users_to_seed:
             cur.execute(
                 """
-                INSERT INTO idxsaham.users (email, username, password, name, role, default_ticker)
-                VALUES (%s, %s, %s, %s, %s, %s);
+                INSERT INTO idxsaham.users (email, username, password, name, role, access_role, default_ticker)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
                 """,
-                (u["email"], u["username"], u["password"], u["name"], u["role"], u["default_ticker"])
+                (u["email"], u["username"], u["password"], u["name"], u["role"], u["access_role"], u["default_ticker"])
             )
         conn.commit()
+
+    # Always ensure admin@sahamscope.id is configured with role 'admin' & password 'admin123'
+    cur.execute(
+        """
+        INSERT INTO idxsaham.users (email, username, password, name, role, access_role, default_ticker)
+        VALUES ('admin@sahamscope.id', 'admin', %s, 'Admin', 'admin', 'admin', 'BBCA')
+        ON CONFLICT (email) DO UPDATE SET
+            password = EXCLUDED.password,
+            name = EXCLUDED.name,
+            role = EXCLUDED.role,
+            access_role = EXCLUDED.access_role;
+        """,
+        (generate_password_hash("admin123"),)
+    )
+    conn.commit()
 
     cur.close()
     conn.close()
@@ -185,7 +193,7 @@ def get_user(user_id):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE id = %s;",
+        "SELECT id, email, username, name, role, access_role, default_ticker, phone_number FROM idxsaham.users WHERE id = %s;",
         (user_id,),
     )
     row = cur.fetchone()
@@ -201,8 +209,9 @@ def get_user(user_id):
         "username": row[2],
         "name": row[3],
         "role": row[4],
-        "default_ticker": row[5],
-        "phone_number": row[6],
+        "access_role": row[5],
+        "default_ticker": row[6],
+        "phone_number": row[7],
     }
 
 
@@ -211,11 +220,25 @@ def get_users():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users ORDER BY id ASC;"
+        "SELECT id, email, username, name, role, access_role, default_ticker, phone_number FROM idxsaham.users ORDER BY id ASC;"
     )
     rows = cur.fetchall()
     cur.close()
     conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "email": row[1],
+            "username": row[2],
+            "name": row[3],
+            "role": row[4],
+            "access_role": row[5],
+            "default_ticker": row[6],
+            "phone_number": row[7],
+        }
+        for row in rows
+    ]
 
     return [
         {
@@ -498,7 +521,7 @@ def update_user(user_id, payload):
 
     values.extend([user_id])
     cur.execute(
-        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, default_ticker, phone_number;",
+        f"UPDATE idxsaham.users SET {', '.join(fields)} WHERE id = %s RETURNING id, email, username, name, role, access_role, default_ticker, phone_number;",
         values,
     )
     row = cur.fetchone()
@@ -515,8 +538,9 @@ def update_user(user_id, payload):
         "username": row[2],
         "name": row[3],
         "role": row[4],
-        "default_ticker": row[5],
-        "phone_number": row[6],
+        "access_role": row[5],
+        "default_ticker": row[6],
+        "phone_number": row[7],
     }
 
 
@@ -892,13 +916,13 @@ def google_login_route():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, email, username, name, role, default_ticker, phone_number FROM idxsaham.users WHERE email = %s;",
+        "SELECT id, email, username, name, role, access_role, default_ticker, phone_number FROM idxsaham.users WHERE email = %s;",
         (email,),
     )
     row = cur.fetchone()
 
     if row:
-        user_id, email_val, username, name_val, role, default_ticker, phone_number = row
+        user_id, email_val, username, name_val, role, access_role, default_ticker, phone_number = row
         cur.close()
         conn.close()
         return jsonify({
@@ -907,6 +931,7 @@ def google_login_route():
             "username": username,
             "name": name_val,
             "role": role,
+            "access_role": access_role,
             "default_ticker": default_ticker,
             "phone_number": phone_number
         })

@@ -32,7 +32,7 @@ Seluruh panduan teknis dan operasional telah dirapikan di direktori **[`docs/`](
 ### Akun Demo (Disemai otomatis di database)
 | Email | Password | Watchlist Demo |
 |---|---|---|
-| `fariz@sahamscope.id` | `password123` | BBCA · BMRI |
+| `admin@sahamscope.id` | `admin123` | BBCA · BMRI (Admin Role) |
 | `dewi@sahamscope.id` | `password123` | BBNI · BBCA · BBRI · BMRI |
 
 ---

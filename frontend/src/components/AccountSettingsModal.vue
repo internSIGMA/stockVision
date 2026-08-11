@@ -52,10 +52,10 @@ const initials = computed(() => {
 
 function fillForm() {
   form.name =
-    user.value?.name ?? 'Fariz'
+    user.value?.name ?? 'User'
 
   form.username =
-    user.value?.username ?? 'fariz'
+    user.value?.username ?? 'user'
 
   form.email =
     user.value?.email ?? ''
