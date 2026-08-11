@@ -234,13 +234,13 @@ def _ensure_watchlists_table():
             CREATE TABLE IF NOT EXISTS idxsaham.watchlists (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
-                name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama',
+                name VARCHAR(255) NOT NULL DEFAULT 'Daftar Utama',
                 symbols JSONB NOT NULL DEFAULT '[]',
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );
             """
         )
-        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Pantau Utama';")
+        cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT 'Daftar Utama';")
         cur.execute("ALTER TABLE idxsaham.watchlists ADD COLUMN IF NOT EXISTS symbols JSONB NOT NULL DEFAULT '[]'::jsonb;")
         cur.execute("""
             SELECT 1 FROM information_schema.columns 
@@ -322,7 +322,7 @@ def get_watchlists(user_id):
     rows = cur.fetchall()
 
     if not rows:
-        default_name = "Daftar Pantau Utama"
+        default_name = "Daftar Utama"
         default_symbols = ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA"]
         cur.execute(
             "INSERT INTO idxsaham.watchlists (user_id, name, symbols) VALUES (%s, %s, %s) RETURNING id, user_id, name, symbols, created_at;",

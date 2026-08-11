@@ -8,6 +8,7 @@ import { useProfilePrefs } from '@/composables/useProfilePrefs'
 import { SUPPORTED_TICKERS } from '@/api/StockVision'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -16,6 +17,7 @@ const notify = useNotify()
 const terbuka = ref(false)
 const akunTerbuka = ref(false)
 const akar = ref(null)
+const showLogoutDialog = ref(false)
 
 const inisial = computed(() => (auth.user?.name?.[0] || '?').toUpperCase())
 
@@ -120,8 +122,12 @@ async function simpan() {
 
 function keluar() {
   terbuka.value = false
+  showLogoutDialog.value = true
+}
+
+function performLogout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
@@ -318,6 +324,11 @@ function keluar() {
         </div>
       </Transition>
     </Teleport>
+
+    <LogoutConfirmDialog
+      v-model:open="showLogoutDialog"
+      @confirm="performLogout"
+    />
   </div>
 </template>
 

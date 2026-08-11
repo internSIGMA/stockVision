@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sheet'
 
 import AccountMenu from '@/components/AccountMenu.vue'
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -76,11 +77,16 @@ const visibleTabs = computed(() => {
 })
 
 const menuTerbuka = ref(false)
+const showLogoutDialog = ref(false)
 
 function keluar() {
   menuTerbuka.value = false
+  showLogoutDialog.value = true
+}
+
+function performLogout() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 </script>
 
@@ -287,5 +293,10 @@ function keluar() {
         </nav>
       </SheetContent>
     </Sheet>
+
+    <LogoutConfirmDialog
+      v-model:open="showLogoutDialog"
+      @confirm="performLogout"
+    />
   </header>
 </template>

@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import AccountSettingsModal from './AccountSettingsModal.vue'
+import LogoutConfirmDialog from './LogoutConfirmDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -20,6 +21,7 @@ const { isDark } = useTheme()
 const accountElement = ref(null)
 const menuOpen = ref(false)
 const settingsOpen = ref(false)
+const showLogoutDialog = ref(false)
 
 const displayName = computed(() => {
   return (
@@ -50,8 +52,12 @@ function openSettings() {
 
 function logout() {
   menuOpen.value = false
+  showLogoutDialog.value = true
+}
+
+function performLogout() {
   authStore.logout()
-  router.push('/login')
+  router.push('/')
 }
 
 function closeMenuWhenClickOutside(event) {
@@ -218,6 +224,11 @@ onBeforeUnmount(() => {
     <AccountSettingsModal
       :open="settingsOpen"
       @close="settingsOpen = false"
+    />
+
+    <LogoutConfirmDialog
+      v-model:open="showLogoutDialog"
+      @confirm="performLogout"
     />
   </div>
 </template>

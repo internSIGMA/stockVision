@@ -1,12 +1,12 @@
 # Panduan Deployment Otomatis (CI/CD) - StockVision
 
-Dokumen ini menjelaskan konfigurasi dan alur kerja (*workflow*) CI/CD menggunakan GitHub Actions untuk melakukan deployment aplikasi **StockVision** secara otomatis ke Virtual Machine (VM) Google Cloud Platform (GCP).
+Dokumen ini menjelaskan konfigurasi dan alur kerja (*workflow*) CI/CD menggunakan **GitHub Actions** untuk melakukan deployment aplikasi **StockVision** secara otomatis ke Virtual Machine (VM) Google Cloud Platform (GCP).
 
 ---
 
 ## 1. Alur Kerja (Workflow) Deployment
 
-Workflow didefinisikan pada file [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Proses deployment akan otomatis terpicu setiap kali terjadi push ke branch **`main_dply`**.
+Workflow didefinisikan pada berkas [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml). Proses deployment akan otomatis terpicu setiap kali terjadi push ke branch **`main_dply`**.
 
 ### Tahapan Deployment di VM GCP:
 1. **Masuk ke Direktori Proyek**: Berpindah ke folder proyek menggunakan path yang tersimpan di GitHub Secrets.
@@ -23,13 +23,11 @@ Workflow didefinisikan pada file [`.github/workflows/deploy.yml`](.github/workfl
 
 ## 2. Konfigurasi GitHub Secrets
 
-Agar GitHub Actions dapat mengakses VM GCP Anda melalui SSH, Anda perlu mendaftarkan kredensial berikut pada menu **Settings -> Secrets and variables -> Actions** di repositori GitHub:
+Agar GitHub Actions dapat mengakses VM GCP Anda melalui SSH, daftarkan kredensial berikut pada menu **Settings -> Secrets and variables -> Actions** di repositori GitHub:
 
 | Nama Secret | Deskripsi | Contoh Nilai |
 | :--- | :--- | :--- |
 | `GCP_VM_IP` | Alamat IP Publik dari VM GCP Anda. | `xx.xx.xx.xx` |
-| `GCP_VM_USER` | Username SSH untuk masuk ke VM. | `xxxxx` |
+| `GCP_VM_USER` | Username SSH untuk masuk ke VM. | `ubuntu` / `admin` |
 | `GCP_SSH_KEY` | Private SSH Key yang berpasangan dengan public key di VM (`~/.ssh/authorized_keys`). | `-----BEGIN OPENSSH PRIVATE KEY----- ...` |
-| `GCP_PROJECT_PATH` | Path absolut folder proyek tempat repositori berada di VM GCP. | `/home/xxxx` |
-
-
+| `GCP_PROJECT_PATH` | Path absolut folder proyek tempat repositori berada di VM GCP. | `/home/user/stockVision` |

@@ -103,7 +103,7 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
       </p>
 
       <!-- 2 — Watchlist di kiri; statistik dan candlestick berbagi kolom kanan -->
-      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[260px_1fr]'">
+      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[300px_1fr]'">
         <WatchlistPanel v-if="!authStore.isAdmin" />
 
         <div class="flex min-w-0 flex-col gap-4">

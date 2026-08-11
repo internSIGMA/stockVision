@@ -428,7 +428,6 @@ def insert_fundamental(record):
     conn.commit()
 
     cur.close()
-
     conn.close()
 
 def insert_technical_indicator(df):
