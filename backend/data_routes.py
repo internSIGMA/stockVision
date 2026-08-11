@@ -110,6 +110,95 @@ def get_historical_ohlc():
         return jsonify({"error": str(e)}), 500
 
 # ============================================================
+# ENDPOINT: GET TECHNICAL INDICATORS (RSI & MACD)
+# ============================================================
+@data_bp.route("/api/data/technical", methods=["GET"])
+def get_technical_indicators():
+    """Deret RSI(14) & MACD(12,26,9) dari idxsaham.macd_rsi.
+
+    Tabelnya diisi crawl_yfinance.calculate_technical_indicator() memakai harga
+    penutupan yfinance, jadi angka di sini adalah angka crawler — bukan hasil
+    hitungan ulang di endpoint ini.
+    """
+    symbol = request.args.get("symbol", "").upper()
+    if not symbol:
+        return jsonify({"error": "Parameter 'symbol' wajib diisi"}), 400
+
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+
+    query = """
+        SELECT symbol, tanggal, rsi14, macd, macd_signal, macd_histogram
+        FROM idxsaham.macd_rsi
+        WHERE symbol = %s
+    """
+    params = [symbol]
+
+    if from_date:
+        query += " AND tanggal >= %s"
+        params.append(from_date)
+    if to_date:
+        query += " AND tanggal <= %s"
+        params.append(to_date)
+
+    query += " ORDER BY tanggal ASC;"
+
+    def fetch():
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(query, params)
+            return cur.fetchall()
+        finally:
+            cur.close()
+            conn.close()
+
+    try:
+        try:
+            rows = fetch()
+        except psycopg2.Error as e:
+            # Tabel macd_rsi baru dibuat crawler; kalau belum ada, jangan 500 —
+            # biarkan jalur on-demand di bawah yang membuat sekaligus mengisinya.
+            print(f"[Technical] Query awal gagal untuk {symbol}: {e}")
+            rows = []
+
+        # On-demand crawl, pola yang sama dengan /api/data/ohlc: emiten yang
+        # belum pernah masuk jadwal crawler tetap bisa dibuka user.
+        if not rows:
+            try:
+                from crawl_yfinance import (
+                    crawl_ohlcv,
+                    insert_ohlcv,
+                    create_table_technical_indicator,
+                    calculate_technical_indicator,
+                    insert_technical_indicator,
+                )
+                records = crawl_ohlcv(symbol, period="5y")
+                if records:
+                    insert_ohlcv(records)
+                    create_table_technical_indicator()
+                    df = calculate_technical_indicator(records)
+                    if len(df):
+                        insert_technical_indicator(df)
+                        rows = fetch()
+            except Exception as e:
+                print(f"[On-Demand Technical] Gagal menghitung indikator {symbol}: {e}")
+
+        result = []
+        for r in rows:
+            result.append({
+                "symbol": r[0],
+                "tanggal": str(r[1]),
+                "rsi14": decimal_to_float(r[2]),
+                "macd": decimal_to_float(r[3]),
+                "macd_signal": decimal_to_float(r[4]),
+                "macd_histogram": decimal_to_float(r[5])
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================
 # ENDPOINT: GET BROKER ACTIVITIES
 # ============================================================
 @data_bp.route("/api/data/broker-activity", methods=["GET"])
