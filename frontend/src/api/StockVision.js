@@ -59,6 +59,15 @@ export function getOhlcHistory(ticker, params = {}) {
   return api.get('/api/data/ohlc', { params: { symbol: ticker, ...params } })
 }
 
+/**
+ * Deret indikator teknikal hasil crawler yfinance (urut tanggal ASC).
+ * → [{ symbol, tanggal, rsi14, macd, macd_signal, macd_histogram }]
+ * Nilai di awal deret bisa null selama periode indikatornya belum penuh.
+ */
+export function getTechnicalIndicators(ticker, params = {}) {
+  return api.get('/api/data/technical', { params: { symbol: ticker, ...params } })
+}
+
 /** Foreign flow berasal dari response OHLC yang sama — tidak ada endpoint terpisah. */
 export async function getForeignFlow(ticker, params = {}) {
   const rows = await getOhlcHistory(ticker, params)

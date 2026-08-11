@@ -12,12 +12,16 @@ import InsiderTable from '@/components/stream/InsiderTable.vue'
 import CandlestickChart from '@/components/charts/CandlestickChart.vue'
 
 import ForecastChart from '@/components/charts/ForecastChart.vue'
+import RsiChart from '@/components/charts/RsiChart.vue'
+import MacdChart from '@/components/charts/MacdChart.vue'
+import IndicatorSection from '@/components/stream/IndicatorSection.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { useForecastData } from '@/composables/useForecastData'
 import { usePrescriptive } from '@/composables/usePrescriptive'
+import { useTechnicalData } from '@/composables/useTechnicalData'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
 /**
@@ -66,6 +70,24 @@ const {
   error: forecastError,
   setHorizon,
 } = useForecastData({ ohlc })
+
+// RSI & MACD dari /api/data/technical (tabel yang diisi crawler yfinance),
+// dengan `ohlc` sebagai jalur cadangan kalau emitennya belum pernah di-crawl.
+const {
+  deret: indikatorDeret,
+  sumber: indikatorSumber,
+  loading: indikatorLoading,
+} = useTechnicalData(ohlc)
+
+/** Keterangan asal angka — supaya user tahu kapan yang tampil hasil hitung lokal. */
+const ASAL = {
+  yfinance: { label: 'Sumber: yfinance', title: 'Angka diambil dari tabel indikator hasil crawler yfinance.' },
+  lokal: {
+    label: 'Dihitung lokal',
+    title: 'Tabel indikator belum terisi untuk emiten ini, jadi RSI & MACD dihitung di browser dari histori harga yfinance.',
+  },
+}
+const asalIndikator = computed(() => ASAL[indikatorSumber.value] ?? null)
 
 // Prescriptive juga berdiri sendiri: emiten yang belum pernah dianalisis
 // pipeline wajar kosong, dan itu tidak boleh menjatuhkan bagian lain.
@@ -269,6 +291,41 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         </div>
       </section>
 
+      <!-- 5 — Indikator teknikal; tiap indikator punya container sendiri dan
+           default tertutup supaya halaman tidak langsung penuh chart. -->
+      <IndicatorSection
+        title="RSI (14)"
+        subtitle="Relative Strength Index — momentum harga pada skala 0–100."
+        storage-key="sv_show_rsi"
+        :ticker="ticker"
+        :badge="asalIndikator?.label"
+        :badge-title="asalIndikator?.title"
+      >
+        <RsiChart
+          :dates="indikatorDeret?.tanggal || []"
+          :data="indikatorDeret?.rsi || []"
+          :loading="indikatorLoading && !indikatorDeret"
+          :height="260"
+        />
+      </IndicatorSection>
+
+      <IndicatorSection
+        title="MACD (12, 26, 9)"
+        subtitle="Selisih dua EMA beserta garis sinyal dan histogramnya."
+        storage-key="sv_show_macd"
+        :ticker="ticker"
+        :badge="asalIndikator?.label"
+        :badge-title="asalIndikator?.title"
+      >
+        <MacdChart
+          :dates="indikatorDeret?.tanggal || []"
+          :macd-line="indikatorDeret?.macd?.macdLine || []"
+          :signal-line="indikatorDeret?.macd?.signalLine || []"
+          :histogram="indikatorDeret?.macd?.histogram || []"
+          :loading="indikatorLoading && !indikatorDeret"
+          :height="260"
+        />
+      </IndicatorSection>
 
       <!-- 6 — Prescriptive -->
       <PrescriptivePanel

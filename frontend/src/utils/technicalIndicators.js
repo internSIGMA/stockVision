@@ -88,6 +88,80 @@ export function macd(rows, fast = 12, slow = 26, signalPeriod = 9) {
   return { macd: macdValue, signal: signalValue, histogram: macdValue - signalValue }
 }
 
+/**
+ * Deret RSI sepanjang `closes` (array harga penutupan urut ASC).
+ *
+ * Panjang hasilnya SAMA dengan input supaya bisa dipasangkan langsung dengan
+ * label tanggal; indeks yang belum punya nilai diisi null, bukan dibuang.
+ * Nilai pertama muncul di indeks `period` — sebelum itu Wilder belum punya
+ * satu periode penuh untuk di-smoothing.
+ */
+export function rsiHistory(closes, period = 14) {
+  const out = new Array(closes?.length || 0).fill(null)
+  if (!closes || closes.length < period + 1) return out
+
+  let gain = 0
+  let loss = 0
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1]
+    if (diff >= 0) gain += diff
+    else loss -= diff
+  }
+  gain /= period
+  loss /= period
+
+  const nilai = () => {
+    // Harga datar tidak punya arah — netral, bukan overbought (samakan dengan rsi()).
+    if (gain === 0 && loss === 0) return 50
+    if (loss === 0) return 100
+    return 100 - 100 / (1 + gain / loss)
+  }
+
+  out[period] = nilai()
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1]
+    gain = (gain * (period - 1) + (diff > 0 ? diff : 0)) / period
+    loss = (loss * (period - 1) + (diff < 0 ? -diff : 0)) / period
+    out[i] = nilai()
+  }
+
+  return out
+}
+
+/**
+ * Deret MACD sepanjang `closes` → { macdLine, signalLine, histogram }.
+ *
+ * Sama seperti rsiHistory: ketiga array sepanjang input dengan null di depan,
+ * jadi indeks ke-i selalu menunjuk tanggal ke-i. MACD line mulai di indeks
+ * slow-1, signal line baru mulai signalPeriod-1 titik setelahnya.
+ */
+export function macdHistory(closes, fast = 12, slow = 26, signalPeriod = 9) {
+  const n = closes?.length || 0
+  const kosong = () => new Array(n).fill(null)
+  const macdLine = kosong()
+  const signalLine = kosong()
+  const histogram = kosong()
+  if (n < slow) return { macdLine, signalLine, histogram }
+
+  const fastSeries = emaSeries(closes, fast)
+  const slowSeries = emaSeries(closes, slow)
+
+  // emaSeries[j] merujuk closes[j + period - 1]; sejajarkan lewat indeks asli.
+  for (let i = slow - 1; i < n; i++) {
+    macdLine[i] = fastSeries[i - (fast - 1)] - slowSeries[i - (slow - 1)]
+  }
+
+  const padat = macdLine.slice(slow - 1)
+  const signalSeries = emaSeries(padat, signalPeriod)
+  const mulai = slow - 1 + signalPeriod - 1
+  for (let j = 0; j < signalSeries.length; j++) {
+    signalLine[mulai + j] = signalSeries[j]
+    histogram[mulai + j] = macdLine[mulai + j] - signalSeries[j]
+  }
+
+  return { macdLine, signalLine, histogram }
+}
+
 /** Moving average harga penutupan. */
 export function movingAverage(rows, period = 20) {
   return sma(series(rows, 'close'), period)

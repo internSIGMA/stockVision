@@ -9,7 +9,7 @@ def setup_access_roles():
         conn = get_connection()
         cur = conn.cursor()
 
-        # Tambahkan kolom access_role apabila belum tersedia.
+        
         cur.execute(
             """
             ALTER TABLE idxsaham.users
@@ -18,7 +18,7 @@ def setup_access_roles():
             """
         )
 
-        # Fariz dijadikan admin untuk pengujian.
+        
         cur.execute(
             """
             UPDATE idxsaham.users
@@ -27,7 +27,7 @@ def setup_access_roles():
             """
         )
 
-        # Dewi tetap menjadi user biasa.
+        
         cur.execute(
             """
             UPDATE idxsaham.users
@@ -46,7 +46,7 @@ def setup_access_roles():
 
         conn.commit()
 
-        # Tampilkan hasilnya.
+       
         cur.execute(
             """
             SELECT
