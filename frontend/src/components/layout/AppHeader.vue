@@ -238,8 +238,8 @@ function performLogout() {
               </p>
 
               <p class="text-[11px] text-muted-foreground">
-                Role:
-                {{ auth.user?.role || 'user' }}
+                Access:
+                {{ auth.user?.accessRole || 'user' }}
               </p>
             </div>
           </div>

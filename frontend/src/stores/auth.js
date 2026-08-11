@@ -45,9 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
   const isAdmin = computed(() => {
     const isAccRoleAdmin = accessRole.value === 'admin'
-    const isRoleAdmin = String(user.value?.role || '').toLowerCase() === 'admin'
     const isEmailAdmin = String(user.value?.email || '').toLowerCase().includes('admin')
-    return isAccRoleAdmin || isRoleAdmin || isEmailAdmin
+    return isAccRoleAdmin || isEmailAdmin
   })
 
   const activeWatchlist = computed(
@@ -88,7 +87,6 @@ export const useAuthStore = defineStore('auth', () => {
       email: raw.email ?? '',
       username: raw.username ?? '',
       name: raw.name ?? raw.username ?? 'User',
-      role: raw.role,
       accessRole: raw.access_role ?? raw.accessRole ?? 'user',
       defaultTicker: raw.default_ticker ?? raw.defaultTicker ?? 'BBCA',
       phone: raw.phone ?? '',
@@ -249,7 +247,6 @@ export const useAuthStore = defineStore('auth', () => {
       email: user.value.email,
       username: user.value.username,
       name: user.value.name,
-      role: user.value.role,
       default_ticker: user.value.defaultTicker,
       phone: user.value.phone,
       avatar: user.value.avatar,

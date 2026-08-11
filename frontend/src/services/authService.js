@@ -75,7 +75,6 @@ export async function login({ email, password }) {
       email: data.email,
       username: data.username,
       name: data.name,
-      role: data.role,
       accessRole: data.access_role || data.accessRole || (data.email.toLowerCase().includes('admin') ? 'admin' : 'user'),
       defaultTicker: data.default_ticker || 'BBCA',
       avatar: data.email.toLowerCase() === 'dewi@sahamscope.id' ? 'https://i.pravatar.cc/100?img=47' : 'https://i.pravatar.cc/100?img=12'

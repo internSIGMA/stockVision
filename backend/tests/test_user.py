@@ -21,10 +21,10 @@ class FakeCursor:
 
     def execute(self, query, params=None):
         params = params or ()
-        if "RETURNING id, email, username, name, role, default_ticker" in query:
-            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "08123456789")]
-        elif "SELECT id, email, username, name, role, default_ticker, password" in query:
-            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "hashed-password")]
+        if "RETURNING id, email, username, name, access_role, default_ticker" in query:
+            self.rows = [(1, "demo@example.com", "demo", "Demo", "user", "BBCA", "08123456789")]
+        elif "SELECT id, email, username, name, access_role, default_ticker, password" in query:
+            self.rows = [(1, "demo@example.com", "demo", "Demo", "user", "BBCA", "hashed-password")]
         elif "INSERT INTO idxsaham.watchlists" in query:
             store.counter += 1
             wid = store.counter
@@ -68,7 +68,7 @@ class FakeCursor:
             store.watchlists.pop(wid, None)
             self.rows = []
         elif "SELECT" in query and "users" in query:
-            self.rows = [(1, "demo@example.com", "demo", "Demo", "Trader", "BBCA", "08123456789")]
+            self.rows = [(1, "demo@example.com", "demo", "Demo", "user", "BBCA", "08123456789")]
         else:
             self.rows = []
 
@@ -107,11 +107,12 @@ class UserCrudTests(unittest.TestCase):
             "username": "demo",
             "password": "secret",
             "name": "Demo",
-            "role": "Trader",
             "default_ticker": "BBCA",
         })
         self.assertEqual(result["email"], "demo@example.com")
         self.assertEqual(result["username"], "demo")
+        self.assertEqual(result["access_role"], "user")
+        self.assertNotIn("role", result)
 
     @patch("user.get_connection")
     def test_get_user(self, mock_get_connection):
