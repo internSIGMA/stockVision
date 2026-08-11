@@ -97,7 +97,6 @@ def _ensure_users_table():
                 "username": "fariz",
                 "password": generate_password_hash("password123"),
                 "name": "Fariz",
-                "role": "Trader — Perbankan",
                 "default_ticker": "BBCA"
             },
             {
@@ -608,6 +607,10 @@ def delete_user(user_id):
 def create_user_route():
     payload = request.get_json(silent=True) or {}
     user = create_user(payload)
+    try:
+        send_registration_email(user["email"], user.get("name"), user.get("username"))
+    except Exception as e:
+        print(f"[SMTP] Error sending registration notification: {e}")
     return jsonify(user), 201
 
 
@@ -741,6 +744,78 @@ def send_reset_email(email, code):
         print(f"Body: {body}")
         print(f"==========================================\n")
         return False
+
+
+def _make_display_name(name, username, email):
+    if name and str(name).strip():
+        return str(name).strip()
+    if username and str(username).strip():
+        return str(username).strip()
+    return email.split("@")[0] if email and "@" in email else email
+
+
+def send_email(subject, body, email):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+
+    if smtp_host and smtp_port and smtp_user and smtp_pass:
+        try:
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = email
+
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+
+            print(f"[SMTP] Notification sent to {email} successfully.")
+            return True
+        except Exception as e:
+            print(f"[SMTP] Error sending notification email to {email}: {e}")
+            return False
+    else:
+        print(f"\n==========================================")
+        print(f"[SMTP SIMULATION] To: {email}")
+        print(f"Subject: {subject}")
+        print(f"Body: {body}")
+        print(f"==========================================\n")
+        return False
+
+
+def send_registration_email(email, name=None, username=None):
+    display_name = _make_display_name(name, username, email)
+    subject = "Selamat datang di stockVision"
+    body = (
+        f"Halo {display_name},\n\n"
+        f"Terima kasih telah mendaftar di stockVision. Akun Anda telah berhasil dibuat dengan email {email}.\n\n"
+        "Selamat datang dan selamat menggunakan stockVision!"
+    )
+    return send_email(subject, body, email)
+
+
+def send_google_login_email(email, name=None, is_new=False):
+    display_name = _make_display_name(name, None, email)
+    if is_new:
+        subject = "Akun stockVision berhasil dibuat melalui Google"
+        body = (
+            f"Halo {display_name},\n\n"
+            f"Akun stockVision Anda telah berhasil dibuat menggunakan akun Google {email}.\n"
+            "Anda dapat masuk kembali menggunakan Google yang sama.\n\n"
+            "Selamat datang di stockVision!"
+        )
+    else:
+        subject = "Login Google berhasil di stockVision"
+        body = (
+            f"Halo {display_name},\n\n"
+            f"Anda baru saja berhasil login ke stockVision menggunakan akun Google {email}.\n\n"
+            "Jika ini bukan Anda, segera hubungi administrator."
+        )
+    return send_email(subject, body, email)
 
 
 @user_bp.route("/users/reset-password/send-code", methods=["POST"])
@@ -901,6 +976,10 @@ def google_login_route():
         user_id, email_val, username, name_val, role, default_ticker, phone_number = row
         cur.close()
         conn.close()
+        try:
+            send_google_login_email(email_val, name_val, is_new=False)
+        except Exception as e:
+            print(f"[SMTP] Error sending Google login notification: {e}")
         return jsonify({
             "id": user_id,
             "email": email_val,
@@ -945,6 +1024,11 @@ def google_login_route():
         cur.close()
         conn.close()
 
+        try:
+            send_google_login_email(new_row[1], new_row[3], is_new=True)
+        except Exception as e:
+            print(f"[SMTP] Error sending Google welcome notification: {e}")
+
         return jsonify({
             "id": new_row[0],
             "email": new_row[1],
@@ -954,6 +1038,7 @@ def google_login_route():
             "default_ticker": new_row[5],
             "phone_number": new_row[6]
         }), 201
+
 @user_bp.route("/test-ui")
 def test_ui():
     return render_template("test_ui.html")
