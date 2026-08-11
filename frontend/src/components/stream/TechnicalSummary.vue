@@ -26,7 +26,7 @@ const indikator = computed(() => summarizeIndicators(props.rows))
     <EmptyState
       v-else-if="!rows.length"
       title="Belum ada data OHLC"
-      description="Jalankan Trigger Crawler untuk mengambil histori harga emiten ini."
+      description="Emiten ini belum memiliki histori harga."
     />
 
     <ul v-else class="divide-y-[0.5px] divide-border">

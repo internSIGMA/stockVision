@@ -30,26 +30,24 @@ def get_active_target_symbols():
     """
     Dapatkan seluruh simbol emiten target untuk crawl harian.
     Menggabungkan:
-    1. Daftar emiten IDX populer (hard-coded)
+    1. Seluruh 940+ emiten IDX terdaftar dari db.idx_tickers / DB idx_company_list
     2. Emiten dari watchlists pengguna di PostgreSQL
     3. Emiten yang sudah ada di tabel-tabel database
     """
-    # Daftar emiten IDX populer — selalu di-crawl
-    DEFAULT_IDX_TICKERS = {
-        "BBCA", "BBRI", "BMRI", "BBNI", "BJBR", "BBTN", "BRIS",
-        "TLKM", "ISAT", "GOTO",
-        "ASII", "UNVR", "UNTR", "ICBP", "INDF",
-        "ANTM", "PTBA", "ADRO", "INCO", "BRMS", "BSSR",
-        "CTRA", "SMRA", "BSDE", "ASRI",
-        "KLBF", "SIDO", "MYOR",
-        "PGAS", "AKRA", "MEDC",
-        "AMRT", "ACES", "MAPI", "ERAA",
-        "SMGR", "INTP",
-        "CPIN", "INKP", "TKIM",
-        "PTRO", "BUMI", "MDIA", "VIVA",
-    }
+    try:
+        from db.idx_tickers import get_all_idx_symbols
+        symbols = set(get_all_idx_symbols())
+    except Exception as e:
+        print("[Scheduler] Warning: Gagal memuat daftar emiten IDX dinamis, menggunakan fallback populer:", e)
+        symbols = {
+            "BBCA", "BBRI", "BMRI", "BBNI", "BJBR", "BBTN", "BRIS",
+            "TLKM", "ISAT", "GOTO", "ASII", "UNVR", "UNTR", "ICBP", "INDF",
+            "ANTM", "PTBA", "ADRO", "INCO", "BRMS", "BSSR", "CTRA", "SMRA",
+            "BSDE", "ASRI", "KLBF", "SIDO", "MYOR", "PGAS", "AKRA", "MEDC",
+            "AMRT", "ACES", "MAPI", "ERAA", "SMGR", "INTP", "CPIN", "INKP",
+            "TKIM", "PTRO", "BUMI", "MDIA", "VIVA"
+        }
 
-    symbols = set(DEFAULT_IDX_TICKERS)
 
     # Tambahkan emiten dari watchlists pengguna di PostgreSQL
     try:
@@ -432,19 +430,25 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
             errors.append(err_msg)
             print(f"[Scheduler] {err_msg}")
 
-        # Menjalankan Training Model Forecast & Prescriptive Pipeline setelah bursa tutup
+        # Menjalankan Training Model Forecast, Prescriptive Pipeline & Analytics Processing Layer
         try:
-            print("[Scheduler] Memulai training model forecast & prescriptive pipeline setelah bursa tutup...")
+            print("[Scheduler] Memulai training model forecast, prescriptive pipeline & analytics processing layer...")
             from prescriptive.pipeline import run_prescriptive_pipeline
             p_res = run_prescriptive_pipeline()
             p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
             _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "SUCCESS", p_count)
-            print("[Scheduler] Training model forecast & prescriptive pipeline selesai disiapkan.")
+
+            from analytics.pipeline import run_analytics_pipeline
+            a_res = run_analytics_pipeline()
+            a_count = a_res.get("processed_count", 0) if isinstance(a_res, dict) and "processed_count" in a_res else 0
+            _log_crawl("SCHEDULER_ANALYTICS_PIPELINE", "ALL", today_str, "SUCCESS", a_count)
+            print("[Scheduler] Model forecast, prescriptive pipeline & analytics processing layer selesai diproses.")
         except Exception as e:
-            err_msg = f"Prescriptive Pipeline: {str(e)}"
+            err_msg = f"Prescriptive/Analytics Pipeline: {str(e)}"
             errors.append(err_msg)
-            _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
+            _log_crawl("SCHEDULER_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
             print(f"[Scheduler] {err_msg}")
+
 
         # Summary
         state["crawl_in_progress"] = False

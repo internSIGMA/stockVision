@@ -42,6 +42,15 @@ const routes = [
     },
   },
   {
+    path: '/onboarding',
+    name: 'onboarding',
+    component: () => import('@/pages/OnboardingPage.vue'),
+    meta: {
+      requiresAuth: true,
+      hideHeader: true,
+    },
+  },
+  {
     path: '/stream',
     name: 'stream',
     component: () => import('@/pages/StreamPage.vue'),

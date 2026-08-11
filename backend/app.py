@@ -33,8 +33,45 @@ from analytics.routes import analytics_bp
 app.register_blueprint(analytics_bp)
 
 
+@app.route("/api/stocks/all-tickers", methods=["GET"])
+@app.route("/api/data/tickers", methods=["GET"])
+def get_all_idx_tickers_app():
+    """
+    Mengambil daftar 940+ seluruh kode emiten terdaftar di IDX dari database.
+    Query params (optional):
+      - search: Filter berdasarkan kata kunci simbol atau nama emiten
+      - sector: Filter berdasarkan sektor
+    """
+    search_q = request.args.get("search", "").strip().upper()
+    sector_q = request.args.get("sector", "").strip()
+
+    try:
+        from db.idx_tickers import load_all_idx_companies
+        all_companies = load_all_idx_companies()
+
+        if search_q:
+            all_companies = [
+                c for c in all_companies
+                if search_q in c["symbol"].upper() or search_q in c["company_name"].upper()
+            ]
+
+        if sector_q:
+            all_companies = [
+                c for c in all_companies
+                if sector_q.lower() in c.get("sector", "").lower()
+            ]
+
+        return jsonify({
+            "status": "success",
+            "count": len(all_companies),
+            "data": all_companies
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 from scheduler import (
+
     start_scheduler, stop_scheduler, pause_scheduler,
     resume_scheduler, trigger_now, get_scheduler_status
 )

@@ -428,11 +428,10 @@ def insert_fundamental(record):
     conn.commit()
 
     cur.close()
-
     conn.close()
 
-import sys
 def insert_technical_indicator(df):
+
 
     if df.empty:
         return

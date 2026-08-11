@@ -134,13 +134,18 @@ def _get_connection():
     db = os.getenv("DB_NAME", "stockVision")
     u = os.getenv("DB_USER", "stockvision")
     p = os.getenv("DB_PASSWORD", "stockvision_pass")
-    port = int(os.getenv("DB_PORT", 5432))
+    port = int(os.getenv("DB_PORT", 5433))
     try:
         return psycopg2.connect(host=h, database=db, user=u, password=p, port=port)
-    except psycopg2.OperationalError as e:
-        if h in ["db", "postgres"]:
-            return psycopg2.connect(host="localhost", database=db, user=u, password=p, port=5434)
-        raise e
+    except psycopg2.OperationalError:
+        targets = [("db", 5432), ("localhost", 5433), ("localhost", 5434), ("127.0.0.1", 5433)]
+        for host_cand, port_cand in targets:
+            try:
+                return psycopg2.connect(host=host_cand, database=db, user=u, password=p, port=port_cand)
+            except psycopg2.OperationalError:
+                continue
+        raise
+
 
 def save_analytics_results(results_list: list) -> int:
     """Simpan atau perbarui list hasil analisis ke database."""
