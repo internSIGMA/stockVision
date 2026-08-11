@@ -107,6 +107,14 @@ def _ensure_users_table():
                 "name": "Dewi",
                 "role": "Trader — Properti & Energi",
                 "default_ticker": "BBNI"
+            },
+{
+                "email": "admin@sahamscope.id",
+                "username": "admin",
+                "password": generate_password_hash("password123"),
+                "name": "admin",
+                "role": "admin",
+                "default_ticker": "BBNI"
             }
         ]
         for u in users_to_seed:

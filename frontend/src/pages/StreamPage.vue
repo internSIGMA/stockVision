@@ -6,7 +6,6 @@ import { useEmitenData } from '@/composables/useEmitenData'
 import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
-import TechnicalSummary from '@/components/stream/TechnicalSummary.vue'
 import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
@@ -175,7 +174,7 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
             <EmptyState
               v-else-if="!ohlc.length"
               title="Belum ada data candlestick"
-              description="Emiten ini belum pernah di-crawl. Jalankan Trigger Crawler di atas untuk mengambil histori harganya."
+              description="Emiten ini belum memiliki histori harga."
             />
 
             <div v-else class="p-2">
@@ -283,9 +282,8 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         @recompute="muatUlangPrescriptive"
       />
 
-      <!-- 7 — Technical + Analysis/Broker -->
-      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <TechnicalSummary :rows="ohlc" :loading="loading" />
+      <!-- 7 — Analysis/Broker -->
+      <div class="flex flex-col gap-4">
         <AnalysisBrokerCard :ohlc="ohlc" :broker="broker" :loading="loading" />
       </div>
 

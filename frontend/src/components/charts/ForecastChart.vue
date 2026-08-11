@@ -142,7 +142,7 @@ const chartOptions = computed(() => {
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: {
-        display: true,
+        display: false,
         position: 'bottom',
         labels: {
           color: text,

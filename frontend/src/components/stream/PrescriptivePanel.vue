@@ -260,196 +260,207 @@ async function bagikan() {
 
     <template v-else-if="hasil">
 
-      <!-- 1 — Keputusan di kiri, angka level di kanan -->
+      <!-- Gabungan Rekomendasi AI & Strategi di Kiri, Level Trading & Ringkasan Teknikal di Kanan -->
       <div class="grid gap-3.5 lg:grid-cols-2">
-        <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4">
-          <div class="mb-3 flex items-baseline justify-between gap-2">
-            <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Rekomendasi AI
-            </p>
-            <span class="tabular text-[10px] text-muted-foreground">
-              {{ hasil.bull }} bullish · {{ hasil.bear }} bearish
-            </span>
-          </div>
-
-          <div class="rounded-lg border-[0.5px] p-3.5" :class="KELAS_KARTU[nadaAksi]">
-            <div class="flex items-center gap-2" :class="KELAS_TEKS[nadaAksi]">
-              <component :is="ikonAksi" class="size-5" aria-hidden="true" />
-              <span class="text-[22px] font-bold leading-none tracking-tight">{{ hasil.aksi }}</span>
-            </div>
-
-            <p class="mt-2 text-[12px] leading-relaxed text-[var(--foreground-body)]">
-              {{ SARAN[hasil.aksi] }}
-            </p>
-
-            <div v-if="chip.length" class="mt-3 flex flex-wrap gap-1.5">
-              <span
-                v-for="c in chip"
-                :key="c.teks"
-                class="tabular rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.03em]"
-                :class="
-                  c.naik
-                    ? 'bg-[var(--up-bg)] text-[var(--color-up-ink)]'
-                    : 'bg-[var(--down-bg)] text-[var(--color-down-ink)]'
-                "
-              >
-                {{ c.teks }}
+        <!-- Kolom Kiri -->
+        <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card">
+          <!-- Rekomendasi AI -->
+          <div class="flex flex-col p-4 pb-0">
+            <div class="mb-3 flex items-baseline justify-between gap-2">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Rekomendasi AI
+              </p>
+              <span class="tabular text-[10px] text-muted-foreground">
+                {{ hasil.bull }} bullish · {{ hasil.bear }} bearish
               </span>
             </div>
+
+            <div class="rounded-lg border-[0.5px] p-3.5" :class="KELAS_KARTU[nadaAksi]">
+              <div class="flex items-center gap-2" :class="KELAS_TEKS[nadaAksi]">
+                <component :is="ikonAksi" class="size-5" aria-hidden="true" />
+                <span class="text-[22px] font-bold leading-none tracking-tight">{{ hasil.aksi }}</span>
+              </div>
+
+              <p class="mt-2 text-[12px] leading-relaxed text-[var(--foreground-body)]">
+                {{ SARAN[hasil.aksi] }}
+              </p>
+
+              <div v-if="chip.length" class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  v-for="c in chip"
+                  :key="c.teks"
+                  class="tabular rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.03em]"
+                  :class="
+                    c.naik
+                      ? 'bg-[var(--up-bg)] text-[var(--color-up-ink)]'
+                      : 'bg-[var(--down-bg)] text-[var(--color-down-ink)]'
+                  "
+                >
+                  {{ c.teks }}
+                </span>
+              </div>
+            </div>
+
+            <p class="mt-3 flex items-start gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
+              <Info class="mt-px size-3 shrink-0" aria-hidden="true" />
+              <span>
+                Pastikan selalu gunakan risk management dan lakukan riset sebelum berinvestasi.
+              </span>
+            </p>
           </div>
 
-          <p class="mt-3 flex items-start gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
-            <Info class="mt-px size-3 shrink-0" aria-hidden="true" />
-            <span>
-              Pastikan selalu gunakan risk management dan lakukan riset sebelum berinvestasi.
-            </span>
-          </p>
-        </div>
+          <div v-if="backend?.new_buyer_strategy?.recommendation || backend?.holding_strategy?.recommendation" class="my-4 mx-4 border-t-[0.5px] border-border"></div>
 
-        <div
-          v-if="levels"
-          class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4"
-        >
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Level Trading
-          </p>
-
-          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-            <div class="rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                Entry
-              </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none">
-                {{ formatNumber(levels.entry) }}
-              </p>
-              <p class="mt-1.5 text-[10px] text-muted-foreground">Zona masuk ideal</p>
-            </div>
-
-            <div class="rounded-lg border-[0.5px] border-[var(--up)]/40 bg-[var(--up-bg)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-up-ink)]">
-                Target
-              </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-up-ink)]">
-                {{ formatNumber(levels.target) }}
-              </p>
-              <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
-                {{ persen(levels.persenTarget) ?? '—' }} dari entry
-              </p>
-            </div>
-
-            <div class="rounded-lg border-[0.5px] border-[var(--down)]/40 bg-[var(--down-bg)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-down-ink)]">
-                Stop Loss
-              </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-down-ink)]">
-                {{ formatNumber(levels.stopLoss) }}
-              </p>
-              <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
-                {{ persen(levels.persenStopLoss) ?? '—' }} dari entry
-              </p>
-            </div>
-          </div>
-
+          <!-- Strategi Menurut Posisi -->
           <div
-            v-if="mutuRR"
-            class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-[0.5px] border-border px-3 py-2.5"
+            v-if="backend?.new_buyer_strategy?.recommendation || backend?.holding_strategy?.recommendation"
+            class="flex flex-col p-4 pt-0"
           >
-            <span class="text-[11px] text-muted-foreground">Risk / Reward</span>
-            <span class="tabular text-[13px] font-bold">1 : {{ levels.riskReward.toFixed(2) }}</span>
-            <StatusPill :label="mutuRR.teks" :tone="mutuRR.tone" />
+            <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Strategi Menurut Posisi
+            </p>
 
-            <button
-              type="button"
-              :disabled="backendLoading"
-              class="ml-auto flex items-center gap-1.5 rounded-md border-[0.5px] border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-[var(--card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-60"
-              @click="emit('recompute')"
-            >
-              <RefreshCw class="size-3" :class="{ 'animate-spin': backendLoading }" aria-hidden="true" />
-              Hitung ulang RR
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2 — Strategi per posisi di kiri, angka indikator di kanan -->
-      <div class="grid gap-3.5 lg:grid-cols-2">
-        <div
-          v-if="backend?.new_buyer_strategy?.recommendation || backend?.holding_strategy?.recommendation"
-          class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4"
-        >
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Strategi Menurut Posisi
-          </p>
-
-          <div class="flex flex-col gap-2.5">
-            <div
-              v-if="backend.new_buyer_strategy?.recommendation"
-              class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
-            >
-              <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
+            <div class="flex flex-col gap-2.5">
+              <div
+                v-if="backend.new_buyer_strategy?.recommendation"
+                class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
               >
-                <UserPlus class="size-4" aria-hidden="true" />
-              </span>
-
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground">Belum punya posisi</p>
-                <p class="text-[14px] font-semibold leading-snug">
-                  {{ backend.new_buyer_strategy.recommendation }}
-                </p>
-                <p
-                  v-if="backend.new_buyer_strategy.reason"
-                  class="mt-1 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+                <span
+                  class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
                 >
-                  {{ backend.new_buyer_strategy.reason }}
-                </p>
+                  <UserPlus class="size-4" aria-hidden="true" />
+                </span>
+
+                <div class="min-w-0">
+                  <p class="text-[10px] text-muted-foreground">Belum punya posisi</p>
+                  <p class="text-[14px] font-semibold leading-snug">
+                    {{ backend.new_buyer_strategy.recommendation }}
+                  </p>
+                  <p
+                    v-if="backend.new_buyer_strategy.reason"
+                    class="mt-1 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+                  >
+                    {{ backend.new_buyer_strategy.reason }}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div
-              v-if="backend.holding_strategy?.recommendation"
-              class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
-            >
-              <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
+              <div
+                v-if="backend.holding_strategy?.recommendation"
+                class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
               >
-                <Wallet class="size-4" aria-hidden="true" />
-              </span>
-
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground">Sudah pegang</p>
-                <p class="text-[14px] font-semibold leading-snug">
-                  {{ backend.holding_strategy.recommendation }}
-                </p>
-                <p
-                  v-if="backend.holding_strategy.reason"
-                  class="mt-1 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+                <span
+                  class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
                 >
-                  {{ backend.holding_strategy.reason }}
-                </p>
+                  <Wallet class="size-4" aria-hidden="true" />
+                </span>
+
+                <div class="min-w-0">
+                  <p class="text-[10px] text-muted-foreground">Sudah pegang</p>
+                  <p class="text-[14px] font-semibold leading-snug">
+                    {{ backend.holding_strategy.recommendation }}
+                  </p>
+                  <p
+                    v-if="backend.holding_strategy.reason"
+                    class="mt-1 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+                  >
+                    {{ backend.holding_strategy.reason }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4">
-          <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Ringkasan Teknikal
-          </p>
+        <!-- Kolom Kanan -->
+        <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card">
+          <!-- Level Trading -->
+          <div
+            v-if="levels"
+            class="flex flex-col p-4 pb-0"
+          >
+            <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Level Trading
+            </p>
 
-          <ul class="divide-y-[0.5px] divide-border">
-            <li
-              v-for="ind in indikator"
-              :key="ind.key"
-              class="flex items-center justify-between gap-3 py-2.5"
-            >
-              <span class="text-[12px] text-muted-foreground">{{ ind.name }}</span>
-              <div class="flex items-center gap-2.5">
-                <span class="tabular text-[13px] font-semibold">{{ ind.display }}</span>
-                <StatusPill :label="ind.label" :tone="ind.tone" />
+            <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <div class="rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3">
+                <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                  Entry
+                </p>
+                <p class="tabular mt-1.5 text-[22px] font-bold leading-none">
+                  {{ formatNumber(levels.entry) }}
+                </p>
+                <p class="mt-1.5 text-[10px] text-muted-foreground">Zona masuk ideal</p>
               </div>
-            </li>
-          </ul>
+
+              <div class="rounded-lg border-[0.5px] border-[var(--up)]/40 bg-[var(--up-bg)] p-3">
+                <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-up-ink)]">
+                  Target
+                </p>
+                <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-up-ink)]">
+                  {{ formatNumber(levels.target) }}
+                </p>
+                <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
+                  {{ persen(levels.persenTarget) ?? '—' }} dari entry
+                </p>
+              </div>
+
+              <div class="rounded-lg border-[0.5px] border-[var(--down)]/40 bg-[var(--down-bg)] p-3">
+                <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-down-ink)]">
+                  Stop Loss
+                </p>
+                <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-down-ink)]">
+                  {{ formatNumber(levels.stopLoss) }}
+                </p>
+                <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
+                  {{ persen(levels.persenStopLoss) ?? '—' }} dari entry
+                </p>
+              </div>
+            </div>
+
+            <div
+              v-if="mutuRR"
+              class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-[0.5px] border-border px-3 py-2.5"
+            >
+              <span class="text-[11px] text-muted-foreground">Risk / Reward</span>
+              <span class="tabular text-[13px] font-bold">1 : {{ levels.riskReward.toFixed(2) }}</span>
+              <StatusPill :label="mutuRR.teks" :tone="mutuRR.tone" />
+
+              <button
+                type="button"
+                :disabled="backendLoading"
+                class="ml-auto flex items-center gap-1.5 rounded-md border-[0.5px] border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-[var(--card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-60"
+                @click="emit('recompute')"
+              >
+                <RefreshCw class="size-3" :class="{ 'animate-spin': backendLoading }" aria-hidden="true" />
+                Hitung ulang RR
+              </button>
+            </div>
+          </div>
+
+          <div v-if="levels" class="my-4 mx-4 border-t-[0.5px] border-border"></div>
+
+          <!-- Ringkasan Teknikal -->
+          <div class="flex flex-col p-4 pt-0">
+            <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Ringkasan Teknikal
+            </p>
+
+            <ul class="divide-y-[0.5px] divide-border">
+              <li
+                v-for="ind in indikator"
+                :key="ind.key"
+                class="flex items-center justify-between gap-3 py-2.5"
+              >
+                <span class="text-[12px] text-muted-foreground">{{ ind.name }}</span>
+                <div class="flex items-center gap-2.5">
+                  <span class="tabular text-[13px] font-semibold">{{ ind.display }}</span>
+                  <StatusPill :label="ind.label" :tone="ind.tone" />
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 

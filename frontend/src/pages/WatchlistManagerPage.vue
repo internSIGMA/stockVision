@@ -6,6 +6,16 @@ import { useNotify } from '@/composables/useNotify'
 import { isSupported } from '@/api/StockVision'
 import { Button } from '@/components/ui/button'
 import { Check, Plus } from '@lucide/vue'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 /**
  * WatchlistManagerPage
@@ -13,7 +23,7 @@ import { Check, Plus } from '@lucide/vue'
  * - Input bebas untuk semua emiten IDX
 
  */
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'create-new'])
 
 const auth   = useAuthStore()
 const market = useMarketStore()
@@ -26,6 +36,7 @@ const menyimpan    = ref(false)
 const inputTicker  = ref('')
 const inputError   = ref('')
 const menghapus    = ref(false)
+const showDeleteDialog = ref(false)
 
 /** Salinan lokal supaya bisa di-cancel */
 const dipilih = ref([...auth.watchlistTersimpan])
@@ -108,10 +119,12 @@ function batal() {
   inputError.value  = ''
 }
 
-async function hapusDaftarPantau() {
+function confirmHapusDaftarPantau() {
   if (auth.watchlists.length <= 1 || menghapus.value) return
-  if (!confirm(`Hapus daftar pantau "${auth.activeWatchlist?.name}"?`)) return
-  
+  showDeleteDialog.value = true
+}
+
+async function performHapusDaftarPantau() {
   menghapus.value = true
   try {
     await auth.hapusWatchlist(auth.activeWatchlistId)
@@ -141,21 +154,32 @@ function onKeydown(e) {
 
     <!-- Input Nama Watchlist -->
     <div class="flex flex-col gap-1.5">
-      <label for="watchlist-name-input" class="text-[11px] font-medium text-muted-foreground">
-        Nama Daftar Pantau
-      </label>
+      <div class="flex items-center justify-between">
+        <label for="watchlist-name-input" class="text-[12px] font-medium text-muted-foreground">
+          Nama Daftar Pantau
+        </label>
+        <button
+          type="button"
+          class="flex items-center gap-1 text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors"
+          title="Buat daftar pantau baru"
+          @click="$emit('create-new')"
+        >
+          <Plus class="size-3.5" />
+          <span>Buat Baru</span>
+        </button>
+      </div>
       <input
         id="watchlist-name-input"
         v-model="inputName"
         type="text"
         placeholder="Contoh: Saham Teknologi"
-        class="rounded-md border border-input bg-background px-3 py-1.5 text-[13px] shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        class="rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
       />
     </div>
 
     <!-- Pencarian & Tambah Emiten -->
     <div class="flex flex-col gap-1.5">
-      <label for="watchlist-ticker-input" class="text-[11px] font-medium text-muted-foreground">
+      <label for="watchlist-ticker-input" class="text-[12px] font-medium text-muted-foreground">
         Cari & Tambah Emiten IDX (contoh: TLKM, GOTO)
       </label>
       <div class="flex flex-col gap-2">
@@ -165,20 +189,20 @@ function onKeydown(e) {
           type="text"
           maxlength="6"
           placeholder="Ketik kode emiten..."
-          class="rounded-md border border-input bg-background px-3 py-1.5 font-mono text-[13px] uppercase shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          class="rounded-md border border-input bg-background px-3 py-1.5 font-mono text-sm uppercase shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
           @keydown="onKeydown"
           @input="inputError = ''"
         />
 
         <!-- Hasil Pencarian Live -->
         <div v-if="inputTicker.trim().length > 0" class="rounded-md border border-border bg-card p-1.5 shadow-sm">
-          <div v-if="!isSupported(inputTicker.trim().toUpperCase())" class="text-[11px] font-medium text-destructive px-2 py-1">
+          <div v-if="!isSupported(inputTicker.trim().toUpperCase())" class="text-[12px] font-medium text-destructive px-2 py-1">
             Kode emiten "{{ inputTicker.toUpperCase() }}" tidak ditemukan atau belum didukung.
           </div>
           <button
             v-else
             type="button"
-            class="flex w-full items-center justify-between rounded-md px-3 py-2 text-[13px] font-bold font-mono transition-all"
+            class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-bold font-mono transition-all"
             :class="[
               dipilih.map(s => s.toUpperCase()).includes(inputTicker.trim().toUpperCase())
                 ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
@@ -188,23 +212,23 @@ function onKeydown(e) {
           >
             <span>{{ inputTicker.trim().toUpperCase() }}</span>
             
-            <span v-if="dipilih.map(s => s.toUpperCase()).includes(inputTicker.trim().toUpperCase())" class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide">
+            <span v-if="dipilih.map(s => s.toUpperCase()).includes(inputTicker.trim().toUpperCase())" class="flex items-center gap-1.5 text-[12px] font-semibold tracking-wide">
               <Check class="size-3.5" /> DI WATCHLIST
             </span>
-            <span v-else class="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+            <span v-else class="flex items-center gap-1 text-[12px] font-medium text-muted-foreground">
               <Plus class="size-3.5" /> Tambah
             </span>
           </button>
         </div>
       </div>
-      <p v-if="inputError" class="text-[11px] text-destructive">{{ inputError }}</p>
+      <p v-if="inputError" class="text-[12px] text-destructive">{{ inputError }}</p>
     </div>
 
     <!-- Daftar emiten terpilih -->
     <div class="flex flex-col gap-1">
-      <p class="text-[11px] font-medium text-muted-foreground">Emiten di Watchlist ({{ dipilih.length }})</p>
+      <p class="text-[12px] font-medium text-muted-foreground">Emiten di Watchlist ({{ dipilih.length }})</p>
 
-      <p v-if="!dipilih.length" class="text-[12px] text-muted-foreground italic">
+      <p v-if="!dipilih.length" class="text-[13px] text-muted-foreground italic">
         Belum ada emiten. Tambahkan di atas.
       </p>
 
@@ -216,20 +240,20 @@ function onKeydown(e) {
         >
           <span class="flex items-center gap-1.5">
             <span
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-info-bg)] font-mono text-[10px] font-semibold text-[var(--color-info-ink)]"
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-info-bg)] font-mono text-[11px] font-semibold text-[var(--color-info-ink)]"
             >
               {{ ticker.charAt(0) }}
             </span>
-            <span class="tabular text-[12px] font-semibold">{{ ticker }}</span>
+            <span class="tabular text-[13px] font-semibold">{{ ticker }}</span>
             <span
               v-if="auth.emitenUtama === ticker"
-              class="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+              class="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary"
             >
               Utama
             </span>
           </span>
           <button
-            class="size-5 shrink-0 rounded text-[10px] text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+            class="size-6 shrink-0 rounded text-[12px] font-bold text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
             title="Hapus dari watchlist"
             @click="hapus(ticker)"
           >
@@ -240,7 +264,7 @@ function onKeydown(e) {
     </div>
 
     <!-- Catatan -->
-    <p class="text-[10px] leading-relaxed text-muted-foreground">
+    <p class="text-[11px] leading-relaxed text-muted-foreground">
       Data OHLC historis untuk emiten baru akan diunduh otomatis dari
       <strong>yfinance</strong> saat emiten pertama kali dipilih di Stream.
       Proses ini mungkin memakan waktu beberapa detik.
@@ -249,22 +273,41 @@ function onKeydown(e) {
     <!-- Aksi -->
     <div class="flex items-center gap-2 border-t border-border pt-3">
       <Button size="sm" :disabled="!berubah || menyimpan" @click="simpan">
-        {{ menyimpan ? 'Menyimpan…' : 'Simpan' }}
+        {{ menyimpan ? 'Menyimpan…' : 'Simpan Perubahan' }}
       </Button>
       <Button v-if="berubah" variant="ghost" size="sm" :disabled="menyimpan" @click="batal">
         Batal
       </Button>
+
       <Button
         v-if="auth.watchlists.length > 1"
         variant="destructive"
         size="sm"
         class="ml-auto"
         :disabled="menyimpan || menghapus"
-        @click="hapusDaftarPantau"
+        @click="confirmHapusDaftarPantau"
       >
-        {{ menghapus ? 'Menghapus...' : 'Hapus Daftar' }}
+        {{ menghapus ? 'Menghapus...' : 'Hapus Watchlist Ini' }}
       </Button>
     </div>
+
+    <!-- Dialog Konfirmasi Hapus -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus Daftar Pantau</AlertDialogTitle>
+          <AlertDialogDescription>
+            Apakah Anda yakin ingin menghapus daftar pantau "{{ auth.activeWatchlist?.name }}"?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction @click="performHapusDaftarPantau" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            OK
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
   </div>
 </template>

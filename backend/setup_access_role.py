@@ -36,6 +36,14 @@ def setup_access_roles():
             """
         )
 
+        cur.execute(
+                    """
+                    UPDATE idxsaham.users
+                    SET access_role = 'admin'
+                    WHERE email = 'admin@sahamscope.id';
+                    """
+                )
+
         conn.commit()
 
         # Tampilkan hasilnya.
