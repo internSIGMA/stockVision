@@ -2,25 +2,24 @@
 import {
   computed,
   onMounted,
+  onUnmounted,
   reactive,
   ref,
 } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 import {
   createAdminUser,
-  createRole,
-  deleteRole,
   getAdminUsers,
-  getMenuPermissions,
-  getRoles,
   getUserActivity,
   updateAdminUser,
-  updateMenuPermission,
-  updateRole,
 } from '@/api/admin'
 
+
+// Sejalan dengan Auto Scheduler yang juga menyegarkan tiap 5 detik.
+const REFRESH_MS = 5000
 
 const auth = useAuthStore()
 
@@ -30,18 +29,15 @@ const loading = ref(false)
 const error = ref('')
 
 const users = ref([])
-const roles = ref([])
-const menus = ref([])
 const activities = ref([])
 
 
-// Karena halaman ini adminOnly,
-// fallback admin aman untuk project sekarang.
+// Header X-Access-Role untuk API admin. Pakai auth.isAdmin,
+// sumber yang sama dengan penjaga rute adminOnly, supaya yang
+// lolos ke halaman ini pasti lolos juga di backend.
+// (auth.user memakai camelCase accessRole, bukan access_role.)
 const accessRole = computed(() => {
-  return (
-    auth.user?.access_role ||
-    (auth.isAdmin ? 'admin' : 'user')
-  )
+  return auth.isAdmin ? 'admin' : 'user'
 })
 
 
@@ -57,7 +53,6 @@ const userForm = reactive({
   username: '',
   email: '',
   password: '',
-  role: '',
   access_role: 'user',
   is_active: true,
 })
@@ -70,7 +65,6 @@ function resetUserForm() {
   userForm.username = ''
   userForm.email = ''
   userForm.password = ''
-  userForm.role = ''
   userForm.access_role = 'user'
   userForm.is_active = true
 }
@@ -89,7 +83,6 @@ function openEditUser(user) {
   userForm.username = user.username || ''
   userForm.email = user.email || ''
   userForm.password = ''
-  userForm.role = user.role || ''
   userForm.access_role =
     user.access_role || 'user'
 
@@ -132,7 +125,6 @@ async function saveUser() {
           .trim()
           .toLowerCase(),
 
-      role: userForm.role,
       access_role:
         userForm.access_role,
 
@@ -164,7 +156,7 @@ async function saveUser() {
 
   } catch (err) {
     alert(
-      err.response?.data?.error ||
+      err.message ||
       'Gagal menyimpan user.'
     )
   }
@@ -185,7 +177,7 @@ async function toggleUser(user) {
 
   } catch (err) {
     alert(
-      err.response?.data?.error ||
+      err.message ||
       'Gagal mengubah status user.'
     )
   }
@@ -193,136 +185,49 @@ async function toggleUser(user) {
 
 
 // ========================================
-// ROLE FORM
+// ROLE MANAGEMENT
 // ========================================
 
-const showRoleModal = ref(false)
-const editingRole = ref(null)
-
-const roleForm = reactive({
-  name: '',
-  description: '',
-})
-
-
-function openAddRole() {
-  editingRole.value = null
-
-  roleForm.name = ''
-  roleForm.description = ''
-
-  showRoleModal.value = true
+// Admin tidak boleh menurunkan akunnya sendiri, karena
+// setelah tersimpan dia langsung kehilangan akses halaman ini.
+function akunSendiri(user) {
+  return (
+    auth.user?.id === user.id ||
+    auth.user?.email === user.email
+  )
 }
 
 
-function openEditRole(role) {
-  editingRole.value = role
+async function changeAccessRole(user, value) {
+  if (value === user.access_role) return
 
-  roleForm.name = role.name
-  roleForm.description =
-    role.description || ''
+  const confirmed = confirm(
+    `Ubah access role ${user.email} ` +
+    `dari "${user.access_role || 'user'}" ` +
+    `menjadi "${value}"?`
+  )
 
-  showRoleModal.value = true
-}
-
-
-async function saveRole() {
-  if (!roleForm.name.trim()) {
-    alert('Nama role wajib diisi.')
+  if (!confirmed) {
+    // Kembalikan select ke nilai semula.
+    await loadUsers()
     return
   }
 
   try {
-    const payload = {
-      name:
-        roleForm.name.trim(),
-
-      description:
-        roleForm.description.trim(),
-    }
-
-    if (editingRole.value) {
-      await updateRole(
-        editingRole.value.id,
-        payload,
-        accessRole.value
-      )
-    } else {
-      await createRole(
-        payload,
-        accessRole.value
-      )
-    }
-
-    showRoleModal.value = false
-
-    await Promise.all([
-      loadRoles(),
-      loadUsers(),
-    ])
-
-  } catch (err) {
-    alert(
-      err.response?.data?.error ||
-      'Gagal menyimpan role.'
-    )
-  }
-}
-
-
-async function removeRole(role) {
-  const confirmed = confirm(
-    `Hapus role "${role.name}"?`
-  )
-
-  if (!confirmed) return
-
-  try {
-    await deleteRole(
-      role.id,
+    await updateAdminUser(
+      user.id,
+      { access_role: value },
       accessRole.value
     )
 
-    await loadRoles()
-
   } catch (err) {
     alert(
-      err.response?.data?.error ||
-      'Role gagal dihapus.'
+      err.message ||
+      'Access role gagal diubah.'
     )
   }
-}
 
-
-// ========================================
-// MENU
-// ========================================
-
-async function changePermission(
-  menu,
-  role,
-  value
-) {
-  try {
-    await updateMenuPermission(
-      {
-        menu_key: menu.menu_key,
-        access_role: role,
-        enabled: value,
-      },
-      accessRole.value
-    )
-
-    await loadMenus()
-
-  } catch (err) {
-    alert(
-      err.response?.data?.error ||
-      'Permission gagal diperbarui.'
-    )
-
-    await loadMenus()
-  }
+  await loadUsers()
 }
 
 
@@ -330,70 +235,83 @@ async function changePermission(
 // LOAD DATA
 // ========================================
 
+// Interceptor di api/index.js sudah mengembalikan response.data,
+// jadi fungsi API di sini langsung memberi array-nya.
 async function loadUsers() {
-  const response =
+  users.value =
     await getAdminUsers(
       accessRole.value
-    )
-
-  users.value = response.data
-}
-
-
-async function loadRoles() {
-  const response =
-    await getRoles(
-      accessRole.value
-    )
-
-  roles.value = response.data
-}
-
-
-async function loadMenus() {
-  const response =
-    await getMenuPermissions(
-      accessRole.value
-    )
-
-  menus.value = response.data
+    ) || []
 }
 
 
 async function loadActivities() {
-  const response =
+  activities.value =
     await getUserActivity(
       accessRole.value
-    )
-
-  activities.value =
-    response.data
+    ) || []
 }
 
 
-async function loadAll() {
-  loading.value = true
-  error.value = ''
+/**
+ * @param {boolean} diamDiam penyegaran berkala: jangan tampilkan skeleton
+ *   "Memuat data...", kalau tidak tabel akan berkedip tiap 5 detik.
+ */
+async function loadAll({ diamDiam = false } = {}) {
+  if (!diamDiam) loading.value = true
 
   try {
     await Promise.all([
       loadUsers(),
-      loadRoles(),
-      loadMenus(),
       loadActivities(),
     ])
+
+    error.value = ''
 
   } catch (err) {
     console.error(err)
 
     error.value =
-      err.response?.data?.error ||
+      err.message ||
       'Data admin gagal dimuat.'
 
   } finally {
     loading.value = false
   }
 }
+
+
+// ========================================
+// REAL-TIME
+// ========================================
+
+/*
+ * Ketiga tab (User Management, Role Management, User Activity) memakai
+ * `users` dan `activities` yang sama, jadi satu polling menghidupkan
+ * ketiganya. Tanpa indikator apa pun di layar — datanya saja yang berjalan.
+ *
+ * Aktivitas login dicatat backend saat /users/login berhasil, jadi begitu
+ * ada yang masuk, barisnya muncul sendiri di tab User Activity.
+ *
+ * Polling dijeda saat modal terbuka supaya daftar tidak berubah di bawah
+ * admin yang sedang mengisi form, dan saat tab browser tidak terlihat
+ * supaya tidak memanggil API terus-menerus di latar belakang.
+ */
+const bolehSegar = ref(!document.hidden)
+
+function pantauVisibilitas() {
+  bolehSegar.value = !document.hidden
+}
+
+const autoAktif = computed(
+  () => bolehSegar.value && !showUserModal.value
+)
+
+useAutoRefresh(
+  () => loadAll({ diamDiam: true }),
+  REFRESH_MS,
+  autoAktif
+)
 
 
 function formatDate(value) {
@@ -405,7 +323,21 @@ function formatDate(value) {
 }
 
 
-onMounted(loadAll)
+onMounted(() => {
+  document.addEventListener(
+    'visibilitychange',
+    pantauVisibilitas
+  )
+
+  loadAll()
+})
+
+onUnmounted(() => {
+  document.removeEventListener(
+    'visibilitychange',
+    pantauVisibilitas
+  )
+})
 </script>
 
 
@@ -421,7 +353,7 @@ onMounted(loadAll)
 
         <p>
           Kelola pengguna, role,
-          menu dan aktivitas user.
+          dan aktivitas user.
         </p>
       </div>
 
@@ -431,14 +363,6 @@ onMounted(loadAll)
         @click="openAddUser"
       >
         + Tambah User
-      </button>
-
-      <button
-        v-if="activeTab === 'roles'"
-        class="btn primary"
-        @click="openAddRole"
-      >
-        + Tambah Role
       </button>
 
     </div>
@@ -466,16 +390,6 @@ onMounted(loadAll)
         @click="activeTab = 'roles'"
       >
         Role Management
-      </button>
-
-      <button
-        :class="{
-          active:
-            activeTab === 'menus'
-        }"
-        @click="activeTab = 'menus'"
-      >
-        Menu Management
       </button>
 
       <button
@@ -525,7 +439,6 @@ onMounted(loadAll)
               <th>Nama</th>
               <th>Email</th>
               <th>Username</th>
-              <th>Role</th>
               <th>Access</th>
               <th>Status</th>
               <th>Aksi</th>
@@ -549,10 +462,6 @@ onMounted(loadAll)
 
               <td>
                 {{ user.username }}
-              </td>
-
-              <td>
-                {{ user.role || '-' }}
               </td>
 
               <td>
@@ -626,72 +535,20 @@ onMounted(loadAll)
       v-else-if="
         activeTab === 'roles'
       "
-      class="role-grid"
-    >
-
-      <article
-        v-for="role in roles"
-        :key="role.id"
-        class="role-card"
-      >
-
-        <h3>
-          {{ role.name }}
-        </h3>
-
-        <p>
-          {{
-            role.description ||
-            'Belum ada deskripsi.'
-          }}
-        </p>
-
-        <div class="role-actions">
-
-          <button
-            class="btn small"
-            @click="
-              openEditRole(role)
-            "
-          >
-            Edit
-          </button>
-
-          <button
-            class="btn small danger"
-            @click="
-              removeRole(role)
-            "
-          >
-            Hapus
-          </button>
-
-        </div>
-
-      </article>
-
-    </section>
-
-
-    <!-- MENU MANAGEMENT -->
-
-    <section
-      v-else-if="
-        activeTab === 'menus'
-      "
       class="card"
     >
 
       <div class="section-heading">
 
         <h2>
-          Menu Permission
+          Access Role
         </h2>
 
         <p>
-          Atur menu yang dapat
-          diakses berdasarkan
-          access role.
+          Atur hak akses tiap akun
+          yang terdaftar. Admin dapat
+          membuka seluruh menu,
+          user hanya menu biasa.
         </p>
 
       </div>
@@ -703,66 +560,92 @@ onMounted(loadAll)
 
           <thead>
             <tr>
-              <th>Menu</th>
-              <th>Route</th>
-              <th>Admin</th>
-              <th>User</th>
+              <th>Nama</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Status</th>
+              <th>Access Role</th>
             </tr>
           </thead>
 
           <tbody>
 
             <tr
-              v-for="menu in menus"
-              :key="menu.menu_key"
+              v-for="user in users"
+              :key="user.id"
             >
 
               <td>
-                {{ menu.name }}
+                {{ user.name || '-' }}
               </td>
 
               <td>
-                <code>
-                  {{ menu.route }}
-                </code>
+                {{ user.email }}
+              </td>
+
+              <td>
+                {{ user.username }}
+              </td>
+
+              <td>
+                <span
+                  class="status"
+                  :class="{
+                    inactive:
+                      !user.is_active
+                  }"
+                >
+                  {{
+                    user.is_active
+                      ? 'Aktif'
+                      : 'Nonaktif'
+                  }}
+                </span>
               </td>
 
               <td>
 
-                <input
-                  type="checkbox"
-                  :checked="
-                    menu.admin_enabled
+                <select
+                  :value="
+                    user.access_role
+                    || 'user'
+                  "
+                  :disabled="
+                    akunSendiri(user)
+                  "
+                  :title="
+                    akunSendiri(user)
+                      ? 'Tidak bisa mengubah '
+                        + 'access role akun sendiri'
+                      : ''
                   "
                   @change="
-                    changePermission(
-                      menu,
-                      'admin',
-                      $event.target.checked
+                    changeAccessRole(
+                      user,
+                      $event.target.value
                     )
                   "
-                />
+                >
+                  <option value="user">
+                    User
+                  </option>
+
+                  <option value="admin">
+                    Admin
+                  </option>
+                </select>
 
               </td>
 
-              <td>
+            </tr>
 
-                <input
-                  type="checkbox"
-                  :checked="
-                    menu.user_enabled
-                  "
-                  @change="
-                    changePermission(
-                      menu,
-                      'user',
-                      $event.target.checked
-                    )
-                  "
-                />
-
+            <tr v-if="!users.length">
+              <td
+                colspan="5"
+                class="empty-row"
+              >
+                Belum ada akun terdaftar.
               </td>
-
             </tr>
 
           </tbody>
@@ -932,27 +815,6 @@ onMounted(loadAll)
         />
 
 
-        <label>Role / Jabatan</label>
-
-        <select
-          v-model="userForm.role"
-        >
-
-          <option value="">
-            Pilih role
-          </option>
-
-          <option
-            v-for="role in roles"
-            :key="role.id"
-            :value="role.name"
-          >
-            {{ role.name }}
-          </option>
-
-        </select>
-
-
         <label>
           Access Role
         </label>
@@ -1011,78 +873,6 @@ onMounted(loadAll)
 
     </div>
 
-
-    <!-- ROLE MODAL -->
-
-    <div
-      v-if="showRoleModal"
-      class="overlay"
-      @click.self="
-        showRoleModal = false
-      "
-    >
-
-      <div class="modal">
-
-        <h2>
-          {{
-            editingRole
-              ? 'Edit Role'
-              : 'Tambah Role'
-          }}
-        </h2>
-
-
-        <label>
-          Nama Role
-        </label>
-
-        <input
-          v-model="roleForm.name"
-          placeholder="
-            Contoh: Trader — Perbankan
-          "
-        />
-
-
-        <label>
-          Deskripsi Role
-        </label>
-
-        <textarea
-          v-model="
-            roleForm.description
-          "
-          rows="4"
-          placeholder="
-            Jelaskan fungsi role ini
-          "
-        />
-
-
-        <div class="modal-actions">
-
-          <button
-            class="btn"
-            @click="
-              showRoleModal = false
-            "
-          >
-            Batal
-          </button>
-
-          <button
-            class="btn primary"
-            @click="saveRole"
-          >
-            Simpan
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
 
   </main>
 </template>
@@ -1221,36 +1011,10 @@ th {
   color: #dc2626;
 }
 
-.role-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(
-      auto-fill,
-      minmax(270px, 1fr)
-    );
-  gap: 16px;
-}
-
-.role-card {
-  padding: 18px;
-  border:
-    1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
-}
-
-.role-card h3 {
-  margin-top: 0;
-}
-
-.role-card p {
+.empty-row {
+  text-align: center;
+  padding: 24px;
   color: var(--muted-foreground);
-  min-height: 42px;
-}
-
-.role-actions {
-  display: flex;
-  gap: 8px;
 }
 
 .section-heading {

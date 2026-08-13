@@ -70,6 +70,8 @@ const routes = [
     meta: {
       requiresAuth: true,
       hideHeader: true,
+      // Preferensi emiten milik user biasa; admin tidak melewatinya.
+      userOnly: true,
     },
   },
   {
@@ -155,6 +157,16 @@ router.beforeEach((to) => {
   if (
     to.meta.adminOnly &&
     !isAdmin &&
+    !isDeveloperMode
+  ) {
+    return '/stream'
+  }
+
+  // Kebalikan adminOnly: halaman yang justru tidak boleh dilihat admin,
+  // seperti preferensi emiten saat pertama masuk.
+  if (
+    to.meta.userOnly &&
+    isAdmin &&
     !isDeveloperMode
   ) {
     return '/stream'

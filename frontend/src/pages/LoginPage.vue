@@ -20,12 +20,17 @@ const lihatSandi = ref(false)
 function lanjut() {
   const redirect =
     typeof route.query.redirect === 'string' ? route.query.redirect : '/stream'
-  
-  if (auth.user && !localStorage.getItem(`onboarded_${auth.user.id}`)) {
+
+  // Pemilihan emiten hanya untuk user biasa — admin langsung masuk.
+  if (
+    !auth.isAdmin &&
+    auth.user &&
+    !localStorage.getItem(`onboarded_${auth.user.id}`)
+  ) {
     router.push('/onboarding')
     return
   }
-  
+
   router.push(redirect)
 }
 

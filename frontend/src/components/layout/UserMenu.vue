@@ -203,7 +203,7 @@ function performLogout() {
         </span>
 
         <span class="block text-[11px] text-muted-foreground">
-          Kelola user, role, menu, dan aktivitas
+          Kelola user, role, dan aktivitas
         </span>
       </span>
     </button>
