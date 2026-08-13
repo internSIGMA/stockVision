@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
 
         <div>
           <strong>Admin Management</strong>
-          <small>Kelola user, role, menu, dan aktivitas</small>
+          <small>Kelola user, role, dan aktivitas</small>
         </div>
       </button>
 

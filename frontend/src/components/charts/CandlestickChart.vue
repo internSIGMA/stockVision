@@ -1,7 +1,8 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { CandlestickSeries, ColorType, createChart } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
+import { formatDate, formatNumber } from '@/utils/format'
 
 const props = defineProps({
   /** Baris OHLC dari /api/data/ohlc, urut tanggal ASC. */
@@ -77,6 +78,66 @@ function render() {
   chart.value?.timeScale().fitContent()
 }
 
+// ==========================================================
+// TOOLTIP HOVER
+// ==========================================================
+
+/** Batang yang sedang disorot: { time, open, high, low, close }. */
+const bar = shallowRef(null)
+const posisi = ref({ x: 0, y: 0 })
+
+const UKURAN_TOOLTIP = { lebar: 132, tinggi: 108 }
+const JARAK_KURSOR = 14
+
+/**
+ * Tooltip digeser ke sisi lain kursor begitu mepet tepi kanan/bawah,
+ * supaya isinya tidak pernah terpotong bingkai chart.
+ */
+const gaya = computed(() => {
+  const lebarChart = container.value?.clientWidth ?? 0
+  const tinggiChart = container.value?.clientHeight ?? 0
+
+  let x = posisi.value.x + JARAK_KURSOR
+  let y = posisi.value.y + JARAK_KURSOR
+
+  if (x + UKURAN_TOOLTIP.lebar > lebarChart) {
+    x = posisi.value.x - UKURAN_TOOLTIP.lebar - JARAK_KURSOR
+  }
+
+  if (y + UKURAN_TOOLTIP.tinggi > tinggiChart) {
+    y = posisi.value.y - UKURAN_TOOLTIP.tinggi - JARAK_KURSOR
+  }
+
+  return {
+    left: `${Math.max(0, x)}px`,
+    top: `${Math.max(0, y)}px`,
+  }
+})
+
+/** Hijau saat close >= open, merah kalau sebaliknya. */
+const kelasArah = computed(() =>
+  bar.value && bar.value.close >= bar.value.open ? 'text-up' : 'text-down',
+)
+
+const harga = (v) => formatNumber(v)
+
+function pantauKursor(param) {
+  // Di luar area plot, param.time kosong — sembunyikan tooltip.
+  if (!param.time || !param.point || !series.value) {
+    bar.value = null
+    return
+  }
+
+  const data = param.seriesData.get(series.value)
+  if (!data) {
+    bar.value = null
+    return
+  }
+
+  bar.value = data
+  posisi.value = { x: param.point.x, y: param.point.y }
+}
+
 onMounted(() => {
   chart.value = createChart(container.value, {
     ...tema(),
@@ -88,6 +149,8 @@ onMounted(() => {
 
   series.value = chart.value.addSeries(CandlestickSeries, temaSeri())
 
+  chart.value.subscribeCrosshairMove(pantauKursor)
+
   render()
 })
 
@@ -95,6 +158,7 @@ onBeforeUnmount(() => {
   chart.value?.remove()
   chart.value = null
   series.value = null
+  bar.value = null
 })
 
 watch(() => props.rows, render, { deep: false })
@@ -111,13 +175,44 @@ defineExpose({ resetZoom })
 </script>
 
 <template>
-  <!-- data-lenis-prevent: Lenis tidak boleh membajak scroll-zoom milik chart. -->
-  <div
-    ref="container"
-    data-lenis-prevent
-    class="w-full"
-    :style="{ height: `${height}px` }"
-    role="img"
-    aria-label="Grafik candlestick harga historis"
-  />
+  <div class="relative w-full" :style="{ height: `${height}px` }">
+    <!-- data-lenis-prevent: Lenis tidak boleh membajak scroll-zoom milik chart. -->
+    <div
+      ref="container"
+      data-lenis-prevent
+      class="h-full w-full"
+      role="img"
+      aria-label="Grafik candlestick harga historis"
+    />
+
+    <!--
+      pointer-events-none: tooltip tidak boleh menghalangi kursor, kalau tidak
+      crosshair akan kehilangan jejak begitu tooltip lewat di bawah kursor.
+    -->
+    <div
+      v-if="bar"
+      class="tabular pointer-events-none absolute z-[3] w-[132px] rounded-md border-[0.5px] border-border bg-card/95 px-2 py-1.5 text-[10px] leading-tight shadow-sm backdrop-blur"
+      :style="gaya"
+    >
+      <p class="mb-1 font-medium text-foreground">
+        {{ formatDate(bar.time) }}
+      </p>
+
+      <dl class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+        <dt class="text-muted-foreground">Open</dt>
+        <dd class="text-right text-foreground">{{ harga(bar.open) }}</dd>
+
+        <dt class="text-muted-foreground">High</dt>
+        <dd class="text-right text-foreground">{{ harga(bar.high) }}</dd>
+
+        <dt class="text-muted-foreground">Low</dt>
+        <dd class="text-right text-foreground">{{ harga(bar.low) }}</dd>
+
+        <dt class="text-muted-foreground">Close</dt>
+        <dd class="text-right font-medium" :class="kelasArah">
+          {{ harga(bar.close) }}
+        </dd>
+      </dl>
+    </div>
+  </div>
 </template>

@@ -1,10 +1,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { CalendarClock, Clock, Copy, Loader2, RefreshCw, Target, Zap, BookMarked, ExternalLink } from '@lucide/vue'
+import { Activity, CalendarClock, CalendarDays, Copy, Loader2, Target, BookMarked, ExternalLink } from '@lucide/vue'
 import {
   getSchedulerStatus,
-  toggleScheduler,
-  triggerSchedulerNow,
   updateStockbitToken,
 } from '@/api/StockVision'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -109,11 +107,7 @@ const notify = useNotify()
 
 const data = ref(null)
 const loading = ref(true)
-const memuatUlang = ref(false)
 const error = ref(null)
-
-const memicu = ref(false)
-const mengubah = ref(false)
 
 const scheduler = computed(() => data.value?.scheduler ?? null)
 const market = computed(() => data.value?.market ?? null)
@@ -125,7 +119,6 @@ const targets = computed(() => {
   return Array.isArray(t) && t.length ? t : auth.watchlist
 })
 
-const berjalan = computed(() => !!scheduler.value?.running)
 const hariTrading = computed(() => !!market.value?.is_trading_day)
 const jamBursaBuka = computed(() => !!market.value?.is_trading_hours)
 
@@ -144,8 +137,7 @@ const waktuWib = computed(() => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 })
 
-async function muat({ manual = false } = {}) {
-  if (manual) memuatUlang.value = true
+async function muat() {
   try {
     data.value = await getSchedulerStatus()
     error.value = null
@@ -153,44 +145,14 @@ async function muat({ manual = false } = {}) {
     error.value = err.message
   } finally {
     loading.value = false
-    memuatUlang.value = false
   }
 }
 
 onMounted(() => muat())
-useAutoRefresh(muat, REFRESH_MS, computed(() => !memicu.value))
 
-/** Backend tidak punya /scheduler/toggle — ON/OFF dipetakan ke start/stop. */
-async function ubahAktif() {
-  if (mengubah.value) return
-
-  const nyalakan = !berjalan.value
-  mengubah.value = true
-  try {
-    await toggleScheduler(nyalakan)
-    notify.success(nyalakan ? 'Scheduler dijalankan' : 'Scheduler dihentikan')
-    await muat()
-  } catch (err) {
-    notify.error('Gagal mengubah scheduler', err.message)
-  } finally {
-    mengubah.value = false
-  }
-}
-
-async function picuManual() {
-  if (memicu.value) return
-
-  memicu.value = true
-  try {
-    await triggerSchedulerNow()
-    notify.success('Crawl manual selesai')
-    await muat()
-  } catch (err) {
-    notify.error('Crawl manual gagal', err.message)
-  } finally {
-    memicu.value = false
-  }
-}
+// Halaman ini kini hanya memantau, tidak mengendalikan — jadi penyegaran
+// berkala tidak perlu dijeda oleh aksi apa pun.
+useAutoRefresh(muat, REFRESH_MS, ref(true))
 
 function nilai(row, ...keys) {
   for (const k of keys) {
@@ -204,189 +166,118 @@ function nilai(row, ...keys) {
   <div class="flex flex-col gap-4 p-4">
     <TrendingStocksStrip />
 
-    <!-- Header -->
-    <header class="flex flex-wrap items-center gap-3">
-      <div class="flex items-center gap-2">
-        <Clock class="size-4 text-muted-foreground" aria-hidden="true" />
-        <div>
-          <h1 class="text-[16px] font-semibold tracking-[-0.01em]">Auto Crawling Scheduler</h1>
-          <p class="mt-0.5 text-[11px] text-muted-foreground">
-            Crawling harian pukul 17:00 WIB setelah bursa tutup, hanya di hari trading.
-          </p>
-        </div>
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        class="ml-auto"
-        :disabled="memuatUlang"
-        @click="muat({ manual: true })"
-      >
-        <RefreshCw class="size-3.5" :class="{ 'animate-spin': memuatUlang }" />
-        Refresh
-      </Button>
-    </header>
-
     <div v-if="loading" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div v-for="i in 4" :key="i" class="h-[124px] animate-pulse rounded-lg bg-muted" />
     </div>
 
     <EmptyState v-else-if="error" title="Gagal memuat status scheduler" :description="error">
       <template #action>
-        <Button variant="outline" size="sm" @click="muat({ manual: true })">Coba lagi</Button>
+        <Button variant="outline" size="sm" @click="muat()">Coba lagi</Button>
       </template>
     </EmptyState>
 
     <template v-else>
-      <!-- 3 stat card -->
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <!-- Status + Start/Stop -->
-        <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            Scheduler Status
-          </p>
-          <p
-            class="mt-1.5 flex items-center gap-1.5 text-[19px] font-semibold leading-none"
-            :class="berjalan ? 'text-up' : 'text-muted-foreground'"
-          >
-            <span aria-hidden="true">●</span>
-            {{ berjalan ? 'RUNNING' : 'STOPPED' }}
-          </p>
-
-          <Button
-            :variant="berjalan ? 'destructive' : 'default'"
-            size="sm"
-            class="mt-3 w-full"
-            :disabled="mengubah"
-            @click="ubahAktif"
-          >
-            {{ mengubah ? '…' : berjalan ? 'Stop' : 'Start' }}
-          </Button>
-        </div>
-
+      <!-- Dua kartu sejajar: Sesi Bursa | Statistik Crawl -->
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <!-- Sesi bursa: hari trading + status buka/tutup + jam & waktu berjalan -->
-        <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Sesi Bursa</p>
-
-          <div class="mt-1.5 flex items-center gap-2">
-            <span
-              class="text-[19px] font-semibold leading-none"
-              :class="hariTrading ? 'text-up' : 'text-muted-foreground'"
-            >
-              {{ hariTrading ? 'YA' : 'TIDAK' }}
-            </span>
-            <span class="text-[11px] text-muted-foreground">hari trading</span>
+        <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
+          <header class="flex min-h-[45px] items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <CalendarDays class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <h2 class="text-[13px] font-medium">Sesi Bursa</h2>
             <StatusPill
               class="ml-auto"
               :label="jamBursaBuka ? 'BUKA' : 'TUTUP'"
               :tone="jamBursaBuka ? 'up' : 'neutral'"
             />
-          </div>
+          </header>
 
-          <p class="tabular mt-2 text-[11px] text-muted-foreground">
-            Jam Bursa: {{ market?.market_hours || '—' }}
-          </p>
-          <p class="tabular mt-0.5 text-[11px] text-muted-foreground" role="status">
-            {{ waktuWib }} WIB
-          </p>
-        </div>
+          <div class="flex flex-1 flex-col p-3.5">
+            <div class="flex items-baseline gap-2">
+              <span
+                class="text-[19px] font-semibold leading-none"
+                :class="hariTrading ? 'text-up' : 'text-muted-foreground'"
+              >
+                {{ hariTrading ? 'YA' : 'TIDAK' }}
+              </span>
+              <span class="text-[11px] text-muted-foreground">hari trading</span>
+            </div>
+
+            <p class="tabular mt-3 text-[11px] text-muted-foreground">
+              Jam Bursa: {{ market?.market_hours || '—' }}
+            </p>
+            <p class="tabular mt-0.5 text-[11px] text-muted-foreground" role="status">
+              {{ waktuWib }} WIB
+            </p>
+          </div>
+        </section>
 
         <!-- Statistik -->
-        <div class="flex flex-col rounded-lg border-[0.5px] border-border bg-card p-3.5">
-          <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            Statistik Crawl
+        <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
+          <header class="flex min-h-[45px] items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <Activity class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <h2 class="text-[13px] font-medium">Statistik Crawl</h2>
+          </header>
+
+          <div class="flex flex-1 flex-col justify-center p-3.5">
+            <dl class="grid grid-cols-3 gap-2">
+              <div>
+                <dd class="tabular text-[19px] font-semibold leading-none">
+                  {{ formatNumber(scheduler?.total_runs) }}
+                </dd>
+                <dt class="mt-1 text-[10px] text-muted-foreground">Total</dt>
+              </div>
+              <div>
+                <dd class="tabular text-[19px] font-semibold leading-none text-up">
+                  {{ formatNumber(scheduler?.total_success) }}
+                </dd>
+                <dt class="mt-1 text-[10px] text-muted-foreground">Sukses</dt>
+              </div>
+              <div>
+                <dd class="tabular text-[19px] font-semibold leading-none text-skip">
+                  {{ formatNumber(scheduler?.total_skipped) }}
+                </dd>
+                <dt class="mt-1 text-[10px] text-muted-foreground">Skip</dt>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Target emiten melebar penuh di bawah kedua kartu -->
+      <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
+        <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
+          <Target class="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <h2 class="text-[13px] font-medium">Target Emiten</h2>
+        </header>
+
+        <div class="flex flex-col gap-3 p-3.5">
+          <p class="text-[12px] leading-relaxed text-muted-foreground">
+            Emiten yang akan di-crawl otomatis (Stock Info + OHLC).
           </p>
-          <dl class="mt-1.5 grid grid-cols-3 gap-2">
-            <div>
-              <dd class="tabular text-[19px] font-semibold leading-none">
-                {{ formatNumber(scheduler?.total_runs) }}
-              </dd>
-              <dt class="mt-1 text-[10px] text-muted-foreground">Total</dt>
-            </div>
-            <div>
-              <dd class="tabular text-[19px] font-semibold leading-none text-up">
-                {{ formatNumber(scheduler?.total_success) }}
-              </dd>
-              <dt class="mt-1 text-[10px] text-muted-foreground">Sukses</dt>
-            </div>
-            <div>
-              <dd class="tabular text-[19px] font-semibold leading-none text-skip">
-                {{ formatNumber(scheduler?.total_skipped) }}
-              </dd>
-              <dt class="mt-1 text-[10px] text-muted-foreground">Skip</dt>
-            </div>
-          </dl>
-        </div>
-      </div>
 
-      <!-- Manual trigger + target emiten -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
-        <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
-          <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
-            <Zap class="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <h2 class="text-[13px] font-medium">Manual Trigger</h2>
-          </header>
+          <EmptyState v-if="!targets.length" title="Belum ada target emiten" />
 
-          <div class="flex flex-1 flex-col gap-3 p-3.5">
-            <p class="text-[12px] leading-relaxed text-muted-foreground">
-              Jalankan crawl sekarang juga tanpa menunggu scheduler (bypass jam bursa).
-            </p>
-
-            <Button
-              class="mt-auto w-full"
-              :disabled="memicu || scheduler?.crawl_in_progress"
-              @click="picuManual"
+          <ul v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            <li
+              v-for="t in targets"
+              :key="t"
+              class="flex items-center gap-2 rounded-md border-[0.5px] border-border px-2.5 py-2"
             >
-              <Loader2 v-if="memicu" class="size-4 animate-spin" />
-              <Zap v-else class="size-4" />
-              {{ memicu ? 'Menjalankan crawl…' : 'Trigger Crawl Sekarang' }}
-            </Button>
-
-            <p
-              v-if="scheduler?.crawl_in_progress && !memicu"
-              class="text-[11px] text-muted-foreground"
-              role="status"
-            >
-              Scheduler sedang meng-crawl — tunggu sampai selesai.
-            </p>
-          </div>
-        </section>
-
-        <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
-          <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
-            <Target class="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <h2 class="text-[13px] font-medium">Target Emiten</h2>
-          </header>
-
-          <div class="flex flex-col gap-3 p-3.5">
-            <p class="text-[12px] leading-relaxed text-muted-foreground">
-              Emiten yang akan di-crawl otomatis (Stock Info + OHLC).
-            </p>
-
-            <EmptyState v-if="!targets.length" title="Belum ada target emiten" />
-
-            <ul v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <li
-                v-for="t in targets"
-                :key="t"
-                class="flex items-center gap-2 rounded-md border-[0.5px] border-border px-2.5 py-2"
+              <span
+                class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-info-bg)] text-[11px] font-semibold text-[var(--color-info-ink)]"
+                aria-hidden="true"
               >
-                <span
-                  class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-info-bg)] text-[11px] font-semibold text-[var(--color-info-ink)]"
-                  aria-hidden="true"
-                >
-                  {{ t.charAt(0) }}
-                </span>
-                <div class="min-w-0">
-                  <p class="tabular truncate text-[12px] font-semibold">{{ t }}</p>
-                  <p class="truncate text-[10px] text-muted-foreground">Stock Info + OHLC</p>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </section>
-      </div>
+                {{ t.charAt(0) }}
+              </span>
+              <div class="min-w-0">
+                <p class="tabular truncate text-[12px] font-semibold">{{ t }}</p>
+                <p class="truncate text-[10px] text-muted-foreground">Stock Info + OHLC</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
 
       <!-- Bookmarklet Stockbit Token -->
       <section class="rounded-lg border-[0.5px] border-border bg-card">
