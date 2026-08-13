@@ -23,6 +23,9 @@ app.register_blueprint(data_bp)
 from user import user_bp
 app.register_blueprint(user_bp)
 
+from admin_routes import admin_bp
+app.register_blueprint(admin_bp)
+
 from prescriptive.routes import prescriptive_bp
 app.register_blueprint(prescriptive_bp)
 

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown, LogOut, Settings, X } from '@lucide/vue'
+import { ChevronDown, LogOut, Settings, ShieldCheck, X } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotify } from '@/composables/useNotify'
 import { useProfilePrefs } from '@/composables/useProfilePrefs'
@@ -74,6 +74,11 @@ function resetForm() {
 watch(akunTerbuka, (buka) => {
   if (buka) resetForm()
 })
+
+function bukaAdmin() {
+  terbuka.value = false
+  router.push('/admin')
+}
 
 function bukaAkun() {
   terbuka.value = false
@@ -179,31 +184,75 @@ function performLogout() {
 
       <div class="h-px bg-border"></div>
 
-      <button
-        type="button"
-        role="menuitem"
-        class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
-        @click="bukaAkun"
-      >
-        <Settings class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span>
-          <span class="block text-[13px] font-medium">Kelola akun</span>
-          <span class="block text-[11px] text-muted-foreground">Profil dan preferensi</span>
-        </span>
-      </button>
+    <!-- Admin Management - hanya muncul untuk admin -->
+    <button
+      v-if="true"
+      type="button"
+      role="menuitem"
+      class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+      @click="bukaAdmin"
+    >
+      <ShieldCheck
+        class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
 
-      <button
-        type="button"
-        role="menuitem"
-        class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
-        @click="keluar"
-      >
-        <LogOut class="text-down mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <span>
-          <span class="text-down block text-[13px] font-medium">Keluar</span>
-          <span class="block text-[11px] text-muted-foreground">Keluar dari StockVision</span>
+      <span>
+        <span class="block text-[13px] font-medium">
+          Admin Management
         </span>
-      </button>
+
+        <span class="block text-[11px] text-muted-foreground">
+          Kelola user, role, menu, dan aktivitas
+        </span>
+      </span>
+    </button>
+
+    <!-- Kelola Akun -->
+    <button
+      type="button"
+      role="menuitem"
+      class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+      @click="bukaAkun"
+    >
+      <Settings
+        class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+
+      <span>
+        <span class="block text-[13px] font-medium">
+          Kelola akun
+        </span>
+
+        <span class="block text-[11px] text-muted-foreground">
+          Profil dan preferensi
+        </span>
+      </span>
+    </button>
+
+    <!-- Keluar -->
+    <button
+      type="button"
+      role="menuitem"
+      class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+      @click="keluar"
+    >
+      <LogOut
+        class="text-down mt-0.5 size-4 shrink-0"
+        aria-hidden="true"
+      />
+
+      <span>
+        <span class="text-down block text-[13px] font-medium">
+          Keluar
+        </span>
+
+        <span class="block text-[11px] text-muted-foreground">
+          Keluar dari StockVision
+        </span>
+      </span>
+    </button>
     </div>
 
     <!-- ============ Modal Kelola Akun ============ -->

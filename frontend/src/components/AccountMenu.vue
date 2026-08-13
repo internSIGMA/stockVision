@@ -45,6 +45,11 @@ function toggleMenu() {
   menuOpen.value = !menuOpen.value
 }
 
+function openAdminManagement() {
+  menuOpen.value = false
+  router.push('/admin')
+}
+
 function openSettings() {
   menuOpen.value = false
   settingsOpen.value = true
@@ -183,41 +188,62 @@ onBeforeUnmount(() => {
 
         <div class="dropdown-divider"></div>
 
-        <button
-          type="button"
-          class="dropdown-item"
-          @click="openSettings"
+      <!-- Admin Management -->
+      <button
+        type="button"
+        class="dropdown-item"
+        @click="openAdminManagement"
+      >
+        <span
+          class="dropdown-icon"
+          aria-hidden="true"
         >
-          <span
-            class="dropdown-icon"
-            aria-hidden="true"
-          >
-            ⚙
-          </span>
+          🛡
+        </span>
 
-          <div>
-            <strong>Kelola akun</strong>
-            <small>Profil dan preferensi</small>
-          </div>
-        </button>
+        <div>
+          <strong>Admin Management</strong>
+          <small>Kelola user, role, menu, dan aktivitas</small>
+        </div>
+      </button>
 
-        <button
-          type="button"
-          class="dropdown-item logout-item"
-          @click="logout"
+      <!-- Kelola Akun -->
+      <button
+        type="button"
+        class="dropdown-item"
+        @click="openSettings"
+      >
+        <span
+          class="dropdown-icon"
+          aria-hidden="true"
         >
-          <span
-            class="dropdown-icon"
-            aria-hidden="true"
-          >
-            ↪
-          </span>
+          ⚙
+        </span>
 
-          <div>
-            <strong>Keluar</strong>
-            <small>Keluar dari StockVision</small>
-          </div>
-        </button>
+        <div>
+          <strong>Kelola akun</strong>
+          <small>Profil dan preferensi</small>
+        </div>
+      </button>
+
+      <!-- Keluar -->
+      <button
+        type="button"
+        class="dropdown-item logout-item"
+        @click="logout"
+      >
+        <span
+          class="dropdown-icon"
+          aria-hidden="true"
+        >
+          ↪
+        </span>
+
+        <div>
+          <strong>Keluar</strong>
+          <small>Keluar dari StockVision</small>
+        </div>
+      </button>
       </div>
     </Transition>
 

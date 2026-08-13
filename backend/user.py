@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from admin_routes import log_activity
 
 load_dotenv(find_dotenv(), override=True)
 
@@ -731,10 +732,38 @@ def delete_user_route(user_id):
 @user_bp.route("/users/login", methods=["POST"])
 def login_user_route():
     payload = request.get_json(silent=True) or {}
+
     user = login_user(payload)
+
     if not user:
-        return jsonify({"error": "invalid credentials"}), 401
+        return jsonify({
+            "error": "invalid credentials"
+        }), 401
+
+    log_activity(
+        user["id"],
+        "LOGIN",
+        "User berhasil login"
+    )
+
     return jsonify(user)
+
+@user_bp.route("/users/logout", methods=["POST"])
+def logout_user_route():
+    payload = request.get_json(silent=True) or {}
+
+    user_id = payload.get("user_id")
+
+    if user_id:
+        log_activity(
+            user_id,
+            "LOGOUT",
+            "User melakukan logout"
+        )
+
+    return jsonify({
+        "message": "Logout berhasil"
+    })
 
 
 def send_reset_email(email, code):

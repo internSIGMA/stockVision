@@ -7,6 +7,49 @@ import { formatNumber, formatPercent, trendClass } from '@/utils/format'
 
 const auth = useAuthStore()
 
+const adminContact = {
+  name: 'Admin StockVision',
+  email: 'admin@sahamscope.id',
+
+  // Isi nomor WhatsApp admin jika sudah tersedia.
+  // Format: 628xxxxxxxxxx
+  whatsapp: '',
+}
+
+function contactAdminEmail() {
+  const subject = encodeURIComponent(
+    'Permintaan Pembuatan Akun StockVision'
+  )
+
+  const body = encodeURIComponent(
+`Halo Admin StockVision,
+
+Saya ingin mengajukan pembuatan akun StockVision.
+
+Nama:
+Email:
+Keperluan:
+
+Terima kasih.`
+  )
+
+  window.location.href =
+    `mailto:${adminContact.email}?subject=${subject}&body=${body}`
+}
+
+function contactAdminWhatsapp() {
+  if (!adminContact.whatsapp) return
+
+  const message = encodeURIComponent(
+    'Halo Admin StockVision, saya ingin mengajukan pembuatan akun StockVision.'
+  )
+
+  window.open(
+    `https://wa.me/${adminContact.whatsapp}?text=${message}`,
+    '_blank'
+  )
+}
+
 const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
   useLandingSpotlight()
 </script>
@@ -122,6 +165,77 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
       >
         {{ auth.isLoggedIn ? 'Lanjut ke Dashboard' : 'Mulai Sekarang' }}
       </RouterLink>
-    </main>
+      </main>
+
+    <!-- ============ CONTACT PERSON / FOOTER ============ -->
+        <footer class="border-t-[0.5px] border-border bg-background">
+          <div
+            class="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-6 md:flex-row md:items-center md:justify-between"
+          >
+            <!-- Informasi Contact Person -->
+            <div class="text-left">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+        Contact Person
+      </p>
+
+      <h2 class="mt-1.5 text-[16px] font-semibold tracking-tight">
+        Belum punya akun StockVision?
+      </h2>
+
+      <p class="mt-1.5 max-w-md text-[12px] leading-relaxed text-muted-foreground">
+        Hubungi administrator StockVision untuk mengajukan
+        pembuatan akun dan mendapatkan akses sesuai kebutuhan.
+      </p>
+
+      <div class="mt-3">
+        <p class="text-[12px] font-medium">
+          {{ adminContact.name }}
+        </p>
+
+        <p class="mt-0.5 text-[11px] text-muted-foreground">
+          {{ adminContact.email }}
+        </p>
+      </div>
+    </div>
+
+        <!-- Tombol Contact -->
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            class="inline-flex h-9 items-center justify-center rounded-md border-[0.5px] border-border bg-background px-4 text-[12px] font-medium transition-colors hover:bg-accent"
+            @click="contactAdminEmail"
+          >
+            Hubungi via Email
+          </button>
+
+          <button
+            v-if="adminContact.whatsapp"
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            @click="contactAdminWhatsapp"
+          >
+            Hubungi via WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer paling bawah -->
+      <div class="border-t-[0.5px] border-border">
+        <div
+          class="mx-auto flex w-full max-w-5xl flex-col gap-1 px-6 py-3 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>
+            © 2026 StockVision
+          </span>
+
+          <span>
+            Permintaan akun:
+            <span class="font-medium text-foreground">
+              {{ adminContact.email }}
+            </span>
+          </span>
+        </div>
+      </div>
+    </footer>
   </div>
 </template>

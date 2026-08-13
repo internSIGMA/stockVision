@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AdminManagementPage from '@/pages/AdminManagementPage.vue'
 
 const routes = [
   {
@@ -11,6 +12,27 @@ const routes = [
       hideHeader: true,
     },
   },
+    {
+    path: '/admin',
+    name: 'admin-management',
+    component: () =>
+      import(
+        '@/pages/AdminManagementPage.vue'
+      ),
+    meta: {
+      requiresAuth: true,
+      adminOnly: true,
+    },
+  },
+  {
+    path: '/admin',
+    name: 'admin-management',
+    component: AdminManagementPage,
+    meta: {
+      requiresAuth: true,
+      role: 'admin'
+    }
+    },
   {
     path: '/login',
     name: 'login',
