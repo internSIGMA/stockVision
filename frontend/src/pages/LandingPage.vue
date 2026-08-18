@@ -9,7 +9,7 @@ const auth = useAuthStore()
 
 const adminContact = {
   name: 'Admin StockVision',
-  email: 'admin@sahamscope.id',
+  email: 'sigmaadmin2026@gmail.com',
 
   // Isi nomor WhatsApp admin jika sudah tersedia.
   // Format: 628xxxxxxxxxx
@@ -33,8 +33,16 @@ Keperluan:
 Terima kasih.`
   )
 
-  window.location.href =
-    `mailto:${adminContact.email}?subject=${subject}&body=${body}`
+  // Dibuka langsung ke jendela compose Gmail di tab baru, bukan `mailto:`
+  // yang melempar ke mail client bawaan OS (sering Outlook, atau tidak ada
+  // handler sama sekali sehingga klik terasa tidak melakukan apa-apa).
+  window.open(
+    'https://mail.google.com/mail/?view=cm&fs=1' +
+      `&to=${encodeURIComponent(adminContact.email)}` +
+      `&su=${subject}&body=${body}`,
+    '_blank',
+    'noopener',
+  )
 }
 
 function contactAdminWhatsapp() {
@@ -202,9 +210,22 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
         <div class="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
-            class="inline-flex h-9 items-center justify-center rounded-md border-[0.5px] border-border bg-background px-4 text-[12px] font-medium transition-colors hover:bg-accent"
+            class="inline-flex h-9 items-center justify-center gap-2 rounded-md border-[0.5px] border-border bg-background px-4 text-[12px] font-medium transition-colors hover:bg-accent"
             @click="contactAdminEmail"
           >
+            <!-- Logo Gmail di-inline supaya tidak ada request aset eksternal. -->
+            <svg
+              class="size-4 shrink-0"
+              viewBox="0 0 48 48"
+              aria-hidden="true"
+            >
+              <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z" />
+              <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z" />
+              <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17" />
+              <path fill="#c62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z" />
+              <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0C43.076,8,45,9.924,45,12.298z" />
+            </svg>
+
             Hubungi via Email
           </button>
 
@@ -219,23 +240,6 @@ const { ticker, candles, hargaTerakhir, perubahanPersen, loading, error } =
         </div>
       </div>
 
-      <!-- Footer paling bawah -->
-      <div class="border-t-[0.5px] border-border">
-        <div
-          class="mx-auto flex w-full max-w-5xl flex-col gap-1 px-6 py-3 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span>
-            © 2026 StockVision
-          </span>
-
-          <span>
-            Permintaan akun:
-            <span class="font-medium text-foreground">
-              {{ adminContact.email }}
-            </span>
-          </span>
-        </div>
-      </div>
     </footer>
   </div>
 </template>

@@ -15,7 +15,7 @@ import LogoutConfirmDialog from './LogoutConfirmDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { user } = storeToRefs(authStore)
+const { user, isAdmin } = storeToRefs(authStore)
 const { isDark } = useTheme()
 
 const accountElement = ref(null)
@@ -188,8 +188,9 @@ onBeforeUnmount(() => {
 
         <div class="dropdown-divider"></div>
 
-      <!-- Admin Management -->
+      <!-- Admin Management - hanya muncul untuk admin -->
       <button
+        v-if="isAdmin"
         type="button"
         class="dropdown-item"
         @click="openAdminManagement"

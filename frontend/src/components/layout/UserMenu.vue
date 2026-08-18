@@ -186,7 +186,7 @@ function performLogout() {
 
     <!-- Admin Management - hanya muncul untuk admin -->
     <button
-      v-if="true"
+      v-if="auth.isAdmin"
       type="button"
       role="menuitem"
       class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
