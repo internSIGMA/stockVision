@@ -18,6 +18,9 @@ import { useMarketStore } from '@/stores/market'
 
 const STORAGE_KEY = 'stockvision.auth'
 
+// Satu-satunya akun yang boleh membuka Admin Management.
+const ADMIN_EMAIL = 'admin@sahamscope.id'
+
 const SEED_WATCHLISTS = {
   BBCA: ['BBCA', 'BBRI', 'BMRI'],
   BBNI: ['BBNI', 'BJBR'],
@@ -43,11 +46,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!user.value)
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
-  const isAdmin = computed(() => {
-    const isAccRoleAdmin = accessRole.value === 'admin'
-    const isEmailAdmin = String(user.value?.email || '').toLowerCase().includes('admin')
-    return isAccRoleAdmin || isEmailAdmin
-  })
+
+  // Hanya satu akun yang berstatus admin; sisanya user biasa. Pencocokan
+  // dibuat persis (bukan `includes('admin')`) supaya alamat seperti
+  // "admin.palsu@gmail.com" atau "notadmin@x.com" tidak ikut lolos.
+  const isAdmin = computed(
+    () => String(user.value?.email || '').trim().toLowerCase() === ADMIN_EMAIL,
+  )
 
   const activeWatchlist = computed(
     () => watchlists.value.find((w) => w.id === activeWatchlistId.value) || watchlists.value[0] || null,
