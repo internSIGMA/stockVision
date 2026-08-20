@@ -35,12 +35,36 @@ function lanjut() {
 }
 
 function pesanError(err) {
-  return (
+  const rawMsg =
     err?.response?.data?.error ||
     err?.response?.data?.message ||
     err?.message ||
-    'Login gagal. Periksa email dan kata sandi.'
-  )
+    ''
+
+  if (
+    rawMsg.toLowerCase().includes('timeout') ||
+    rawMsg.toLowerCase().includes('menyiapkan') ||
+    err?.code === 'ECONNABORTED'
+  ) {
+    return 'Server sedang menyiapkan sinkronisasi data awal di latar belakang. Silakan coba masuk kembali beberapa saat lagi.'
+  }
+  if (
+    rawMsg.toLowerCase().includes('tidak dapat terhubung') ||
+    rawMsg.toLowerCase().includes('network error')
+  ) {
+    return 'Sedang menghubungkan ke server... Pastikan koneksi internet stabil lalu coba kembali.'
+  }
+  if (
+    rawMsg.toLowerCase().includes('password') ||
+    rawMsg.toLowerCase().includes('sandi') ||
+    rawMsg.toLowerCase().includes('email') ||
+    rawMsg.toLowerCase().includes('kredensial') ||
+    rawMsg.toLowerCase().includes('invalid') ||
+    rawMsg.toLowerCase().includes('unauthorized')
+  ) {
+    return 'Email atau kata sandi yang Anda masukkan belum sesuai. Silakan periksa kembali.'
+  }
+  return rawMsg || 'Login belum berhasil. Silakan periksa koneksi dan coba beberapa saat lagi.'
 }
 
 async function onSubmit() {

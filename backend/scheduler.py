@@ -92,13 +92,29 @@ def get_active_target_symbols():
 # DATABASE
 # =============================================================
 def _get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "postgres"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432)),
-    )
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = int(os.getenv("DB_PORT", 5433))
+    db_name = os.getenv("DB_NAME", "stockVision")
+    db_user = os.getenv("DB_USER", "stockvision")
+    db_pass = os.getenv("DB_PASSWORD", "stockvision_pass")
+    try:
+        return psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
+            port=db_port
+        )
+    except psycopg2.OperationalError:
+        if db_host == "db":
+            return psycopg2.connect(
+                host="localhost",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5433
+            )
+        raise
 
 
 # =============================================================
@@ -357,8 +373,28 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
                        now_wib.strftime("%Y-%m-%d"), "FAILED", 0, str(e))
             print(f"[Scheduler] {err_msg}")
 
+        # 1.3 Crawl Broker Activity dari Stockbit
+        try:
+            from crawl_broker_activity import fetch_broker_activity, save_broker_records, POPULAR_BROKERS
+            date_to = today_str
+            date_from = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            broker_total = 0
+            for b_code in POPULAR_BROKERS[:25]: # Top 25 broker aktif
+                try:
+                    b_records = fetch_broker_activity(token, b_code, date_from, date_to, pages=2)
+                    if b_records:
+                        save_broker_records(b_records)
+                        broker_total += len(b_records)
+                    time.sleep(1)
+                except Exception as be:
+                    print(f"[Scheduler] Broker Activity {b_code} warning: {be}")
+            _log_crawl("SCHEDULER_STOCKBIT_BROKER", "ALL", today_str, "SUCCESS", broker_total)
+            print(f"[Scheduler] Stockbit Broker Activity: {broker_total} records")
+        except Exception as e:
+            print(f"[Scheduler] Stockbit Broker Activity warning: {e}")
+
         # =============================================================
-        # PHASE 2: YFINANCE SCOPE (OHLCV, Company Info, Fundamental)
+        # PHASE 2: YFINANCE SCOPE (OHLCV, Technicals, Company Info, Fundamental)
         # Batch crawl: 10 emiten per batch, jeda 5 detik antar-batch
         # =============================================================
         BATCH_SIZE = 10
@@ -370,8 +406,12 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
             from crawl_yfinance import (
                 crawl_ohlcv, insert_ohlcv,
                 crawl_company_info, insert_company_info,
-                crawl_fundamental, insert_fundamental
+                crawl_fundamental, insert_fundamental,
+                create_table_technical_indicator,
+                calculate_technical_indicator,
+                insert_technical_indicator
             )
+            create_table_technical_indicator()
             today_str = now_wib.strftime("%Y-%m-%d")
             total_batches = (len(target_symbols) + BATCH_SIZE - 1) // BATCH_SIZE
             print(f"[Scheduler] --- FASE 2: BATCH CRAWL YFINANCE ({len(target_symbols)} emiten, {total_batches} batch) ---")
@@ -382,13 +422,16 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
                 print(f"[Scheduler] Batch {batch_num}/{total_batches}: {', '.join(batch)} (emiten {batch_idx+1}-{batch_idx+len(batch)} dari {len(target_symbols)})")
 
                 for symbol in batch:
-                    # 2.1 OHLCV Time Series (dengan retry)
+                    # 2.1 OHLCV Time Series & Technical Indicators (dengan retry)
                     for attempt in range(1, MAX_RETRIES + 1):
                         try:
-                            records = crawl_ohlcv(symbol, period="7d")
+                            records = crawl_ohlcv(symbol, period="7d", start=None)
                             if records:
                                 insert_ohlcv(records)
                                 total_records += len(records)
+                                df_tech = calculate_technical_indicator(records)
+                                if len(df_tech):
+                                    insert_technical_indicator(df_tech)
                                 _log_crawl("SCHEDULER_YFINANCE_OHLC", symbol, today_str, "SUCCESS", len(records))
                                 print(f"[Scheduler] yfinance OHLC {symbol}: {len(records)} records")
                             else:
@@ -430,23 +473,58 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
             errors.append(err_msg)
             print(f"[Scheduler] {err_msg}")
 
-        # Menjalankan Training Model Forecast, Prescriptive Pipeline & Analytics Processing Layer
+        # =============================================================
+        # PHASE 3: TRAINING & DYNAMIC FORECASTING GENERATION
+        # =============================================================
         try:
-            print("[Scheduler] Memulai training model forecast, prescriptive pipeline & analytics processing layer...")
+            print("[Scheduler] --- FASE 3: TRAINING & GENERATING DYNAMIC FORECASTS ---")
+            from forecasting.dynamic_forecast import generate_dynamic_forecast
+            fc_count = 0
+            for sym in target_symbols:
+                try:
+                    fc_res = generate_dynamic_forecast(sym, horizon_days=7)
+                    if fc_res:
+                        fc_count += 1
+                except Exception as fce:
+                    print(f"[Scheduler] Forecast {sym} warning: {fce}")
+            _log_crawl("SCHEDULER_FORECAST_MODEL", "ALL", today_str, "SUCCESS", fc_count)
+            print(f"[Scheduler] Forecast model selesai untuk {fc_count} emiten.")
+        except Exception as e:
+            err_msg = f"Forecasting Pipeline: {str(e)}"
+            errors.append(err_msg)
+            _log_crawl("SCHEDULER_FORECAST_MODEL", "ALL", today_str, "FAILED", 0, str(e))
+            print(f"[Scheduler] {err_msg}")
+
+        # =============================================================
+        # PHASE 4: PRESCRIPTIVE ANALYTICS PIPELINE (AI REKOMENDASI)
+        # =============================================================
+        try:
+            print("[Scheduler] --- FASE 4: PRESCRIPTIVE PIPELINE (AI REKOMENDASI) ---")
             from prescriptive.pipeline import run_prescriptive_pipeline
             p_res = run_prescriptive_pipeline()
             p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
             _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "SUCCESS", p_count)
+            print(f"[Scheduler] Prescriptive pipeline selesai: {p_count} emiten direkomendasikan.")
+        except Exception as e:
+            err_msg = f"Prescriptive Pipeline: {str(e)}"
+            errors.append(err_msg)
+            _log_crawl("SCHEDULER_PRESCRIPTIVE_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
+            print(f"[Scheduler] {err_msg}")
 
+        # =============================================================
+        # PHASE 5: DESCRIPTIVE & DIAGNOSTIC ANALYTICS PROCESSING
+        # =============================================================
+        try:
+            print("[Scheduler] --- FASE 5: DESCRIPTIVE & DIAGNOSTIC ANALYTICS ---")
             from analytics.pipeline import run_analytics_pipeline
-            a_res = run_analytics_pipeline()
+            a_res = run_analytics_pipeline(symbols=target_symbols)
             a_count = a_res.get("processed_count", 0) if isinstance(a_res, dict) and "processed_count" in a_res else 0
             _log_crawl("SCHEDULER_ANALYTICS_PIPELINE", "ALL", today_str, "SUCCESS", a_count)
-            print("[Scheduler] Model forecast, prescriptive pipeline & analytics processing layer selesai diproses.")
+            print(f"[Scheduler] Analytics pipeline selesai: {a_count} emiten diproses.")
         except Exception as e:
-            err_msg = f"Prescriptive/Analytics Pipeline: {str(e)}"
+            err_msg = f"Analytics Pipeline: {str(e)}"
             errors.append(err_msg)
-            _log_crawl("SCHEDULER_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
+            _log_crawl("SCHEDULER_ANALYTICS_PIPELINE", "ALL", today_str, "FAILED", 0, str(e))
             print(f"[Scheduler] {err_msg}")
 
 
