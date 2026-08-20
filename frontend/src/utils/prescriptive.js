@@ -158,7 +158,9 @@ export function buildRecommendation(rows) {
 export function parseRingkasan(teks) {
   if (!teks) return []
 
-  return String(teks)
+  const bersih = String(teks).replace(/[📌💡🛡️]/g, '').trim()
+
+  return bersih
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)

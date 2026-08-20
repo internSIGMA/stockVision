@@ -296,14 +296,14 @@ def generate_decision_scores(feature_df: pd.DataFrame, forecast_df: pd.DataFrame
         roe_str = f"ROE {row.get('roe')*100:.1f}%" if row.get("roe") else "ROE N/A"
 
         insight_summary = (
-            f"📌 ANALISIS {row['symbol']} ({row.get('company_name', 'Emiten')})\n"
+            f"ANALISIS {row['symbol']} ({row.get('company_name', 'Emiten')})\n"
             f"• Tren: {trend} (EMA20: {ema20_val}, EMA50: {ema50_val}) | RSI: {rsi_sig} ({rsi_val}) | MACD: {macd_sig} ({macd_val})\n"
             f"• Fundamental: {pe_str}, {roe_str}. Skor Tekno-Fundamental: {row.get('TOTAL_SCORE')}/100.\n\n"
-            f"💡 REKOMENDASI UTAMA: [{recommendation}]\n"
-            f"💡 STRATEGI PEMBELI BARU: [{rec_new_buyer}]\n"
+            f"REKOMENDASI UTAMA: [{recommendation}]\n"
+            f"STRATEGI PEMBELI BARU: [{rec_new_buyer}]\n"
             f"{reason_buyer}\n"
             f"Ideal Entry Price: Rp {entry_price:,.0f} (Support: Rp {support_price:,.0f} | Resistance: Rp {resistance_price:,.0f}).\n\n"
-            f"🛡️ STRATEGI PEMEGANG SAHAM: [{rec_holding}]\n"
+            f"STRATEGI PEMEGANG SAHAM: [{rec_holding}]\n"
             f"{reason_holding}\n"
             f"Area Risk Management: Target Price Rp {target_price:,.0f} | Cut Loss < Rp {stop_loss:,.0f} (RRR: {rrr}:1)."
         )
