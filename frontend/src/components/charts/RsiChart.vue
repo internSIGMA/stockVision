@@ -232,11 +232,16 @@ defineExpose({ resetZoom })
     <!-- Legend melayang ala TradingView -->
     <div
       v-if="adaData"
-      class="tabular pointer-events-none absolute left-2 top-1 z-[2] flex items-baseline gap-1.5 text-[11px] leading-none"
+      class="tabular pointer-events-none absolute left-2 top-1 z-[2] flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] leading-none"
     >
-      <span class="font-semibold text-foreground">RSI</span>
-      <span class="text-muted-foreground">{{ periode }} close</span>
-      <span class="font-semibold text-[var(--primary)]">{{ fmt(nilaiRsi) }}</span>
+      <div class="flex items-baseline gap-1.5">
+        <span class="font-semibold text-foreground">RSI</span>
+        <span class="text-muted-foreground">{{ periode }} close</span>
+      </div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-muted-foreground">RSI</span>
+        <span class="font-semibold text-[var(--primary)]">{{ fmt(nilaiRsi) }}</span>
+      </div>
     </div>
 
     <button

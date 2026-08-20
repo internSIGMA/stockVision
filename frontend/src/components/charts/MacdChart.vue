@@ -268,13 +268,24 @@ defineExpose({ resetZoom })
     <!-- Legend melayang ala TradingView -->
     <div
       v-if="adaData"
-      class="tabular pointer-events-none absolute left-2 top-1 z-[2] flex items-baseline gap-1.5 text-[11px] leading-none"
+      class="tabular pointer-events-none absolute left-2 top-1 z-[2] flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] leading-none"
     >
-      <span class="font-semibold text-foreground">MACD</span>
-      <span class="text-muted-foreground">12 26 9 close</span>
-      <span class="font-semibold" :class="kelasHist">{{ fmt(nilaiHist) }}</span>
-      <span class="font-semibold text-[var(--primary)]">{{ fmt(nilaiMacd) }}</span>
-      <span class="font-semibold text-[var(--warning)]">{{ fmt(nilaiSignal) }}</span>
+      <div class="flex items-baseline gap-1.5">
+        <span class="font-semibold text-foreground">MACD</span>
+        <span class="text-muted-foreground">12 26 9 close</span>
+      </div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-muted-foreground">Hist</span>
+        <span class="font-semibold" :class="kelasHist">{{ fmt(nilaiHist) }}</span>
+      </div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-muted-foreground">MACD</span>
+        <span class="font-semibold text-[var(--primary)]">{{ fmt(nilaiMacd) }}</span>
+      </div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-muted-foreground">Signal</span>
+        <span class="font-semibold text-[var(--warning)]">{{ fmt(nilaiSignal) }}</span>
+      </div>
     </div>
 
     <button
