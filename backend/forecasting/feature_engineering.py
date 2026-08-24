@@ -160,6 +160,9 @@ def create_features(df):
 
     df["year"] = df["tanggal"].dt.year
 
+    if "cluster_id" not in df.columns:
+        df["cluster_id"] = 0
+
     return df
 
 feature_cols = [
@@ -225,5 +228,6 @@ feature_cols = [
     "weekofyear",
     "month",
     "quarter",
-    "year"
+    "year",
+    "cluster_id"
 ]
