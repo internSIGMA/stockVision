@@ -1048,7 +1048,17 @@ def update_token():
         return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
-    # Inisialisasi scheduler (hanya di worker utama jika Flask debug mode aktif)
-    if (debug_mode and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug_mode:
+    is_main_worker = (debug_mode and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug_mode
+
+    # Inisialisasi scheduler & background bootstrap (hanya di worker utama jika Flask debug mode aktif)
+    if is_main_worker:
         init_scheduler()
+        print("[App] Starting StockVision auto-bootstrap in background...")
+        try:
+            from bootstrap import start_auto_bootstrap
+            start_auto_bootstrap()
+        except Exception as e:
+            print("[App] Warning: Gagal memulai auto-bootstrap:", e)
+        print("\n")
+
     app.run(host="0.0.0.0", port=8080, debug=debug_mode)

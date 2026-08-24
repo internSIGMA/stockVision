@@ -12,10 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_CONFIG = {
-    "host":     os.getenv("DB_HOST"),
-    "database": os.getenv("DB_NAME"),
-    "user":     os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
+    "host":     os.getenv("DB_HOST", "db"),
+    "database": os.getenv("DB_NAME", "stockVision"),
+    "user":     os.getenv("DB_USER", "stockvision"),
+    "password": os.getenv("DB_PASSWORD", "stockvision_pass"),
     "port":     int(os.getenv("DB_PORT", 5432)),
 }
 

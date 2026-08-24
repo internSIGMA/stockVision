@@ -23,20 +23,24 @@ import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import MACD
 
-# Load env variables
-load_dotenv(find_dotenv(), override=True)
-
-# Database Configuration
-DB_CONFIG = {
-    "host":     os.getenv("DB_HOST"),
-    "database": os.getenv("DB_NAME"),
-    "user":     os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "port":     int(os.getenv("DB_PORT", 5432)),
-}
+load_dotenv(find_dotenv())
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    h = os.getenv("DB_HOST", "db")
+    db = os.getenv("DB_NAME", "stockVision")
+    u = os.getenv("DB_USER", "stockvision")
+    p = os.getenv("DB_PASSWORD", "stockvision_pass")
+    port = int(os.getenv("DB_PORT", 5432))
+    try:
+        return psycopg2.connect(host=h, database=db, user=u, password=p, port=port, connect_timeout=5)
+    except psycopg2.OperationalError:
+        targets = [("db", 5432), ("localhost", 5433), ("localhost", 5434), ("127.0.0.1", 5433)]
+        for host_cand, port_cand in targets:
+            try:
+                return psycopg2.connect(host=host_cand, database=db, user=u, password=p, port=port_cand, connect_timeout=3)
+            except psycopg2.OperationalError:
+                continue
+        raise
 
 def create_table_ohlcv():
     query = """
@@ -177,71 +181,52 @@ def crawl_ohlcv(symbol, period="5y", start="2021-08-04"):
     return records
 
 def crawl_company_info(symbol):
-
-    ticker = yf.Ticker(f"{symbol}.JK")
-
-    info = ticker.info
-
-    return {
-
-        "symbol": symbol,
-
-        "company_name": info.get("longName"),
-
-        "sector": info.get("sector"),
-
-        "industry": info.get("industry"),
-
-        "country": info.get("country"),
-
-        "currency": info.get("currency"),
-
-        "exchange": info.get("exchange"),
-
-        "shares_outstanding": info.get("sharesOutstanding"),
-
-        "beta": info.get("beta")
-
-    }
+    try:
+        ticker = yf.Ticker(f"{symbol}.JK")
+        info = ticker.info or {}
+        if not info or not info.get("longName"):
+            return None
+        return {
+            "symbol": symbol,
+            "company_name": info.get("longName"),
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "country": info.get("country"),
+            "currency": info.get("currency"),
+            "exchange": info.get("exchange"),
+            "shares_outstanding": info.get("sharesOutstanding"),
+            "beta": info.get("beta")
+        }
+    except Exception:
+        return None
 
 def crawl_fundamental(symbol):
+    try:
+        ticker = yf.Ticker(f"{symbol}.JK")
+        info = ticker.info or {}
+        if not info or not info.get("marketCap"):
+            return None
+        most_recent = info.get("mostRecentQuarter")
+        if most_recent:
+            report_date = datetime.fromtimestamp(most_recent).date()
+        else:
+            report_date = datetime.today().date()
 
-    ticker = yf.Ticker(f"{symbol}.JK")
-
-    info = ticker.info
-
-    most_recent = info.get("mostRecentQuarter")
-
-    if most_recent:
-        report_date = datetime.fromtimestamp(most_recent).date()
-    else:
-        report_date = datetime.today().date()
-
-    return {
-
-        "symbol": symbol,
-
-        "report_date": report_date,
-
-        "market_cap": info.get("marketCap"),
-
-        "trailing_pe": info.get("trailingPE"),
-
-        "forward_pe": info.get("forwardPE"),
-
-        "price_to_book": info.get("priceToBook"),
-
-        "roe": info.get("returnOnEquity"),
-
-        "roa": info.get("returnOnAssets"),
-
-        "earnings_growth": info.get("earningsGrowth"),
-
-        "revenue_growth": info.get("revenueGrowth"),
-
-        "dividend_yield": info.get("dividendYield")
-
-    }
+        return {
+            "symbol": symbol,
+            "report_date": report_date,
+            "market_cap": info.get("marketCap"),
+            "trailing_pe": info.get("trailingPE"),
+            "forward_pe": info.get("forwardPE"),
+            "price_to_book": info.get("priceToBook"),
+            "roe": info.get("returnOnEquity"),
+            "roa": info.get("returnOnAssets"),
+            "earnings_growth": info.get("earningsGrowth"),
+            "revenue_growth": info.get("revenueGrowth"),
+            "dividend_yield": info.get("dividendYield")
+        }
+    except Exception:
+        return None
 
 def calculate_technical_indicator(records):
 
@@ -312,6 +297,8 @@ def insert_ohlcv(records):
     print(f"[yfinance Crawler] Berhasil menyimpan {len(records)} data untuk {records[0]['symbol']}.")
 
 def insert_company_info(record):
+    if not record:
+        return
 
     query = """
     INSERT INTO idxsaham.company_info (
@@ -371,6 +358,8 @@ def insert_company_info(record):
     conn.close()
 
 def insert_fundamental(record):
+    if not record:
+        return
 
     query = """
 
@@ -524,26 +513,45 @@ def insert_technical_indicator(df):
 def get_target_symbols(cli_args=None):
     """
     Mengambil secara DINAMIS seluruh simbol emiten unik dari:
-    1. Argumen Command Line (CLI) jika diberikan (misal: python crawl_yfinance.py BBCA BBNI TLKM)
-    2. Seluruh tabel di Database PostgreSQL (idxsaham.watchlists, stock_info, stock_ohlc, company_info, fundamental, broker_activity, insider_activity)
-    3. File SQLite watchlist.db
+    1. Argumen Command Line (CLI) jika diberikan:
+       - 'all' / '--all' : Seluruh 940+ emiten IDX terdaftar dari idx_company_list
+       - 'BBCA,BBRI' / 'BBCA' 'BMRI' : Emiten spesifik
+    2. Seluruh tabel di Database PostgreSQL (idxsaham.idx_company_list, watchlists, stock_info, stock_ohlc, company_info, fundamental, broker_activity, insider_activity)
     """
     symbols = set()
     
     # 1. Cek dari Command-Line Arguments (CLI) jika ada
     args = cli_args if cli_args is not None else sys.argv[1:]
+    is_all_flag = False
     for arg in args:
-        if arg and not arg.startswith("-"):
-            for s in arg.split(","):
-                cleaned = s.strip().upper()
-                if cleaned:
-                    symbols.add(cleaned)
+        if arg:
+            cleaned = arg.strip().upper()
+            if cleaned in ("ALL", "--ALL", "-A"):
+                is_all_flag = True
+                break
+            if not arg.startswith("-"):
+                for s in arg.split(","):
+                    sc = s.strip().upper()
+                    if sc:
+                        symbols.add(sc)
+
+    if is_all_flag:
+        try:
+            from db.idx_tickers import get_all_idx_symbols
+            all_syms = get_all_idx_symbols()
+            if all_syms:
+                print(f"[yfinance Crawler] Mode '--all' aktif: Memuat {len(all_syms)} emiten resmi IDX.")
+                return sorted(all_syms)
+        except Exception as e:
+            print("[yfinance Crawler] Warning: Gagal memuat daftar emiten resmi via db.idx_tickers:", e)
+
     if symbols:
         print(f"[yfinance Crawler] Simbol diambil dari argumen CLI ({len(symbols)} emiten).")
         return sorted(list(symbols))
 
     # 2. Cek secara DINAMIS dari seluruh tabel PostgreSQL yang menyimpan data emiten
     db_queries = [
+        "SELECT DISTINCT symbol FROM idxsaham.idx_company_list",
         "SELECT DISTINCT stock_code FROM idxsaham.watchlists",
         "SELECT DISTINCT symbol FROM idxsaham.stock_info",
         "SELECT DISTINCT symbol FROM idxsaham.stock_ohlc",
@@ -573,8 +581,12 @@ def get_target_symbols(cli_args=None):
     if symbols:
         print(f"[yfinance Crawler] Berhasil menemukan {len(symbols)} emiten unik secara dinamis dari Database.")
     else:
-        print("[yfinance Crawler] Info: Belum ada data emiten di DB. Menggunakan emiten awal.")
-        symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
+        print("[yfinance Crawler] Info: Belum ada data emiten di DB. Menggunakan emiten resmi IDX.")
+        try:
+            from db.idx_tickers import get_all_idx_symbols
+            symbols = set(get_all_idx_symbols())
+        except Exception:
+            symbols = {"BBCA", "BBNI", "BBRI", "BMRI", "BJBR", "TLKM", "ANTM", "PTBA", "GOTO"}
 
     return sorted(list(symbols))
 
@@ -593,41 +605,40 @@ def main(custom_symbols=None):
         return
         
     symbols = custom_symbols or get_target_symbols()
-    print(f"[yfinance Crawler] Memproses {len(symbols)} emiten: {', '.join(symbols)}")
+    total_symbols = len(symbols)
+    print(f"[yfinance Crawler] Memproses {total_symbols} emiten...")
     total_records = 0
+    success_count = 0
     
-    for symbol in symbols:
-
+    for i, symbol in enumerate(symbols, 1):
+        print(f"[{i}/{total_symbols}] Memproses emiten: {symbol}...")
         try:
-
             # OHLCV
             records = crawl_ohlcv(symbol)
-
             if records:
-
                 insert_ohlcv(records)
                 total_records += len(records)
-
                 technical_df = calculate_technical_indicator(records)
-
                 insert_technical_indicator(technical_df)
+                success_count += 1
 
             # Company Info
             company = crawl_company_info(symbol)
-
-            insert_company_info(company)
+            if company:
+                insert_company_info(company)
 
             # Fundamental
             fundamental = crawl_fundamental(symbol)
-
-            insert_fundamental(fundamental)
+            if fundamental:
+                insert_fundamental(fundamental)
 
         except Exception as e:
-
-            print(f"{symbol} ERROR :", e)
+            print(f"[{symbol}] ERROR :", e)
             
     print("\n" + "="*60)
-    print(f"[SUKSES] Crawling selesai! Total data dimasukkan: {total_records} baris.")
+    print(f"[SUKSES] Crawling selesai!")
+    print(f"Total emiten berhasil: {success_count}/{total_symbols}")
+    print(f"Total data baris OHLCV: {total_records} baris.")
     print("="*60 + "\n")
 
 if __name__ == "__main__":
