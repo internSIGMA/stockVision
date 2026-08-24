@@ -74,9 +74,9 @@ def get_all_idx_tickers_app():
 
 
 from scheduler import (
-
     start_scheduler, stop_scheduler, pause_scheduler,
-    resume_scheduler, trigger_now, get_scheduler_status
+    resume_scheduler, trigger_now, get_scheduler_status,
+    init_scheduler
 )
 
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
@@ -1044,12 +1044,8 @@ def update_token():
         print("[Token Updater] Error updating token:", e)
         return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
-    # Auto-start scheduler saat app boot
-    # Di Flask debug mode, reloader menjalankan server dua kali.
-    # Kita hanya ingin scheduler jalan sekali di process worker utama (WERKZEUG_RUN_MAIN=true).
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        print("\n[App] Starting auto-crawl scheduler...")
-        start_scheduler()
-        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
+    # Inisialisasi scheduler (hanya di worker utama jika Flask debug mode aktif)
+    if (debug_mode and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug_mode:
+        init_scheduler()
     app.run(host="0.0.0.0", port=8080, debug=debug_mode)
