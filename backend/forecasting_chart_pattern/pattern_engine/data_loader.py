@@ -69,6 +69,22 @@ def _calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['SMA50'] = df['Close'].rolling(window=50, min_periods=10).mean()
     df['SMA200'] = df['Close'].rolling(window=200, min_periods=20).mean()
     
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
+    rs = avg_gain / (avg_loss + 1e-9)
+    df['RSI'] = 100.0 - (100.0 / (1.0 + rs))
+    
+    # MACD (12, 26, 9)
+    ema12 = df['Close'].ewm(span=12, adjust=False).mean()
+    ema26 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = ema12 - ema26
+    df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    df['MACD_Hist'] = df['MACD'] - df['MACD_Signal']
+    
     return df
 
 
