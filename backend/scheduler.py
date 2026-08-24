@@ -726,7 +726,7 @@ def has_prescriptive_data():
 def run_development_bootstrap():
     """
     Menjalankan bootstrap satu kali saat development mode (AUTO_SCHEDULER=false).
-    Jika data broker belum ada di database, jalankan crawl dan prescriptive pipeline sekali.
+    Jika data broker belum ada di database, jalankan crawl broker dan prescriptive pipeline sekali.
     Jika data sudah ada, lewati penarikan Stockbit demi menghemat kuota token.
     """
     def _bootstrap_worker():
@@ -736,15 +736,32 @@ def run_development_bootstrap():
 
         if not has_broker:
             print("\n[Scheduler Dev Mode] Data broker_activity belum ada di DB.")
-            print("[Scheduler Dev Mode] Menjalankan One-Time Crawler & Prescriptive Pipeline...")
-            trigger_now()
+            print("[Scheduler Dev Mode] Memulai penarikan data Broker Activity (Stockbit)...")
+            try:
+                from crawl_broker_activity import crawl_brokers
+                # Otomatis crawl broker activity untuk mengisi data awal
+                crawl_brokers(days=7, pages=2)
+                print("[Scheduler Dev Mode] Data broker_activity berhasil ditarik dan disimpan ke DB.")
+            except Exception as e:
+                print(f"[Scheduler Dev Mode] Gagal menarik data broker_activity: {e}")
+
+            print("[Scheduler Dev Mode] Menjalankan Prescriptive Analytics Pipeline (AI Rekomendasi)...")
+            try:
+                from prescriptive.pipeline import run_prescriptive_pipeline
+                p_res = run_prescriptive_pipeline()
+                p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
+                print(f"[Scheduler Dev Mode] Prescriptive Pipeline selesai: {p_count} emiten direkomendasikan.")
+            except Exception as e:
+                print(f"[Scheduler Dev Mode] Gagal menjalankan Prescriptive Pipeline: {e}")
+
         elif not has_prescriptive:
             print("\n[Scheduler Dev Mode] Data broker_activity sudah ada, namun prescriptive_results masih kosong.")
             print("[Scheduler Dev Mode] Menjalankan Prescriptive Analytics Pipeline...")
             try:
                 from prescriptive.pipeline import run_prescriptive_pipeline
-                run_prescriptive_pipeline()
-                print("[Scheduler Dev Mode] Prescriptive Pipeline selesai.")
+                p_res = run_prescriptive_pipeline()
+                p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
+                print(f"[Scheduler Dev Mode] Prescriptive Pipeline selesai: {p_count} emiten direkomendasikan.")
             except Exception as e:
                 print(f"[Scheduler Dev Mode] Gagal menjalankan Prescriptive Pipeline: {e}")
         else:
