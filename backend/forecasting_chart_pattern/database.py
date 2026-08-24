@@ -24,7 +24,7 @@ def get_connection():
         h = "127.0.0.1"
     db = os.getenv("DB_NAME", "stockVision")
     u = os.getenv("DB_USER", "stockvision")
-    p = os.getenv("DB_PASSWORD", "stockvision_pass")
+    p = os.getenv("DB_PASSWORD")
     port = int(os.getenv("DB_PORT", 5433))
     
     targets = [(h, port), ("127.0.0.1", 5433), ("127.0.0.1", 5432), ("localhost", 5433), ("localhost", 5432)]
