@@ -92,8 +92,16 @@ function performLogout() {
 
 <template>
   <header
-    class="relative z-40 flex h-[52px] items-center gap-3 border-b-[0.5px] border-border bg-card px-4 text-foreground"
+    class="sticky top-0 z-50 flex h-[52px] items-center gap-3 border-b-0 bg-card px-4 text-foreground shadow-sm"
   >
+    <!-- Efek gradasi warna halus di latar -->
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--primary)]/10 via-[var(--primary)]/5 to-transparent"></div>
+    
+    <!-- Garis neon tipis di batas bawah -->
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-[var(--primary)]/50 via-[var(--primary)]/20 to-border"></div>
+
+    <!-- Konten perlu dibungkus relative z-10 agar berada di atas background glow -->
+    <div class="relative z-10 flex w-full items-center gap-3">
     <!-- Logo dan nama aplikasi -->
     <RouterLink
       to="/stream"
@@ -298,5 +306,6 @@ function performLogout() {
       v-model:open="showLogoutDialog"
       @confirm="performLogout"
     />
+    </div>
   </header>
 </template>

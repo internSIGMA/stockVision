@@ -998,7 +998,7 @@ def google_login_route():
     try:
         res = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}",
-            timeout=5
+            timeout=15
         )
         if res.status_code != 200:
             return jsonify({"error": "Invalid Google token"}), 400
@@ -1007,10 +1007,11 @@ def google_login_route():
     except Exception as e:
         return jsonify({"error": f"Failed to verify token with Google: {str(e)}"}), 500
 
-    # Check client ID/audience
-    expected_client_id = "984699715154-avv957f6q8sncnjglfe00d4ksrg01ifl.apps.googleusercontent.com"
+    # Check client ID/audience (bisa ada di aud atau azp)
+    expected_client_id = os.getenv("GOOGLE_CLIENT_ID", "984699715154-avv957f6q8sncnjglfe00d4ksrg01ifl.apps.googleusercontent.com")
     aud = token_info.get("aud")
-    if aud != expected_client_id:
+    azp = token_info.get("azp")
+    if aud != expected_client_id and azp != expected_client_id:
         return jsonify({"error": "Token audience mismatch"}), 400
 
     email = token_info.get("email")

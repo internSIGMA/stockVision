@@ -11,25 +11,46 @@ import api, { BASE_URL } from './index'
  */
 
 /**
- * Daftar sebagian emiten resmi di BEI (untuk simulasi Frontend).
- * Berisi 9 emiten prioritas + puluhan emiten populer lainnya.
+ * Cache daftar seluruh emiten resmi di BEI dari database backend (/api/data/tickers).
  */
-export const OFFICIAL_TICKERS = [
-  'BBCA', 'BBRI', 'BMRI', 'TLKM', 'ANTM', 'PTBA', 'GOTO', 'BSSR', 'PTRO',
-  'ASII', 'UNVR', 'ICBP', 'INDF', 'KLBF', 'PGAS', 'UNTR', 'CPIN', 'MYOR', 
-  'INKP', 'TKIM', 'SMGR', 'INTP', 'BRPT', 'TPIA', 'AMMN', 'BREN', 'CUAN',
-  'MDKA', 'INCO', 'ADRO', 'ITMG', 'HRUM', 'AKRA', 'MEDC', 'SIDO', 'AMRT',
-  'MIDI', 'ACES', 'MAPI', 'ERAA', 'CTRA', 'BSDE', 'SMRA', 'PWON', 'ASRI',
-  'BBNI', 'BJBR', 'BBTN', 'BRIS', 'ARTO', 'MEGA', 'PNBN'
-]
+export let idxCompanies = []
+export let OFFICIAL_TICKERS = []
+
+/**
+ * Mengambil daftar seluruh emiten BEI (940+ emiten) dari backend database.
+ * Memperbarui cache idxCompanies & OFFICIAL_TICKERS (companies.symbol).
+ */
+export async function getIdxCompanies(params = {}) {
+  try {
+    const res = await api.get('/api/data/tickers', { params })
+    const companies = res?.data || (Array.isArray(res) ? res : [])
+    if (Array.isArray(companies) && companies.length > 0) {
+      idxCompanies = companies
+      OFFICIAL_TICKERS = companies.map((c) => c.symbol)
+    }
+    return companies
+  } catch (err) {
+    console.warn('[StockVision API] Gagal memuat daftar emiten dari backend:', err)
+    return idxCompanies
+  }
+}
+
+// Inisialisasi awal pemuatan emiten secara otomatis
+if (typeof window !== 'undefined') {
+  getIdxCompanies().catch(() => {})
+}
 
 export const SUPPORTED_TICKERS = ['BBCA', 'BBNI', 'BBRI', 'BMRI', 'BJBR', 'TLKM', 'ASII', 'ANTM', 'GOTO']
 
-/** Memeriksa apakah emiten ada di dalam daftar resmi bursa (simulasi). */
+/** Memeriksa apakah emiten ada di dalam daftar resmi bursa (companies.symbol). */
 export function isSupported(ticker) {
   if (!ticker || typeof ticker !== 'string') return false
   const t = ticker.trim().toUpperCase()
-  return OFFICIAL_TICKERS.includes(t)
+  if (OFFICIAL_TICKERS.length > 0) {
+    return OFFICIAL_TICKERS.includes(t)
+  }
+  // Fallback jika fetch emiten belum selesai: format ticker bursa valid (4-6 alfanumerik)
+  return /^[A-Z0-9]{4,6}$/.test(t)
 }
 
 /** Crawl bisa memakan waktu lama karena menembak sumber eksternal. */

@@ -26,6 +26,11 @@ WIB = timezone(timedelta(hours=7))
 DAILY_CRAWL_HOUR   = 17
 DAILY_CRAWL_MINUTE = 0
 
+# Mode Auto Scheduler (False = development smart bootstrap, True = production periodik)
+# Untuk development: False (hanya crawl 1x jika DB kosong, jika sudah ada data maka skip demi hemat token Stockbit)
+# Untuk production/deploy: Ubah menjadi True
+AUTO_SCHEDULER = False
+
 def get_active_target_symbols():
     """
     Dapatkan seluruh simbol emiten target untuk crawl harian.
@@ -688,6 +693,101 @@ def trigger_now(symbols=None):
     return {"status": "triggered", "message": "Manual crawl dimulai di background"}
 
 
+def has_broker_activity_data():
+    """Periksa apakah tabel idxsaham.broker_activity sudah memiliki data."""
+    try:
+        conn = _get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM idxsaham.broker_activity;")
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count > 0
+    except Exception as e:
+        print(f"[Scheduler] Warning cek tabel broker_activity: {e}")
+        return False
+
+
+def has_prescriptive_data():
+    """Periksa apakah tabel idxsaham.prescriptive_results sudah memiliki data."""
+    try:
+        conn = _get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM idxsaham.prescriptive_results;")
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count > 0
+    except Exception as e:
+        print(f"[Scheduler] Warning cek tabel prescriptive_results: {e}")
+        return False
+
+
+def run_development_bootstrap():
+    """
+    Menjalankan bootstrap satu kali saat development mode (AUTO_SCHEDULER=false).
+    Jika data broker belum ada di database, jalankan crawl broker dan prescriptive pipeline sekali.
+    Jika data sudah ada, lewati penarikan Stockbit demi menghemat kuota token.
+    """
+    def _bootstrap_worker():
+        time.sleep(3)  # Jeda singkat agar server Flask selesai inisialisasi
+        has_broker = has_broker_activity_data()
+        has_prescriptive = has_prescriptive_data()
+
+        if not has_broker:
+            print("\n[Scheduler Dev Mode] Data broker_activity belum ada di DB.")
+            print("[Scheduler Dev Mode] Memulai penarikan data Broker Activity (Stockbit)...")
+            try:
+                from crawl_broker_activity import crawl_brokers
+                # Otomatis crawl broker activity untuk mengisi data awal
+                crawl_brokers(days=7, pages=2)
+                print("[Scheduler Dev Mode] Data broker_activity berhasil ditarik dan disimpan ke DB.")
+            except Exception as e:
+                print(f"[Scheduler Dev Mode] Gagal menarik data broker_activity: {e}")
+
+            print("[Scheduler Dev Mode] Menjalankan Prescriptive Analytics Pipeline (AI Rekomendasi)...")
+            try:
+                from prescriptive.pipeline import run_prescriptive_pipeline
+                p_res = run_prescriptive_pipeline()
+                p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
+                print(f"[Scheduler Dev Mode] Prescriptive Pipeline selesai: {p_count} emiten direkomendasikan.")
+            except Exception as e:
+                print(f"[Scheduler Dev Mode] Gagal menjalankan Prescriptive Pipeline: {e}")
+
+        elif not has_prescriptive:
+            print("\n[Scheduler Dev Mode] Data broker_activity sudah ada, namun prescriptive_results masih kosong.")
+            print("[Scheduler Dev Mode] Menjalankan Prescriptive Analytics Pipeline...")
+            try:
+                from prescriptive.pipeline import run_prescriptive_pipeline
+                p_res = run_prescriptive_pipeline()
+                p_count = len(p_res.get("results", [])) if isinstance(p_res, dict) and "results" in p_res else 0
+                print(f"[Scheduler Dev Mode] Prescriptive Pipeline selesai: {p_count} emiten direkomendasikan.")
+            except Exception as e:
+                print(f"[Scheduler Dev Mode] Gagal menjalankan Prescriptive Pipeline: {e}")
+        else:
+            print("\n[Scheduler Dev Mode] AUTO_SCHEDULER=false.")
+            print("[Scheduler Dev Mode] Data broker & prescriptive sudah tersedia di database.")
+            print("[Scheduler Dev Mode] Crawling Stockbit dilewati untuk menghemat token.\n")
+
+    thread = threading.Thread(target=_bootstrap_worker, daemon=True)
+    thread.start()
+
+
+def init_scheduler():
+    """
+    Inisialisasi scheduler saat startup berdasarkan nilai AUTO_SCHEDULER:
+    - Jika AUTO_SCHEDULER=True (Production): Jalankan recurring daily scheduler (17:00 WIB).
+    - Jika AUTO_SCHEDULER=False (Development): Jalankan smart one-time bootstrap (hanya jika DB kosong).
+    """
+    if AUTO_SCHEDULER:
+        print("\n[Scheduler] AUTO_SCHEDULER=true (Production Mode). Mengaktifkan scheduler harian...")
+        return start_scheduler()
+    else:
+        print("\n[Scheduler] AUTO_SCHEDULER=false (Development Mode). Scheduler harian periodik dinonaktifkan.")
+        run_development_bootstrap()
+        return {"status": "dev_mode", "message": "Development mode aktif. Scheduler periodik nonaktif."}
+
+
 def get_scheduler_status():
     """Get current scheduler state."""
     state = _scheduler_state
@@ -698,6 +798,7 @@ def get_scheduler_status():
 
     return {
         "scheduler": {
+            "auto_scheduler_enabled": AUTO_SCHEDULER,
             "running": state["running"],
             "paused": state["paused"],
             "schedule_info": f"Harian pukul {DAILY_CRAWL_HOUR:02d}:{DAILY_CRAWL_MINUTE:02d} WIB (hari trading)",
