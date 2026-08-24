@@ -32,6 +32,7 @@ function normalPoints(raw) {
   return list
     .map((p) => ({
       tanggal: String(ambil(p, 'tanggal', 'date', 'ds') ?? '').slice(0, 10),
+      open: toNumber(ambil(p, 'open', 'o')),
       prediksi: toNumber(
         ambil(p, 'prediksi', 'yhat', 'predicted_close', 'prediction', 'value', 'close'),
       ),
