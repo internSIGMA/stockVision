@@ -1044,12 +1044,21 @@ def update_token():
         print("[Token Updater] Error updating token:", e)
         return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
-    # Auto-start scheduler saat app boot
-    # Di Flask debug mode, reloader menjalankan server dua kali.
-    # Kita hanya ingin scheduler jalan sekali di process worker utama (WERKZEUG_RUN_MAIN=true).
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
+    is_main_worker = os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not debug_mode
+
+    # Auto-start scheduler & background bootstrap saat app boot
+    if is_main_worker:
         print("\n[App] Starting auto-crawl scheduler...")
         start_scheduler()
-        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.\n")
-    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
+        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.")
+
+        print("[App] Starting StockVision auto-bootstrap in background...")
+        try:
+            from bootstrap import start_auto_bootstrap
+            start_auto_bootstrap()
+        except Exception as e:
+            print("[App] Warning: Gagal memulai auto-bootstrap:", e)
+        print("\n")
+
     app.run(host="0.0.0.0", port=8080, debug=debug_mode)
