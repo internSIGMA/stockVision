@@ -401,29 +401,6 @@ onBeforeUnmount(() => {
 
           </section>
 
-
-
-          <section class="password-section">
-            <div>
-              <strong>
-                Kata sandi
-              </strong>
-
-              <p>
-                Perubahan kata sandi nantinya
-                dihubungkan ke backend.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              class="secondary-button"
-              disabled
-            >
-              Ganti kata sandi
-            </button>
-          </section>
-
           <!-- Memberi ruang pada bagian paling bawah -->
           <div class="modal-bottom-space"></div>
         </main>
