@@ -5,25 +5,28 @@ import { useTheme } from '@/composables/useTheme'
 import { formatDate, formatNumber } from '@/utils/format'
 
 const props = defineProps({
-  /** Baris OHLC dari /api/data/ohlc, urut tanggal ASC. */
+  /** Baris OHLC historis dari /api/data/ohlc, urut tanggal ASC. */
   rows: { type: Array, default: () => [] },
-  height: { type: Number, default: 340 },
+  /** Titik proyeksi dari /api/data/forecast: { tanggal, open, prediksi, lower, upper }. */
+  points: { type: Array, default: () => [] },
+  height: { type: Number, default: 320 },
 })
 
 const container = ref(null)
 const { isDark } = useTheme()
 
-// shallowRef: objek chart dari library tidak boleh dibungkus proxy reaktif Vue.
 const chart = shallowRef(null)
-const series = shallowRef(null)
+const seriesAktual = shallowRef(null)
+const seriesProyeksi = shallowRef(null)
 
-/** Palet diambil dari CSS variable supaya chart ikut token di globals.css. */
 function warna() {
   const style = getComputedStyle(document.documentElement)
   const ambil = (nama) => style.getPropertyValue(nama).trim()
   return {
     up: ambil('--up'),
     down: ambil('--down'),
+    proyeksi: ambil('--primary'),
+    proyeksiLight: ambil('--primary-light'),
     grid: ambil('--border'),
     text: ambil('--muted-foreground'),
   }
@@ -37,19 +40,16 @@ function tema() {
       textColor: text,
       fontFamily: "'Spline Sans Mono', monospace",
       fontSize: 10,
-      // lightweight-charts v5 menempelkan logo TradingView di pojok chart secara default.
       attributionLogo: false,
     },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     rightPriceScale: { borderColor: grid },
-    // Default maxBarSpacing = setengah lebar chart, artinya viewport tidak pernah
-    // bisa memuat < 2 batang — 1D jadi ikut menampilkan batang sebelumnya.
     timeScale: { borderColor: grid, maxBarSpacing: 1e4 },
     crosshair: { mode: 0 },
   }
 }
 
-function temaSeri() {
+function temaAktual() {
   const { up, down } = warna()
   return {
     upColor: up,
@@ -58,6 +58,22 @@ function temaSeri() {
     borderDownColor: down,
     wickUpColor: up,
     wickDownColor: down,
+  }
+}
+
+/**
+ * Batang proyeksi memakai warna brand (teal), bukan hijau/merah histori aktual,
+ * supaya langsung kebeda sekilas — arah naik/turun tetap kebaca lewat gelap/terangnya.
+ */
+function temaProyeksi() {
+  const { proyeksi, proyeksiLight } = warna()
+  return {
+    upColor: proyeksi,
+    downColor: proyeksiLight,
+    borderUpColor: proyeksi,
+    borderDownColor: proyeksiLight,
+    wickUpColor: proyeksi,
+    wickDownColor: proyeksiLight,
   }
 }
 
@@ -74,9 +90,43 @@ function toChartData(rows) {
     .filter((d) => !Number.isNaN(d.open) && !Number.isNaN(d.close))
 }
 
+/**
+ * Titik proyeksi belum tentu punya `open` dari backend — kalau kosong, dipakai
+ * close hari sebelumnya (proyeksi atau histori) supaya candle tetap terbentuk,
+ * bukan angka karangan baru.
+ */
+function toForecastData(points, hargaAcuan) {
+  let acuan = hargaAcuan
+
+  return points
+    .map((p) => {
+      const close = Number(p.prediksi)
+      const open = p.open != null ? Number(p.open) : acuan
+      const low = p.lower != null ? Number(p.lower) : Math.min(open ?? close, close)
+      const high = p.upper != null ? Number(p.upper) : Math.max(open ?? close, close)
+
+      if (Number.isFinite(close)) acuan = close
+
+      return {
+        time: p.tanggal,
+        open: open ?? close,
+        high: Math.max(high, open ?? close, close),
+        low: Math.min(low, open ?? close, close),
+        close,
+      }
+    })
+    .filter((d) => !Number.isNaN(d.open) && !Number.isNaN(d.close))
+}
+
 function render() {
-  if (!series.value) return
-  series.value.setData(toChartData(props.rows))
+  if (!seriesAktual.value || !seriesProyeksi.value) return
+
+  const historis = toChartData(props.rows)
+  seriesAktual.value.setData(historis)
+
+  const hargaAcuan = historis.length ? historis[historis.length - 1].close : null
+  seriesProyeksi.value.setData(toForecastData(props.points, hargaAcuan))
+
   chart.value?.timeScale().fitContent()
 }
 
@@ -84,17 +134,13 @@ function render() {
 // TOOLTIP HOVER
 // ==========================================================
 
-/** Batang yang sedang disorot: { time, open, high, low, close }. */
+/** Batang yang sedang disorot: { time, open, high, low, close, proyeksi }. */
 const bar = shallowRef(null)
 const posisi = ref({ x: 0, y: 0 })
 
-const UKURAN_TOOLTIP = { lebar: 132, tinggi: 108 }
+const UKURAN_TOOLTIP = { lebar: 132, tinggi: 122 }
 const JARAK_KURSOR = 14
 
-/**
- * Tooltip digeser ke sisi lain kursor begitu mepet tepi kanan/bawah,
- * supaya isinya tidak pernah terpotong bingkai chart.
- */
 const gaya = computed(() => {
   const lebarChart = container.value?.clientWidth ?? 0
   const tinggiChart = container.value?.clientHeight ?? 0
@@ -116,7 +162,6 @@ const gaya = computed(() => {
   }
 })
 
-/** Hijau saat close >= open, merah kalau sebaliknya. */
 const kelasArah = computed(() =>
   bar.value && bar.value.close >= bar.value.open ? 'text-up' : 'text-down',
 )
@@ -124,19 +169,25 @@ const kelasArah = computed(() =>
 const harga = (v) => formatNumber(v)
 
 function pantauKursor(param) {
-  // Di luar area plot, param.time kosong — sembunyikan tooltip.
-  if (!param.time || !param.point || !series.value) {
+  if (!param.time || !param.point || !seriesAktual.value || !seriesProyeksi.value) {
     bar.value = null
     return
   }
 
-  const data = param.seriesData.get(series.value)
-  if (!data) {
+  const dataProyeksi = param.seriesData.get(seriesProyeksi.value)
+  if (dataProyeksi) {
+    bar.value = { ...dataProyeksi, proyeksi: true }
+    posisi.value = { x: param.point.x, y: param.point.y }
+    return
+  }
+
+  const dataAktual = param.seriesData.get(seriesAktual.value)
+  if (!dataAktual) {
     bar.value = null
     return
   }
 
-  bar.value = data
+  bar.value = { ...dataAktual, proyeksi: false }
   posisi.value = { x: param.point.x, y: param.point.y }
 }
 
@@ -149,7 +200,8 @@ onMounted(() => {
     handleScale: true,
   })
 
-  series.value = chart.value.addSeries(CandlestickSeries, temaSeri())
+  seriesAktual.value = chart.value.addSeries(CandlestickSeries, temaAktual())
+  seriesProyeksi.value = chart.value.addSeries(CandlestickSeries, temaProyeksi())
 
   chart.value.subscribeCrosshairMove(pantauKursor)
 
@@ -159,75 +211,23 @@ onMounted(() => {
 onBeforeUnmount(() => {
   chart.value?.remove()
   chart.value = null
-  series.value = null
+  seriesAktual.value = null
+  seriesProyeksi.value = null
   bar.value = null
 })
 
-watch(() => props.rows, render, { deep: false })
+watch(() => [props.rows, props.points], render, { deep: false })
 watch(isDark, () => {
   chart.value?.applyOptions(tema())
-  series.value?.applyOptions(temaSeri())
+  seriesAktual.value?.applyOptions(temaAktual())
+  seriesProyeksi.value?.applyOptions(temaProyeksi())
 })
 
 function resetZoom() {
   chart.value?.timeScale().fitContent()
 }
 
-// ==========================================================
-// RENTANG WAKTU (1D, 5D, 1M, ...)
-// ==========================================================
-
-/**
- * 1D/5D dihitung dalam jumlah batang (hari bursa) karena itu yang diharapkan
- * pengguna; sisanya dalam hari kalender mundur dari batang terakhir.
- * YTD punya batasnya sendiri.
- */
-const RENTANG_BATANG = { '1D': 1, '5D': 5 }
-const RENTANG_HARI = { '1M': 30, '3M': 91, '6M': 182, '1Y': 365 }
-
-/**
- * Menggeser viewport ke rentang yang diminta.
- *
- * Memakai logical range (indeks batang) alih-alih visible range tanggal supaya
- * hari libur bursa tidak menyisakan ruang kosong di ujung chart, dan supaya
- * rentang yang lebih panjang dari data yang ada tetap bisa diklik — viewport
- * cukup dijepit ke batang paling awal.
- */
-function setRange(key) {
-  const data = toChartData(props.rows)
-  if (!chart.value || !data.length) return
-
-  const total = data.length
-  const akhir = data[total - 1].time
-
-  let jumlah
-  if (RENTANG_BATANG[key]) {
-    jumlah = RENTANG_BATANG[key]
-  } else {
-    let batas
-    if (key === 'YTD') {
-      batas = `${akhir.slice(0, 4)}-01-01`
-    } else {
-      const hari = RENTANG_HARI[key]
-      if (hari == null) return
-      const d = new Date(`${akhir}T00:00:00Z`)
-      d.setUTCDate(d.getUTCDate() - hari)
-      batas = d.toISOString().slice(0, 10)
-    }
-    const mulai = data.findIndex((d) => d.time >= batas)
-    jumlah = mulai < 0 ? 1 : total - mulai
-  }
-
-  jumlah = Math.min(Math.max(jumlah, 1), total)
-
-  // Batang ke-i menempati [i - 0.5, i + 0.5], jadi rentang ini persis `jumlah` batang.
-  chart.value.timeScale().setVisibleLogicalRange({
-    from: total - jumlah - 0.5,
-    to: total - 0.5,
-  })
-}
-
-defineExpose({ resetZoom, setRange })
+defineExpose({ resetZoom })
 </script>
 
 <template>
@@ -238,20 +238,19 @@ defineExpose({ resetZoom, setRange })
       data-lenis-prevent
       class="h-full w-full"
       role="img"
-      aria-label="Grafik candlestick harga historis"
+      aria-label="Grafik candlestick histori dan proyeksi harga"
     />
 
-    <!--
-      pointer-events-none: tooltip tidak boleh menghalangi kursor, kalau tidak
-      crosshair akan kehilangan jejak begitu tooltip lewat di bawah kursor.
-    -->
     <div
       v-if="bar"
       class="tabular pointer-events-none absolute z-[3] w-[132px] rounded-md border-[0.5px] border-border bg-card/95 px-2 py-1.5 text-[10px] leading-tight shadow-sm backdrop-blur"
       :style="gaya"
     >
-      <p class="mb-1 font-medium text-foreground">
+      <p class="mb-1 flex items-center justify-between gap-2 font-medium text-foreground">
         {{ formatDate(bar.time) }}
+        <span v-if="bar.proyeksi" class="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-normal text-muted-foreground">
+          Proyeksi
+        </span>
       </p>
 
       <dl class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
