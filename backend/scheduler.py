@@ -394,6 +394,32 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
             print(f"[Scheduler] Stockbit Broker Activity warning: {e}")
 
         # =============================================================
+        # PHASE 1.5: BROKER ACTIVITY (STOCKBIT)
+        # Crawl broker activity using crawl_broker_activity.crawl_brokers
+        # Ensure current token is available to the crawler via env var
+        # =============================================================
+        try:
+            print("[Scheduler] --- FASE 1.5: CRAWL BROKER ACTIVITY (Stockbit) ---")
+            from crawl_broker_activity import crawl_brokers
+            # Ensure the crawler sees the same token obtained above
+            if token:
+                os.environ["STOCKBIT_ACCESS_TOKEN"] = token
+
+            # Run crawler (days and pages are conservative defaults)
+            try:
+                crawl_brokers(days=7, pages=2)
+                _log_crawl("SCHEDULER_STOCKBIT_BROKER", "ALL", today_str, "SUCCESS", 0)
+                print("[Scheduler] Broker activity crawl: finished")
+            except Exception as e:
+                raise e
+        except Exception as e:
+            err_msg = f"Stockbit Broker Activity: {str(e)}"
+            errors.append(err_msg)
+            _log_crawl("SCHEDULER_STOCKBIT_BROKER", "ALL", now_wib.strftime("%Y-%m-%d"), "FAILED", 0, str(e))
+            print(f"[Scheduler] {err_msg}")
+
+        # =============================================================
+        # PHASE 2: YFINANCE SCOPE (OHLCV, Company Info, Fundamental)
         # PHASE 2: YFINANCE SCOPE (OHLCV, Technicals, Company Info, Fundamental)
         # Batch crawl: 10 emiten per batch, jeda 5 detik antar-batch
         # =============================================================
