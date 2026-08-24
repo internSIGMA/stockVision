@@ -3,15 +3,34 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import psycopg2
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv(), override=True)
 
 def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "stockVision"),
-        user=os.getenv("DB_USER", "stockvision"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", 5432))
-    )
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = int(os.getenv("DB_PORT", 5433))
+    db_name = os.getenv("DB_NAME", "stockVision")
+    db_user = os.getenv("DB_USER", "stockvision")
+    db_pass = os.getenv("DB_PASSWORD", "stockvision_pass")
+    try:
+        return psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
+            port=db_port
+        )
+    except psycopg2.OperationalError:
+        if db_host == "db":
+            return psycopg2.connect(
+                host="localhost",
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+                port=5433
+            )
+        raise
 
 def decimal_to_float(val):
     if val is None:

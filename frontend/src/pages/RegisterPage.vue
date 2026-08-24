@@ -66,10 +66,13 @@ async function onSubmit() {
     })
     lanjut()
   } catch (err) {
-    // Email/username kembar melanggar UNIQUE constraint dan muncul sebagai 500.
-    error.value = /duplicate|unique/i.test(err.message)
-      ? 'Email atau username sudah terpakai.'
-      : err.message
+    if (/duplicate|unique/i.test(err.message)) {
+      error.value = 'Email atau username ini sudah terdaftar. Silakan gunakan yang lain atau langsung masuk.'
+    } else if (err.message.toLowerCase().includes('timeout') || err.message.toLowerCase().includes('menyiapkan')) {
+      error.value = 'Server sedang memproses data awal di latar belakang. Silakan coba beberapa saat lagi.'
+    } else {
+      error.value = err.message || 'Pendaftaran belum berhasil. Silakan coba sesaat lagi.'
+    }
   }
 }
 

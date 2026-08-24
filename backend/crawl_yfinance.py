@@ -142,12 +142,15 @@ def create_table_technical_indicator():
 
     print("[yfinance Crawler] Tabel 'idxsaham.macd_rsi' siap.")
 
-def crawl_ohlcv(symbol, period="5y"):
+def crawl_ohlcv(symbol, period="5y", start="2021-08-04"):
     ticker_symbol = f"{symbol}.JK"
-    print(f"[yfinance Crawler] Mengunduh data historis {period} untuk {ticker_symbol}...")
+    print(f"[yfinance Crawler] Mengunduh data historis untuk {ticker_symbol}...")
     
     ticker = yf.Ticker(ticker_symbol)
-    df = ticker.history(period=period, auto_adjust=False)
+    if start:
+        df = ticker.history(start=start, auto_adjust=False)
+    else:
+        df = ticker.history(period=period, auto_adjust=False)
 
     
     if df.empty:
