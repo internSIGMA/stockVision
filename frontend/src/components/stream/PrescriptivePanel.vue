@@ -102,6 +102,18 @@ async function bagikan() {
     menyalin.value = false
   }
 }
+
+/**
+ * Menentukan warna teks berdasarkan rekomendasi strategi.
+ */
+function warnaStrategi(teks) {
+  if (!teks) return ''
+  const t = String(teks).toUpperCase()
+  if (t.includes('BUY')) return 'text-[var(--up)]'
+  if (t.includes('SELL') || t.includes('AVOID')) return 'text-[var(--down)]'
+  if (t.includes('HOLD') || t.includes('WAIT')) return 'text-[var(--skip)]'
+  return 'text-foreground'
+}
 </script>
 
 <template>
@@ -299,7 +311,10 @@ async function bagikan() {
 
               <div class="min-w-0">
                 <p class="text-[10px] text-muted-foreground">Belum punya posisi</p>
-                <p class="text-[14px] font-semibold leading-snug">
+                <p
+                  class="text-[14px] font-semibold uppercase leading-snug"
+                  :class="warnaStrategi(backend.new_buyer_strategy.recommendation)"
+                >
                   {{ backend.new_buyer_strategy.recommendation }}
                 </p>
                 <p
@@ -323,7 +338,10 @@ async function bagikan() {
 
               <div class="min-w-0">
                 <p class="text-[10px] text-muted-foreground">Sudah pegang</p>
-                <p class="text-[14px] font-semibold leading-snug">
+                <p
+                  class="text-[14px] font-semibold uppercase leading-snug"
+                  :class="warnaStrategi(backend.holding_strategy.recommendation)"
+                >
                   {{ backend.holding_strategy.recommendation }}
                 </p>
                 <p
