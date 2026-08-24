@@ -38,8 +38,6 @@ services:
       - ./backend:/app
     ports:
       - "8080:8080"
-    volumes:
-      - ./backend:/app
 
 
   # Frontend Service (Vue/Vite Development Server)
