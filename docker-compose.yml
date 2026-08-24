@@ -34,8 +34,6 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
-    volumes:
-      - ./backend:/app
     ports:
       - "8080:8080"
     volumes:

@@ -38,6 +38,8 @@ app.register_blueprint(analytics_bp)
 from forecasting_chart_pattern.routes import chart_pattern_bp
 app.register_blueprint(chart_pattern_bp)
 
+from forecasting.forecast_routes import forecast_bp
+app.register_blueprint(forecast_bp)
 
 @app.route("/api/stocks/all-tickers", methods=["GET"])
 @app.route("/api/data/tickers", methods=["GET"])
