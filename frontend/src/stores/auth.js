@@ -43,6 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
   const activeWatchlistId = ref(null)
   const loading = ref(false)
   const isInitializing = ref(true)
+  const isNewRegistration = ref(false)
 
   const isLoggedIn = computed(() => !!user.value)
   const accessRole = computed(() => String(user.value?.accessRole || 'user').toLowerCase())
@@ -87,6 +88,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function mapUser(raw) {
+    let localPrefs = {}
+    try {
+      const saved = localStorage.getItem('stockvision.profile.' + raw.id)
+      if (saved) localPrefs = JSON.parse(saved)
+    } catch (e) {}
+
     return {
       id: raw.id,
       email: raw.email ?? '',
@@ -94,9 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
       name: raw.name ?? raw.username ?? 'User',
       accessRole: raw.access_role ?? raw.accessRole ?? 'user',
       defaultTicker: raw.default_ticker ?? raw.defaultTicker ?? 'BBCA',
-      phone: raw.phone ?? '',
-      avatar: raw.avatar ?? raw.avatar_url ?? '',
-      emailNotification: raw.email_notification ?? raw.emailNotification ?? true,
+      phone: raw.phone ?? localPrefs.phone ?? '',
+      avatar: raw.avatar ?? raw.avatar_url ?? localPrefs.photo ?? '',
+      emailNotification: raw.email_notification ?? raw.emailNotification ?? localPrefs.emailNotif ?? true,
     }
   }
 
@@ -104,7 +111,15 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = mapUser(raw)
     persist()
     await fetchWatchlists()
-    await ensureWatchlist()
+    
+    // Jika user belum punya watchlist sama sekali di backend, berarti ini adalah pendaftaran baru
+    if (watchlists.value.length === 0) {
+      isNewRegistration.value = true
+      await ensureWatchlist()
+    } else {
+      isNewRegistration.value = false
+    }
+    
     useMarketStore().resetTicker(user.value.defaultTicker)
     return user.value
   }
@@ -261,6 +276,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = mapUser({ ...currentRaw, ...payload, ...(updatedRaw || {}) })
     persist()
 
+    try {
+      localStorage.setItem('stockvision.profile.' + user.value.id, JSON.stringify({
+        phone: user.value.phone,
+        photo: user.value.avatar,
+        emailNotif: user.value.emailNotification
+      }))
+    } catch (e) {}
+
     if (payload.default_ticker) useMarketStore().resetTicker(user.value.defaultTicker)
     return user.value
   }
@@ -297,6 +320,7 @@ export const useAuthStore = defineStore('auth', () => {
     emitenUtama,
     loading,
     isInitializing,
+    isNewRegistration,
     accessRole,
     isAdmin,
     isLoggedIn,
