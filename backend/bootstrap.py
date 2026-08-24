@@ -108,7 +108,32 @@ def _bootstrap_worker():
     except Exception as e:
         logger.error(f"[Bootstrap] Error saat crawling yfinance di background: {e}")
 
-    # 4. Jalankan Forecasting Pipeline jika stock_forecasting kosong atau setelah crawl
+    # 4. Crawl Insider / Majorholder dari Stockbit jika tabel insider_activity kosong
+    try:
+        insider_count = _table_row_count("insider_activity")
+        if insider_count == 0:
+            logger.info("[Bootstrap] Tabel insider_activity kosong. Mencoba crawl data insider dari Stockbit...")
+            try:
+                from app import get_token, fetch_majorholder, insert_data_insider
+                from datetime import datetime, timedelta
+                token = get_token()
+                if token:
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+                    start_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+                    records = fetch_majorholder(token, start_date, today_str, pages=5)
+                    if records:
+                        insert_data_insider(records)
+                        logger.info(f"[Bootstrap] Berhasil menyimpan {len(records)} transaksi insider_activity.")
+                else:
+                    logger.warning("[Bootstrap] Token Stockbit tidak tersedia untuk crawl insider.")
+            except Exception as ex_insider:
+                logger.warning(f"[Bootstrap] Gagal crawl data insider dari Stockbit: {ex_insider}")
+        else:
+            logger.info(f"[Bootstrap] insider_activity sudah berisi {insider_count} baris data.")
+    except Exception as e:
+        logger.warning(f"[Bootstrap] Gagal cek tabel insider_activity: {e}")
+
+    # 5. Jalankan Forecasting Pipeline jika stock_forecasting kosong atau setelah crawl
     try:
         forecast_count = _table_row_count("stock_forecasting")
         if forecast_count == 0:

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useEmitenData } from '@/composables/useEmitenData'
@@ -11,7 +11,7 @@ import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
 import CandlestickChart from '@/components/charts/CandlestickChart.vue'
 
-import ForecastChart from '@/components/charts/ForecastChart.vue'
+import ForecastCandlestickChart from '@/components/charts/ForecastCandlestickChart.vue'
 import RsiChart from '@/components/charts/RsiChart.vue'
 import MacdChart from '@/components/charts/MacdChart.vue'
 import IndicatorSection from '@/components/stream/IndicatorSection.vue'
@@ -40,6 +40,28 @@ const authStore = useAuthStore()
 const strip = ref(null)
 const candle = ref(null)
 
+/** Rentang waktu yang bisa dipilih di header candlestick. */
+const RENTANG_CANDLE = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y']
+/** Null = seluruh histori (hasil "Reset zoom"). */
+const rentangCandle = ref(null)
+
+function pilihRentangCandle(r) {
+  rentangCandle.value = r
+  candle.value?.setRange(r)
+}
+
+function resetRentangCandle() {
+  rentangCandle.value = null
+  candle.value?.resetZoom()
+}
+
+// Ganti emiten mengembalikan chart ke fitContent; pilihan rentang dipasang ulang
+// supaya tombol yang menyala tetap cocok dengan yang terlihat.
+watch(ohlc, () => {
+  if (!rentangCandle.value) return
+  nextTick(() => candle.value?.setRange(rentangCandle.value))
+})
+
 
 function segarkan() {
   reload()
@@ -60,7 +82,6 @@ const {
   horizonTersedia,
   points: titikProyeksi,
   hasData: adaProyeksi,
-  hasBand,
   terakhir: proyeksiAkhir,
   rentang: rentangProyeksi,
   volumeRata: volumeProyeksi,
@@ -172,19 +193,25 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
                 </p>
               </div>
 
-              <div class="ml-auto flex shrink-0 items-center gap-2">
-                <span
-                  v-if="ohlc.length"
-                  class="tabular rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
-                >
-                  {{ ohlc.length }} trading days
-                </span>
+              <div v-if="ohlc.length" class="ml-auto flex shrink-0 flex-wrap items-center gap-1">
                 <Button
-                  v-if="ohlc.length"
+                  v-for="r in RENTANG_CANDLE"
+                  :key="r"
                   variant="ghost"
                   size="sm"
-                  class="h-6 px-2 text-[10px]"
-                  @click="candle?.resetZoom()"
+                  class="tabular h-6 border border-transparent px-2 text-[11px] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                  :class="r === rentangCandle ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'"
+                  :aria-pressed="r === rentangCandle"
+                  @click="pilihRentangCandle(r)"
+                >
+                  {{ r }}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="h-6 border border-transparent px-2 text-[11px] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                  :class="rentangCandle ? 'text-muted-foreground' : 'bg-muted font-medium text-foreground'"
+                  @click="resetRentangCandle()"
                 >
                   Reset zoom
                 </Button>
@@ -251,7 +278,7 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         />
 
         <div v-else class="flex flex-col gap-3.5 p-3.5">
-          <ForecastChart :rows="ohlc" :points="titikProyeksi" :show-band="hasBand" />
+          <ForecastCandlestickChart :rows="ohlc" :points="titikProyeksi" />
 
           <!-- Keempat angka ini seluruhnya kolom dari /api/data/forecast:
                close, low, high, dan volume. Backend tidak mengirim skor
