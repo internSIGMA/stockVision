@@ -47,8 +47,17 @@ async function crawlSekarang() {
 
 <template>
   <header
-    class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border bg-card px-4 py-3"
+    class="sticky top-[52px] z-40 flex flex-wrap items-center gap-3 border-b-0 bg-card px-4 py-3 shadow-md"
   >
+    <!-- Efek gradasi warna halus di latar -->
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--primary)]/15 via-[var(--primary)]/5 to-transparent"></div>
+    
+    <!-- Garis neon tipis di batas atas dan bawah -->
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-[var(--primary)]/50 via-[var(--primary)]/20 to-border"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-[var(--primary)]/30 via-transparent to-transparent"></div>
+
+    <!-- Konten dibungkus relative z-10 -->
+    <div class="relative z-10 flex w-full flex-wrap items-center gap-3">
     <div class="flex items-center gap-2">
       <h1 class="tabular text-[18px] font-semibold tracking-[-0.01em]">
         {{ market.selectedTicker ?? '—' }}
@@ -70,6 +79,7 @@ async function crawlSekarang() {
     </Select>
 
     <div class="ml-auto flex items-center gap-2">
+    </div>
     </div>
   </header>
 </template>

@@ -35,6 +35,9 @@ app.register_blueprint(diagnostic_bp)
 from analytics.routes import analytics_bp
 app.register_blueprint(analytics_bp)
 
+from forecasting_chart_pattern.routes import chart_pattern_bp
+app.register_blueprint(chart_pattern_bp)
+
 
 @app.route("/api/stocks/all-tickers", methods=["GET"])
 @app.route("/api/data/tickers", methods=["GET"])
@@ -74,9 +77,9 @@ def get_all_idx_tickers_app():
 
 
 from scheduler import (
-
     start_scheduler, stop_scheduler, pause_scheduler,
-    resume_scheduler, trigger_now, get_scheduler_status
+    resume_scheduler, trigger_now, get_scheduler_status,
+    init_scheduler
 )
 
 USERNAME  = os.getenv("STOCKBIT_USERNAME")
@@ -1045,14 +1048,11 @@ def update_token():
         return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1")
-    is_main_worker = os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not debug_mode
+    is_main_worker = (debug_mode and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug_mode
 
-    # Auto-start scheduler & background bootstrap saat app boot
+    # Inisialisasi scheduler & background bootstrap (hanya di worker utama jika Flask debug mode aktif)
     if is_main_worker:
-        print("\n[App] Starting auto-crawl scheduler...")
-        start_scheduler()
-        print("[App] Scheduler ready. Crawling setiap 30 menit pada jam bursa.")
-
+        init_scheduler()
         print("[App] Starting StockVision auto-bootstrap in background...")
         try:
             from bootstrap import start_auto_bootstrap

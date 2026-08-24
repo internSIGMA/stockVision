@@ -41,11 +41,11 @@ const masalah = computed(() => {
 })
 
 function lanjut() {
-  // Pemilihan emiten hanya untuk user biasa — admin langsung masuk.
+  // Pemilihan emiten hanya untuk pendaftar baru — admin langsung masuk.
   if (
     !auth.isAdmin &&
     auth.user &&
-    !localStorage.getItem(`onboarded_${auth.user.id}`)
+    auth.isNewRegistration
   ) {
     router.push('/onboarding')
     return
