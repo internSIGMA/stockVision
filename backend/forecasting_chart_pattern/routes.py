@@ -174,6 +174,8 @@ def get_chart_pattern_forecast():
                 "tp3_fibo_161_golden": _num(r.get("tp3")),
                 "fibo_support": _num(r.get("fibo_support")),
                 "fibo_resistance": _num(r.get("fibo_resistance")),
+                "buy_area": r.get("forecast_trajectory", {}).get("buy_area", {}) if isinstance(r.get("forecast_trajectory"), dict) else {},
+                "sell_area": r.get("forecast_trajectory", {}).get("sell_area", {}) if isinstance(r.get("forecast_trajectory"), dict) else {},
             },
             "volume_confirmed": bool(r.get("volume_confirmed")),
             "timeline": {

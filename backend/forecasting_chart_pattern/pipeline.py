@@ -98,6 +98,10 @@ def run_chart_pattern_pipeline(
                     b_date_str = str(p.breakout_date)[:10] if p.breakout_date else None
                     t_date_str = signal.forecast_trajectory.get("target_date")
 
+                    traj = dict(signal.forecast_trajectory) if signal.forecast_trajectory else {}
+                    traj["buy_area"] = signal.buy_area
+                    traj["sell_area"] = signal.sell_area
+
                     rec = {
                         "symbol": sym_clean,
                         "timeframe": tf,
@@ -129,7 +133,7 @@ def run_chart_pattern_pipeline(
                         "next_trading_day": cal_status.get("next_trading_day"),
                         "key_points": kps,
                         "geometry_lines": geom_lines,
-                        "forecast_trajectory": signal.forecast_trajectory,
+                        "forecast_trajectory": traj,
                         "rules_checklist": signal.rules_checklist,
                         "detection_reasons": signal.detection_reasons,
                         "statistical_notes": p.statistical_notes,
