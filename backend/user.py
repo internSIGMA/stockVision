@@ -9,6 +9,7 @@ import smtplib
 import requests
 import secrets
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Blueprint, jsonify, request, render_template
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -765,18 +766,105 @@ def send_reset_email(email, code):
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASSWORD")
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
-    
-    subject = "Kode Verifikasi Reset Password stockVision"
-    body = f"Kode verifikasi reset password Anda adalah: {code}\nKode ini berlaku selama 5 menit."
-    
+
+    subject = "Kode Verifikasi Reset Password StockVision"
+
+    html_body = f"""
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin:0; padding:0; background-color:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5; padding: 48px 0;">
+            <tr>
+                <td align="center">
+                    <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+
+                        <!-- Header -->
+                        <tr>
+                            <td style="background-color:#0f3460; padding: 32px 40px; text-align:center;">
+                                <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:700; letter-spacing:0.5px;">
+                                    StockVision
+                                </h1>
+                                <p style="margin:6px 0 0; color:#94a3b8; font-size:12px; letter-spacing:0.3px;">Platform Analisis Saham Indonesia</p>
+                            </td>
+                        </tr>
+
+                        <!-- Body -->
+                        <tr>
+                            <td style="padding: 40px 40px 24px;">
+                                <h2 style="margin:0 0 16px; color:#1e293b; font-size:17px; font-weight:600;">
+                                    Permintaan Reset Password
+                                </h2>
+                                <p style="margin:0 0 28px; color:#475569; font-size:14px; line-height:1.7;">
+                                    Kami menerima permintaan untuk mereset password akun <strong>StockVision</strong> Anda.
+                                    Gunakan kode verifikasi berikut untuk melanjutkan proses reset password.
+                                </p>
+
+                                <!-- Code Block -->
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="center" style="padding: 8px 0 24px;">
+                                            <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding: 28px 24px; text-align:center;">
+                                                <p style="margin:0 0 10px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:2.5px; font-weight:600;">
+                                                    Kode Verifikasi
+                                                </p>
+                                                <p style="margin:0; color:#0f3460; font-size:44px; font-weight:800; letter-spacing:10px; font-family:'Courier New', Courier, monospace;">
+                                                    {code}
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <p style="margin:0 0 4px; color:#64748b; font-size:13px; text-align:center;">
+                                    Kode ini berlaku selama <strong style="color:#dc2626;">5 menit</strong> sejak email ini dikirimkan.
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Notice -->
+                        <tr>
+                            <td style="padding: 0 40px 36px;">
+                                <div style="background-color:#f8fafc; border-top:1px solid #e2e8f0; border-radius:6px; padding:16px 18px; margin-top:8px;">
+                                    <p style="margin:0; color:#64748b; font-size:12px; line-height:1.6;">
+                                        Jika Anda tidak merasa mengajukan permintaan reset password, abaikan email ini.
+                                        Password Anda tidak akan berubah. Jangan berikan kode ini kepada pihak mana pun.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; padding:18px 40px; text-align:center;">
+                                <p style="margin:0; color:#94a3b8; font-size:11px;">
+                                    &copy; 2026 StockVision &middot; Platform Analisis Saham Indonesia
+                                </p>
+                            </td>
+                        </tr>
+
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    plain_body = f"Kode verifikasi reset password akun StockVision Anda adalah: {code}\nKode ini berlaku selama 5 menit."
+
     if smtp_host and smtp_port and smtp_user and smtp_pass:
         try:
-            msg = MIMEText(body)
+            msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = smtp_from
             msg["To"] = email
-            
-            # Send via SMTP
+            msg.attach(MIMEText(plain_body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
+
             with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
@@ -791,7 +879,7 @@ def send_reset_email(email, code):
         print(f"\n==========================================")
         print(f"[SMTP SIMULATION] To: {email}")
         print(f"Subject: {subject}")
-        print(f"Body: {body}")
+        print(f"Body: {plain_body}")
         print(f"==========================================\n")
         return False
 
@@ -802,17 +890,104 @@ def send_signup_code_email(email, code):
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASSWORD")
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
-    
-    subject = "Kode Verifikasi Pendaftaran Akun stockVision"
-    body = f"Kode verifikasi pendaftaran akun stockVision Anda adalah: {code}\nKode ini berlaku selama 5 menit."
-    
+
+    subject = "Kode Verifikasi Pendaftaran Akun StockVision"
+
+    html_body = f"""
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin:0; padding:0; background-color:#f0f2f5; font-family: 'Segoe UI', Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5; padding: 48px 0;">
+            <tr>
+                <td align="center">
+                    <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+
+                        <!-- Header -->
+                        <tr>
+                            <td style="background-color:#0f3460; padding: 32px 40px; text-align:center;">
+                                <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:700; letter-spacing:0.5px;">
+                                    StockVision
+                                </h1>
+                                <p style="margin:6px 0 0; color:#94a3b8; font-size:12px; letter-spacing:0.3px;">Platform Analisis Saham Indonesia</p>
+                            </td>
+                        </tr>
+
+                        <!-- Body -->
+                        <tr>
+                            <td style="padding: 40px 40px 24px;">
+                                <h2 style="margin:0 0 16px; color:#1e293b; font-size:17px; font-weight:600;">
+                                    Verifikasi Pendaftaran Akun
+                                </h2>
+                                <p style="margin:0 0 28px; color:#475569; font-size:14px; line-height:1.7;">
+                                    Terima kasih telah mendaftar di <strong>StockVision</strong>. Untuk menyelesaikan proses pendaftaran, masukkan kode verifikasi berikut pada halaman konfirmasi.
+                                </p>
+
+                                <!-- Code Block -->
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="center" style="padding: 8px 0 24px;">
+                                            <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding: 28px 24px; text-align:center;">
+                                                <p style="margin:0 0 10px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:2.5px; font-weight:600;">
+                                                    Kode Verifikasi
+                                                </p>
+                                                <p style="margin:0; color:#0f3460; font-size:44px; font-weight:800; letter-spacing:10px; font-family:'Courier New', Courier, monospace;">
+                                                    {code}
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <p style="margin:0 0 4px; color:#64748b; font-size:13px; text-align:center;">
+                                    Kode ini berlaku selama <strong style="color:#dc2626;">5 menit</strong> sejak email ini dikirimkan.
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Notice -->
+                        <tr>
+                            <td style="padding: 0 40px 36px;">
+                                <div style="background-color:#f8fafc; border-top:1px solid #e2e8f0; border-radius:6px; padding:16px 18px; margin-top:8px;">
+                                    <p style="margin:0; color:#64748b; font-size:12px; line-height:1.6;">
+                                        Jika Anda tidak merasa melakukan pendaftaran ini, Anda dapat mengabaikan email ini dengan aman.
+                                        Jangan berikan kode ini kepada pihak mana pun.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; padding:18px 40px; text-align:center;">
+                                <p style="margin:0; color:#94a3b8; font-size:11px;">
+                                    &copy; 2026 StockVision &middot; Platform Analisis Saham Indonesia
+                                </p>
+                            </td>
+                        </tr>
+
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    plain_body = f"Kode verifikasi pendaftaran akun StockVision Anda adalah: {code}\nKode ini berlaku selama 5 menit."
+
     if smtp_host and smtp_port and smtp_user and smtp_pass:
         try:
-            msg = MIMEText(body)
+            msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = smtp_from
             msg["To"] = email
-            
+            msg.attach(MIMEText(plain_body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
+
             with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
@@ -827,7 +1002,7 @@ def send_signup_code_email(email, code):
         print(f"\n==========================================")
         print(f"[SMTP SIMULATION] To: {email}")
         print(f"Subject: {subject}")
-        print(f"Body: {body}")
+        print(f"Body: {plain_body}")
         print(f"==========================================\n")
         return False
 
