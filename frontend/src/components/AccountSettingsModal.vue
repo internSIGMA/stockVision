@@ -8,8 +8,9 @@ import {
   watch,
 } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { User, Mail, Phone, AtSign, Camera, X } from '@lucide/vue'
+import { User, Mail, Phone, AtSign, Camera, X, Lock, KeyRound } from '@lucide/vue'
 
 const props = defineProps({
   open: {
@@ -20,8 +21,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const router = useRouter()
 const authStore = useAuthStore()
-const { user, isAdmin } = storeToRefs(authStore)
+const { user } = storeToRefs(authStore)
 
 const modalBody = ref(null)
 const saving = ref(false)
@@ -72,6 +74,18 @@ function fillForm() {
 
   form.emailNotification =
     user.value?.emailNotification ?? true
+}
+
+/*
+ * Penggantian sandi dialihkan ke alur lupa sandi yang sudah ada: alur itu
+ * memverifikasi lewat kode email dan menyimpan hash dengan benar, sementara
+ * jalur update profil biasa menulis sandi mentah-mentah.
+ */
+function bukaLupaSandi() {
+  if (saving.value) return
+
+  emit('close')
+  router.push('/forgot-password')
 }
 
 function closeModal() {
@@ -162,7 +176,7 @@ async function saveProfile() {
   saving.value = true
 
   try {
-    await authStore.updateProfile({
+    const payload = {
       name: form.name.trim(),
 
       username:
@@ -174,17 +188,16 @@ async function saveProfile() {
       phone:
         form.phone.trim(),
 
-      defaultTicker:
-        form.defaultTicker
-          .trim()
-          .toUpperCase(),
-
       avatar:
         form.avatar,
+    }
 
-      emailNotification:
-        form.emailNotification,
-    })
+    /*
+     * defaultTicker dan emailNotification sengaja TIDAK dikirim: modal ini
+     * tidak punya kontrol untuk keduanya, dan isi form-nya cuma bawaan
+     * fillForm(). Mengirimnya akan menimpa pilihan dari halaman Preferences.
+     */
+    await authStore.updateProfile(payload)
 
     emit('close')
   } catch (error) {
@@ -405,6 +418,34 @@ onBeforeUnmount(() => {
                   placeholder="08xxxxxxxxxx"
                 />
               </div>
+            </div>
+          </section>
+
+          <section class="password-block">
+            <div class="section-heading">
+              <div class="section-badge">
+                <Lock :size="22" />
+              </div>
+
+              <div>
+                <h3>Ubah Kata Sandi</h3>
+                <p>
+                  Demi keamanan, penggantian sandi diverifikasi lewat kode yang
+                  dikirim ke email Anda.
+                </p>
+              </div>
+            </div>
+
+            <div class="password-footer">
+              <button
+                type="button"
+                class="password-button"
+                :disabled="saving"
+                @click="bukaLupaSandi"
+              >
+                <KeyRound :size="16" />
+                Ubah kata sandi
+              </button>
             </div>
           </section>
 
@@ -784,29 +825,101 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-/* PREFERENSI DAN PASSWORD */
+/* UBAH KATA SANDI */
 
-.preference-section,
-.password-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 20px;
-
+.password-block {
   margin-top: 26px;
-  padding: 17px;
+  padding-top: 22px;
 
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  /* Dipisah garis, bukan dibungkus kartu: seksi ini sejajar dengan form profil
+     di atasnya, dan kotak tambahan hanya menambah tepi yang bersaing. */
+  border-top: 1px solid var(--border);
 }
 
-.preference-section p,
-.password-section p {
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  margin-bottom: 22px;
+}
+
+/* Lencana judul: kotak bertampuk, bukan .icon-box yang memang dibuat untuk
+   menempel absolut di dalam input. */
+.section-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  width: 48px;
+  height: 48px;
+
+  border-radius: 13px;
+
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.section-heading h3 {
+  margin: 0;
+
+  color: var(--foreground);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.section-heading p {
   margin: 5px 0 0;
 
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size: 14px;
+}
+
+/* Ketiga field memakai nada yang sama: sandi lama bukan tindakan berbahaya,
+   jadi tidak diberi warna peringatan. */
+.icon-password,
+.icon-password-new {
+  color: var(--primary);
+}
+
+.password-footer {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 18px;
+}
+
+.password-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 18px;
+
+  border: 1px solid var(--border);
+  border-radius: 9px;
+
+  color: var(--foreground);
+  background: var(--card);
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.password-button:hover:not(:disabled) {
+  border-color: var(--ring);
+  background: var(--muted);
+}
+
+.password-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* SWITCH */
@@ -984,13 +1097,9 @@ onBeforeUnmount(() => {
     grid-column: auto;
   }
 
-  .preference-section {
-    align-items: center;
-  }
-
-  .password-section {
-    align-items: flex-start;
-    flex-direction: column;
+  .password-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .secondary-button {

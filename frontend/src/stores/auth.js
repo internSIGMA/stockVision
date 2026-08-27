@@ -4,6 +4,9 @@ import {
   loginUser,
   loginWithGoogle,
   registerUser,
+  requestSignupCode,
+  verifySignupCode,
+  completeSignup,
   getProfile,
   deleteUser,
   getWatchlists,
@@ -146,6 +149,35 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       return await registerUser(payload)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function requestCode(email, username) {
+    loading.value = true
+    try {
+      return await requestSignupCode({ email, username })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function verifyCode(email, code) {
+    loading.value = true
+    try {
+      return await verifySignupCode({ email, code })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function registerWithOtp(payload) {
+    loading.value = true
+    try {
+      const res = await completeSignup(payload)
+      // Auto-login after successful OTP registration
+      return await mulaiSesi(res)
     } finally {
       loading.value = false
     }
@@ -327,6 +359,9 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     googleLogin,
     register,
+    requestCode,
+    verifyCode,
+    registerWithOtp,
     refreshUser,
     hapusAkun,
     hapusWatchlist,

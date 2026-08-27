@@ -49,7 +49,9 @@ const routes = [
     component: () => import('@/pages/ForgotPasswordPage.vue'),
     meta: {
       public: true,
-      guestOnly: true,
+      // TIDAK guestOnly: Kelola Akun mengarahkan pengguna yang sudah masuk ke
+      // sini untuk mengganti sandi. Dengan guestOnly mereka akan dipantulkan
+      // ke /stream dan tombolnya tidak pernah sampai ke halaman ini.
       hideHeader: true,
     },
   },
@@ -61,6 +63,17 @@ const routes = [
       requiresAuth: true,
       hideHeader: true,
       // Preferensi emiten milik user biasa; admin tidak melewatinya.
+      userOnly: true,
+    },
+  },
+  {
+    path: '/preferences',
+    name: 'preferences',
+    component: () => import('@/pages/PreferencesPage.vue'),
+    meta: {
+      requiresAuth: true,
+      // Sama seperti onboarding: emiten pantauan milik user biasa, admin tidak
+      // punya watchlist sendiri jadi halaman ini tidak berlaku untuknya.
       userOnly: true,
     },
   },

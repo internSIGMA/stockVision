@@ -36,6 +36,8 @@ services:
       DB_PORT: 5432
     ports:
       - "8080:8080"
+    volumes:
+      - ./backend:/app
 
 
 
