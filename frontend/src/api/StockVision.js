@@ -379,12 +379,27 @@ export function resetPassword({ token, password }) {
   return api.post('/users/reset-password/reset', { token, password })
 }
 
+export function requestSignupCode({ email, username }) {
+  return api.post('/users/register/send-code', { email, username })
+}
+
+export function verifySignupCode({ email, code }) {
+  return api.post('/users/register/verify-code', { email, code })
+}
+
+export function completeSignup({ token, name, username, password, default_ticker, phone_number }) {
+  return api.post('/users/register/complete', {
+    token,
+    name,
+    username,
+    password,
+    default_ticker,
+    phone_number
+  })
+}
+
 /**
- * Daftarkan akun baru. `email`, `username`, dan `password` wajib; sisanya opsional.
- * → { id, email, username, name, role, default_ticker } (201)
- *
- * Catatan: backend melempar ValueError tanpa penangan, jadi field wajib yang
- * kosong keluar sebagai HTTP 500 — bukan 400. Validasi di form yang menjaganya.
+ * Daftarkan akun baru (Legacy endpoint).
  */
 export function registerUser(payload) {
   return api.post('/users', payload)

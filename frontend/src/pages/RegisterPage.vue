@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Eye, EyeOff } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
@@ -53,27 +53,133 @@ function lanjut() {
   router.push('/stream')
 }
 
+const step = ref(1)
+const otpArray = ref(['', '', '', '', '', ''])
+const otpInputs = ref([])
+const otp = computed(() => otpArray.value.join(''))
+const debugCode = ref('')
+const isSimulated = ref(false)
+const otpToken = ref('')
+const cooldown = ref(0)
+let timer = null
+
+function handleOtpInput(index, event) {
+  const val = event.target.value.toUpperCase()
+  const cleanVal = val.replace(/[^A-Z0-9]/g, '')
+  if (cleanVal) {
+    otpArray.value[index] = cleanVal.slice(-1)
+    if (index < 5) {
+      otpInputs.value[index + 1]?.focus()
+    }
+  } else {
+    otpArray.value[index] = ''
+  }
+}
+
+function handleOtpKeydown(index, event) {
+  if (event.key === 'Backspace' && !otpArray.value[index] && index > 0) {
+    otpInputs.value[index - 1]?.focus()
+    // Optional: clear the previous one too? No, just focus it.
+  }
+}
+
+function handleOtpPaste(event) {
+  event.preventDefault()
+  const pasted = (event.clipboardData || window.clipboardData).getData('text')
+  const clean = pasted.replace(/[^A-Z0-9]/gi, '').toUpperCase()
+  if (!clean) return
+  
+  for (let i = 0; i < 6; i++) {
+    if (i < clean.length) {
+      otpArray.value[i] = clean[i]
+    }
+  }
+  
+  const focusIndex = Math.min(clean.length, 5)
+  otpInputs.value[focusIndex]?.focus()
+}
+
+function startCooldown() {
+  cooldown.value = 60
+  if (timer) clearInterval(timer)
+  timer = setInterval(() => {
+    cooldown.value--
+    if (cooldown.value <= 0) clearInterval(timer)
+  }, 1000)
+}
+
+async function handleRequestCode() {
+  const res = await auth.requestCode(
+    form.value.email.trim().toLowerCase(),
+    form.value.username.trim()
+  )
+  
+  if (res?.simulated) {
+    isSimulated.value = true
+    debugCode.value = res.debug_code || ''
+  } else {
+    isSimulated.value = false
+    debugCode.value = ''
+  }
+  startCooldown()
+}
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
+
 async function onSubmit() {
   error.value = masalah.value
   if (error.value) return
 
   try {
-    await auth.register({
-      ...form.value,
-      email: form.value.email.trim().toLowerCase(),
-      username: form.value.username.trim(),
-      name: form.value.name.trim(),
-    })
-    // Setelah sukses registrasi, arahkan ke halaman login
-    router.push('/login')
+    await handleRequestCode()
+    step.value = 2
+    error.value = ''
   } catch (err) {
-    if (/duplicate|unique/i.test(err.message)) {
+    if (/duplicate|unique/i.test(err.message) || /terdaftar/i.test(err.message) || /digunakan/i.test(err.message)) {
       error.value = 'Email atau username ini sudah terdaftar. Silakan gunakan yang lain atau langsung masuk.'
-    } else if (err.message.toLowerCase().includes('timeout') || err.message.toLowerCase().includes('menyiapkan')) {
-      error.value = 'Server sedang memproses data awal di latar belakang. Silakan coba beberapa saat lagi.'
     } else {
       error.value = err.message || 'Pendaftaran belum berhasil. Silakan coba sesaat lagi.'
     }
+  }
+}
+
+async function onResendCode() {
+  if (cooldown.value > 0) return
+  error.value = ''
+  try {
+    await handleRequestCode()
+  } catch (err) {
+    error.value = err.message || 'Gagal mengirim ulang kode.'
+  }
+}
+
+async function onVerifyOtp() {
+  error.value = ''
+  if (!otp.value || otp.value.length !== 6) {
+    error.value = 'Kode OTP harus 6 digit.'
+    return
+  }
+
+  try {
+    const res = await auth.verifyCode(form.value.email.trim().toLowerCase(), otp.value.toUpperCase())
+    otpToken.value = res.token
+    
+    // Berhasil verifikasi, langsung submit data lengkap
+    await auth.registerWithOtp({
+      token: otpToken.value,
+      email: form.value.email.trim().toLowerCase(),
+      username: form.value.username.trim(),
+      name: form.value.name.trim(),
+      password: form.value.password,
+      default_ticker: form.value.default_ticker,
+    })
+    
+    // Sukses pendaftaran & auto login
+    lanjut()
+  } catch (err) {
+    error.value = err.message || 'Verifikasi gagal. Silakan periksa kembali kode Anda.'
   }
 }
 
@@ -282,85 +388,156 @@ const labelTanggal = computed(() => {
           Buat akun StockVision
         </h1>
 
-      <form class="mt-7 flex flex-col gap-5" @submit.prevent="onSubmit">
-        <div class="space-y-2">
-          <label for="nama" class="block text-[13px] font-medium text-foreground sm:text-sm">Nama</label>
-          <input
-            id="nama"
-            v-model="form.name"
-            type="text"
-            autocomplete="name"
-            placeholder="Nama lengkap"
-            class="field"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label for="email" class="block text-[13px] font-medium text-foreground sm:text-sm">Email</label>
-          <input
-            id="email"
-            v-model="form.email"
-            type="email"
-            autocomplete="email"
-            placeholder="email@contoh.com"
-            class="field"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label for="username" class="block text-[13px] font-medium text-foreground sm:text-sm">Username</label>
-          <input
-            id="username"
-            v-model="form.username"
-            type="text"
-            autocomplete="username"
-            placeholder="username"
-            class="field"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label for="password" class="block text-[13px] font-medium text-foreground sm:text-sm">
-            Kata sandi
-          </label>
-
-          <div class="relative">
+      <div v-if="step === 1">
+        <form class="mt-7 flex flex-col gap-5" @submit.prevent="onSubmit">
+          <div class="space-y-2">
+            <label for="nama" class="block text-[13px] font-medium text-foreground sm:text-sm">Nama</label>
             <input
-              id="password"
-              v-model="form.password"
-              :type="lihatSandi ? 'text' : 'password'"
-              autocomplete="new-password"
-              :placeholder="`Minimal ${MIN_PASSWORD} karakter`"
-              class="field field-aksi"
+              id="nama"
+              v-model="form.name"
+              type="text"
+              autocomplete="name"
+              placeholder="Nama lengkap"
+              class="field"
             />
+          </div>
 
+          <div class="space-y-2">
+            <label for="email" class="block text-[13px] font-medium text-foreground sm:text-sm">Email</label>
+            <input
+              id="email"
+              v-model="form.email"
+              type="email"
+              autocomplete="email"
+              placeholder="email@contoh.com"
+              class="field"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="username" class="block text-[13px] font-medium text-foreground sm:text-sm">Username</label>
+            <input
+              id="username"
+              v-model="form.username"
+              type="text"
+              autocomplete="username"
+              placeholder="username"
+              class="field"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="password" class="block text-[13px] font-medium text-foreground sm:text-sm">
+              Kata sandi
+            </label>
+
+            <div class="relative">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="lihatSandi ? 'text' : 'password'"
+                autocomplete="new-password"
+                :placeholder="`Minimal ${MIN_PASSWORD} karakter`"
+                class="field field-aksi"
+              />
+
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
+                :aria-label="lihatSandi ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+                @click="lihatSandi = !lihatSandi"
+              >
+                <component :is="lihatSandi ? EyeOff : Eye" class="size-[18px]" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <p
+            v-if="error"
+            role="alert"
+            class="rounded-lg bg-[var(--color-down-bg)] px-3.5 py-2.5 text-[13px] text-[var(--color-down-ink)]"
+          >
+            {{ error }}
+          </p>
+
+          <button
+            type="submit"
+            :disabled="auth.loading"
+            class="h-11 w-full rounded-lg bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-foreground)] transition-[background-color,transform] hover:bg-[var(--primary-hover)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:h-12"
+          >
+            {{ auth.loading ? 'Memeriksa…' : 'Lanjutkan' }}
+          </button>
+        </form>
+      </div>
+
+      <div v-else-if="step === 2">
+        <form class="mt-7 flex flex-col gap-5" @submit.prevent="onVerifyOtp">
+          <div class="rounded-lg border-[0.5px] border-border bg-muted/50 p-4 mb-2">
+            <p class="text-sm text-foreground">
+              Kode 6 digit telah dikirimkan ke <span class="font-bold">{{ form.email }}</span>
+            </p>
+            <p v-if="isSimulated" class="mt-2 text-xs text-[var(--warning)] font-medium">
+              [Mode Simulasi] Kode OTP Anda: {{ debugCode }}
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label for="otp" class="block text-[13px] font-medium text-foreground sm:text-sm">Kode Verifikasi</label>
+            <div class="flex gap-2 sm:gap-3" @paste="handleOtpPaste">
+              <input
+                v-for="(val, index) in otpArray"
+                :key="index"
+                ref="otpInputs"
+                v-model="otpArray[index]"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                maxlength="1"
+                class="field h-12 w-full text-center text-lg font-bold font-mono tracking-widest uppercase sm:h-14 sm:text-xl"
+                @input="(e) => handleOtpInput(index, e)"
+                @keydown="(e) => handleOtpKeydown(index, e)"
+                @focus="$event.target.select()"
+              />
+            </div>
+            <div class="flex justify-end pt-1">
+              <button
+                type="button"
+                class="text-[12px] font-medium text-[var(--primary)] disabled:text-muted-foreground disabled:cursor-not-allowed hover:underline"
+                :disabled="cooldown > 0 || auth.loading"
+                @click="onResendCode"
+              >
+                {{ cooldown > 0 ? `Kirim ulang kode dalam ${cooldown}s` : 'Kirim ulang kode' }}
+              </button>
+            </div>
+          </div>
+
+          <p
+            v-if="error"
+            role="alert"
+            class="rounded-lg bg-[var(--color-down-bg)] px-3.5 py-2.5 text-[13px] text-[var(--color-down-ink)]"
+          >
+            {{ error }}
+          </p>
+
+          <div class="flex gap-3">
             <button
               type="button"
-              class="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
-              :aria-label="lihatSandi ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
-              @click="lihatSandi = !lihatSandi"
+              :disabled="auth.loading"
+              class="h-11 w-1/3 rounded-lg border-[0.5px] border-border bg-card text-[15px] font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              @click="step = 1; error = ''"
             >
-              <component :is="lihatSandi ? EyeOff : Eye" class="size-[18px]" aria-hidden="true" />
+              Kembali
+            </button>
+            <button
+              type="submit"
+              :disabled="auth.loading || otp.length < 6"
+              class="h-11 w-2/3 rounded-lg bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-foreground)] transition-[background-color,transform] hover:bg-[var(--primary-hover)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:h-12"
+            >
+              {{ auth.loading ? 'Memverifikasi…' : 'Verifikasi & Buat Akun' }}
             </button>
           </div>
-        </div>
-
-        <p
-          v-if="error"
-          role="alert"
-          class="rounded-lg bg-[var(--color-down-bg)] px-3.5 py-2.5 text-[13px] text-[var(--color-down-ink)]"
-        >
-          {{ error }}
-        </p>
-
-        <button
-          type="submit"
-          :disabled="auth.loading"
-          class="h-11 w-full rounded-lg bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-foreground)] transition-[background-color,transform] hover:bg-[var(--primary-hover)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:h-12"
-        >
-          {{ auth.loading ? 'Mendaftarkan…' : 'Daftar' }}
-        </button>
-      </form>
+        </form>
+      </div>
 
       <div class="my-7 flex items-center gap-3">
         <span class="h-px flex-1 bg-border"></span>
