@@ -7,6 +7,7 @@ import { useNotify } from '@/composables/useNotify'
 import { createWatchlist } from '@/api/StockVision'
 import WatchlistManagerPage from '@/pages/WatchlistManagerPage.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -23,13 +24,13 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 
-
 const auth = useAuthStore()
 const market = useMarketStore()
 const notify = useNotify()
 
 const editorTerbuka = ref(false)
 const membuat = ref(false)
+const strip = ref(null)
 
 async function watchlistBaru() {
   if (!auth.user || membuat.value) return
@@ -48,28 +49,27 @@ async function watchlistBaru() {
   }
 }
 
-
-
-
+defineExpose({
+  reload: () => strip.value?.reload()
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-lg border-[0.5px] border-border bg-card p-3.5">
-    <!-- Pemilih watchlist -->
-    <div class="flex flex-col gap-2">
-      <p class="text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-        Pilihan Watchlist
-      </p>
+  <div class="rounded-lg border-[0.5px] border-border bg-card overflow-hidden shadow-sm">
+    <!-- Header Watchlist Panel -->
+    <div class="flex flex-wrap items-center justify-start border-b-[0.5px] border-border bg-muted/20 px-4 py-3 gap-6">
+      <div class="flex items-center gap-2.5">
+        <Building2 class="size-5 text-primary" aria-hidden="true" />
+        <h2 class="text-[16px] font-bold tracking-wide">Watchlist Emiten</h2>
+      </div>
 
-      <!-- min-w-0: SelectTrigger bawaan shadcn punya w-fit + whitespace-nowrap, jadi
-           tanpa ini nama watchlist yang panjang melebarkan baris sampai bocor keluar kartu. -->
-      <div class="flex min-w-0 items-center gap-1.5">
+      <div class="flex items-center gap-2 w-full sm:w-auto">
         <Select
           :model-value="auth.activeWatchlistId ?? undefined"
           @update:model-value="auth.selectWatchlist($event)"
         >
-          <SelectTrigger class="h-8 min-w-0 flex-1" aria-label="Pilih watchlist">
-            <SelectValue placeholder="Daftar Pantau" />
+          <SelectTrigger class="h-8 w-full sm:w-[220px]" aria-label="Pilih watchlist">
+            <SelectValue placeholder="Pilih Daftar Pantau" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="w in auth.watchlists" :key="w.id" :value="w.id">
@@ -80,69 +80,35 @@ async function watchlistBaru() {
 
         <Button
           variant="outline"
-          size="icon"
-          class="size-8 shrink-0"
-          aria-label="Kelola Watchlist"
+          size="sm"
+          class="h-8 shrink-0 gap-1.5"
           @click="editorTerbuka = true"
         >
           <Plus class="size-3.5" />
+          <span class="hidden sm:inline">Kelola</span>
         </Button>
       </div>
     </div>
 
-    <!-- Focus Emiten -->
-    <div class="flex flex-col gap-2">
-      <div class="flex items-center gap-1.5">
-        <Building2 class="size-3.5 text-muted-foreground" aria-hidden="true" />
-        <p class="text-[12px] font-medium">Focus Emiten</p>
-
-
-      </div>
-
-      <p class="text-[11px] leading-relaxed text-muted-foreground">
-        Emiten yang kamu pantau. Klik untuk membuka.
-      </p>
-
+    <!-- Daftar Emiten (menggunakan TrendingStocksStrip) -->
+    <div>
       <EmptyState
         v-if="!auth.watchlistTersimpan.length"
         :icon="Inbox"
-        title="Watchlist kosong"
-        description="Tambahkan emiten lewat tombol Kelola di atas."
+        title="Watchlist Kosong"
+        description="Tambahkan emiten lewat tombol Kelola di atas untuk memantau analisis."
+        class="py-4"
       />
 
-      <ul v-else class="flex flex-col gap-1">
-        <li
-          v-for="ticker in auth.watchlistTersimpan"
-          :key="ticker"
-          class="flex items-center justify-between rounded-md border px-2.5 py-2 transition-colors"
-          :class="
-            market.selectedTicker === ticker
-              ? 'border-[var(--color-info)] bg-[var(--color-info-bg)]'
-              : 'border-transparent hover:bg-accent'
-          "
-        >
-          <button
-            type="button"
-            class="flex-1 text-left text-[12px] font-medium"
-            :aria-pressed="market.selectedTicker === ticker"
-            @click="market.setTicker(ticker)"
-          >
-            {{ ticker }}
-          </button>
+      <TrendingStocksStrip v-else ref="strip" class="border-b-0" />
 
-
-
-
-        </li>
-      </ul>
-
-      <p
+      <div
         v-if="auth.watchlistTidakDidukung.length"
-        class="text-[10px] leading-relaxed text-muted-foreground"
+        class="mt-4 flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground"
       >
-        Disembunyikan (belum didukung backend):
-        <span class="tabular">{{ auth.watchlistTidakDidukung.join(', ') }}</span>
-      </p>
+        <span class="font-semibold text-warning/80">Catatan:</span>
+        Beberapa emiten disembunyikan karena belum didukung oleh sistem ({{ auth.watchlistTidakDidukung.join(', ') }})
+      </div>
     </div>
 
     <!-- Watchlist Manager tidak punya route sendiri lagi — hanya muncul di sini. -->
