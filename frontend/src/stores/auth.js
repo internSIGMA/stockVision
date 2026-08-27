@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Jika user belum punya watchlist sama sekali di backend, berarti ini adalah pendaftaran baru
     if (watchlists.value.length === 0) {
       isNewRegistration.value = true
-      await ensureWatchlist()
+      // Tidak lagi memaksa membuat watchlist di sini, biarkan onboarding yang membuatnya.
     } else {
       isNewRegistration.value = false
     }
@@ -145,7 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(payload) {
     loading.value = true
     try {
-      return await mulaiSesi(await registerUser(payload))
+      return await registerUser(payload)
     } finally {
       loading.value = false
     }

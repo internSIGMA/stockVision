@@ -64,7 +64,8 @@ async function onSubmit() {
       username: form.value.username.trim(),
       name: form.value.name.trim(),
     })
-    lanjut()
+    // Setelah sukses registrasi, arahkan ke halaman login
+    router.push('/login')
   } catch (err) {
     if (/duplicate|unique/i.test(err.message)) {
       error.value = 'Email atau username ini sudah terdaftar. Silakan gunakan yang lain atau langsung masuk.'

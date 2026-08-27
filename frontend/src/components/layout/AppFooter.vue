@@ -91,7 +91,7 @@ function performLogout() {
           <ul class="flex flex-col gap-3 text-[13px] text-muted-foreground">
             <li class="flex items-start gap-2.5">
               <MapPin class="mt-0.5 size-4 shrink-0 text-[var(--primary)]" />
-              <span class="leading-relaxed">Bandung, 12190</span>
+              <span class="leading-relaxed">Bandung, Jawa Barat 12190</span>
             </li>
             <li class="flex items-center gap-2.5">
               <Phone class="size-4 shrink-0 text-[var(--primary)]" />

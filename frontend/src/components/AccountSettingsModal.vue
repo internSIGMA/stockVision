@@ -9,6 +9,7 @@ import {
 } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import { User, Mail, Phone, AtSign, Camera, X } from '@lucide/vue'
 
 const props = defineProps({
   open: {
@@ -285,8 +286,7 @@ onBeforeUnmount(() => {
             </h2>
 
             <p>
-              Perbarui informasi akun dan preferensi
-              pengguna.
+              Perbarui informasi akun dan preferensi pengguna.
             </p>
           </div>
 
@@ -297,7 +297,7 @@ onBeforeUnmount(() => {
             :disabled="saving"
             @click="closeModal"
           >
-            ×
+            <X :size="20" />
           </button>
         </header>
 
@@ -323,8 +323,9 @@ onBeforeUnmount(() => {
               </span>
             </div>
 
-            <div>
+            <div class="avatar-actions">
               <label class="upload-button">
+                <Camera :size="16" />
                 Ganti foto
 
                 <input
@@ -336,69 +337,75 @@ onBeforeUnmount(() => {
               </label>
 
               <p class="input-hint">
-                JPG, PNG, atau WEBP, maksimal 2 MB.
+                Format: JPG, PNG, WEBP. Maks 2 MB.
               </p>
             </div>
           </section>
 
           <section class="form-grid">
             <div class="form-group">
-              <label for="account-name">
-                Nama lengkap
-              </label>
-
-              <input
-                id="account-name"
-                v-model="form.name"
-                type="text"
-                autocomplete="name"
-                placeholder="Masukkan nama lengkap"
-              />
+              <label for="account-name">Nama lengkap</label>
+              <div class="input-wrapper">
+                <div class="icon-box icon-name">
+                  <User :size="16" />
+                </div>
+                <input
+                  id="account-name"
+                  v-model="form.name"
+                  type="text"
+                  autocomplete="name"
+                  placeholder="Masukkan nama lengkap"
+                />
+              </div>
             </div>
 
             <div class="form-group">
-              <label for="account-username">
-                Username
-              </label>
-
-              <input
-                id="account-username"
-                v-model="form.username"
-                type="text"
-                autocomplete="username"
-                placeholder="Masukkan username"
-              />
+              <label for="account-username">Username</label>
+              <div class="input-wrapper">
+                <div class="icon-box icon-username">
+                  <AtSign :size="16" />
+                </div>
+                <input
+                  id="account-username"
+                  v-model="form.username"
+                  type="text"
+                  autocomplete="username"
+                  placeholder="Masukkan username"
+                />
+              </div>
             </div>
 
             <div class="form-group">
-              <label for="account-email">
-                Email
-              </label>
-
-              <input
-                id="account-email"
-                v-model="form.email"
-                type="email"
-                autocomplete="email"
-                placeholder="nama@email.com"
-              />
+              <label for="account-email">Email</label>
+              <div class="input-wrapper">
+                <div class="icon-box icon-email">
+                  <Mail :size="16" />
+                </div>
+                <input
+                  id="account-email"
+                  v-model="form.email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="nama@email.com"
+                />
+              </div>
             </div>
 
             <div class="form-group">
-              <label for="account-phone">
-                Nomor telepon
-              </label>
-
-              <input
-                id="account-phone"
-                v-model="form.phone"
-                type="tel"
-                autocomplete="tel"
-                placeholder="08xxxxxxxxxx"
-              />
+              <label for="account-phone">Nomor telepon</label>
+              <div class="input-wrapper">
+                <div class="icon-box icon-phone">
+                  <Phone :size="16" />
+                </div>
+                <input
+                  id="account-phone"
+                  v-model="form.phone"
+                  type="tel"
+                  autocomplete="tel"
+                  placeholder="08xxxxxxxxxx"
+                />
+              </div>
             </div>
-
-
           </section>
 
           <!-- Memberi ruang pada bagian paling bawah -->
@@ -498,10 +505,10 @@ onBeforeUnmount(() => {
 
   gap: 20px;
 
-  padding: 24px 28px;
+  padding: 28px 28px;
 
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: transparent;
 }
 
 .modal-header h2 {
@@ -538,6 +545,7 @@ onBeforeUnmount(() => {
   line-height: 1;
 
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .close-button:hover {
@@ -610,14 +618,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
 
-  gap: 18px;
+  gap: 20px;
 
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 .avatar-preview {
-  width: 76px;
-  height: 76px;
+  width: 84px;
+  height: 84px;
   flex-shrink: 0;
 
   display: grid;
@@ -626,10 +634,12 @@ onBeforeUnmount(() => {
   overflow: hidden;
 
   border-radius: 50%;
+  border: 3px solid var(--background-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
   background: var(--card-hover);
 
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
 }
 
@@ -640,26 +650,36 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .upload-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 
-  padding: 9px 14px;
+  padding: 10px 16px;
 
   border: 1px solid var(--border);
   border-radius: 9px;
 
-  background: var(--card);
+  background: transparent;
+  color: var(--foreground);
 
   font-size: 14px;
   font-weight: 600;
 
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .upload-button:hover {
   background: var(--card-hover);
+  border-color: var(--input);
 }
 
 /* FORM */
@@ -670,7 +690,7 @@ onBeforeUnmount(() => {
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  gap: 20px;
+  gap: 24px;
 }
 
 .form-group {
@@ -689,6 +709,41 @@ onBeforeUnmount(() => {
 .form-group label {
   font-size: 14px;
   font-weight: 600;
+  color: var(--foreground);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icon-box {
+  position: absolute;
+  left: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.icon-name {
+  color: var(--info);
+}
+
+.icon-username {
+  color: var(--warning);
+}
+
+.icon-email {
+  color: var(--primary);
+}
+
+.icon-phone {
+  color: var(--success);
 }
 
 .form-group input {
@@ -696,7 +751,7 @@ onBeforeUnmount(() => {
 
   box-sizing: border-box;
 
-  padding: 11px 13px;
+  padding: 11px 13px 11px 42px;
 
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -704,13 +759,19 @@ onBeforeUnmount(() => {
   outline: none;
 
   color: var(--foreground);
-  background: var(--card);
+  background: var(--background);
 
   font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.form-group input:hover {
+  border-color: var(--input);
 }
 
 .form-group input:focus {
   border-color: var(--ring);
+  background: var(--card);
 
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
@@ -822,8 +883,8 @@ onBeforeUnmount(() => {
 
   padding: 20px 28px;
 
-  border-top: 1px solid var(--border);
-  background: var(--card);
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: transparent;
 }
 
 .cancel-button,
@@ -836,6 +897,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
 
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .cancel-button,
@@ -848,10 +910,12 @@ onBeforeUnmount(() => {
 
 .cancel-button:hover {
   background: var(--card-hover);
+  border-color: var(--input);
 }
 
 .save-button {
   border: 1px solid var(--primary);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
 
   color: var(--primary-foreground);
   background: var(--primary);
@@ -859,12 +923,15 @@ onBeforeUnmount(() => {
 
 .save-button:hover {
   background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .cancel-button:disabled,
 .save-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+  box-shadow: none;
 }
 
 .secondary-button:disabled {
