@@ -360,17 +360,6 @@ def get_watchlists(user_id):
     cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
     rows = cur.fetchall()
 
-    if not rows:
-        default_name = "Daftar Utama"
-        default_symbols = ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA"]
-        cur.execute(
-            "INSERT INTO idxsaham.watchlists (user_id, name, symbols) VALUES (%s, %s, %s) RETURNING id, user_id, name, symbols, created_at;",
-            (user_id, default_name, json.dumps(default_symbols))
-        )
-        conn.commit()
-        cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
-        rows = cur.fetchall()
-
     cur.close()
     conn.close()
 
