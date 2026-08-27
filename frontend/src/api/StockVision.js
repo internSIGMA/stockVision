@@ -162,6 +162,24 @@ export async function getPrescriptive(symbol) {
   return res?.results?.[0] ?? null
 }
 
+/**
+ * Hasil analisis diagnostik terbaru: menjawab "kenapa harganya begini?" —
+ * fase tren (MA5/MA20), akumulasi-distribusi bandar, anomali volume,
+ * aktivitas insider, konteks fundamental, dan narasi akar masalahnya.
+ *
+ * Isinya dibaca dari tabel idxsaham.diagnostic_results yang diisi pipeline
+ * terjadwal, jadi emiten yang belum pernah dianalisis wajar mengembalikan
+ * null — bukan error yang perlu ditampilkan sebagai kegagalan.
+ *
+ * → { symbol, company_name, sector, tanggal_analisis, last_close, return_pct,
+ *     trend_diagnostic, bandarmology_diagnostic, volume_diagnostic,
+ *     insider_diagnostic, fundamental_context, llm_diagnostic_summary } | null
+ */
+export async function getDiagnostic(symbol) {
+  const res = await api.get('/api/diagnostic/results', { params: { symbol } })
+  return res?.results?.[0] ?? null
+}
+
 // ============================================================
 // TRIGGER CRAWL MANUAL
 // ============================================================

@@ -7,6 +7,7 @@ import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
 import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
+import DiagnosticPanel from '@/components/stream/DiagnosticPanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
 import CombinedChart from '@/components/charts/CombinedChart.vue'
@@ -16,6 +17,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { useForecastData } from '@/composables/useForecastData'
 import { usePrescriptive } from '@/composables/usePrescriptive'
+import { useDiagnostic } from '@/composables/useDiagnostic'
 import { useTechnicalData } from '@/composables/useTechnicalData'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
@@ -89,6 +91,15 @@ const {
   isLoading: prescriptiveLoading,
   reload: muatUlangPrescriptive,
 } = usePrescriptive()
+
+// Diagnostik menjawab "kenapa harganya begini" dan dimuat terpisah dari
+// prescriptive: tabelnya diisi pipeline lain, jadi salah satunya bisa kosong
+// tanpa mengosongkan yang lain.
+const {
+  data: diagnostic,
+  temuan: temuanDiagnostik,
+  isLoading: diagnosticLoading,
+} = useDiagnostic()
 
 const TREN_CLASS = {
   NAIK: 'text-up',
@@ -262,7 +273,7 @@ const selectedTimeframe = ref('6M')
           </section>
         </div>
 
-      <!-- 6 — Prescriptive -->
+      <!-- 6 — Prescriptive, berdampingan dengan Diagnostic -->
       <PrescriptivePanel
         :rows="ohlc"
         :forecast="titikProyeksi"
@@ -272,7 +283,15 @@ const selectedTimeframe = ref('6M')
         :backend-loading="prescriptiveLoading"
         :levels="tradingLevels"
         @recompute="muatUlangPrescriptive"
-      />
+      >
+        <template #samping>
+          <DiagnosticPanel
+            :backend="diagnostic"
+            :backend-loading="diagnosticLoading"
+            :temuan="temuanDiagnostik"
+          />
+        </template>
+      </PrescriptivePanel>
 
       <!-- 7 — Analysis/Broker -->
       <div class="flex flex-col gap-4">

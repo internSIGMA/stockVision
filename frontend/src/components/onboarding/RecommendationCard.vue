@@ -38,6 +38,14 @@ const formatPct = (val) => {
     ]"
     @click="emit('toggle')"
   >
+    <!-- Tepi atas berwarna: penanda terpilih yang terbaca sekilas bahkan
+         saat centangnya tertutup kursor. -->
+    <span
+      class="absolute inset-x-0 top-0 h-[3px]"
+      :class="selected ? 'bg-[var(--primary)]' : 'bg-border'"
+      aria-hidden="true"
+    />
+
     <!-- Checkmark indicator -->
     <div
       v-if="selected"
