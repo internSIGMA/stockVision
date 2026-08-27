@@ -16,25 +16,39 @@ from sklearn.metrics import (
 )
 
 from .config import TARGETS
-
 from .feature_engineering import (
     feature_cols,
     create_features
 )
-
+from .checkpoint import (
+    save_model_checkpoint,
+    load_model_checkpoint,
+    is_checkpoint_fresh
+)
 from .logger import logger
-
 from .config import PARAM_FILE
 
+
 def load_best_params():
+    try:
+        with open(PARAM_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-    with open(PARAM_FILE, "r") as f:
-
-        return json.load(f)
 
 BEST_PARAMS = load_best_params()
 
-def train_model(symbol, stock_df, target_col):
+
+def train_model(symbol, stock_df, target_col, force_retrain=False):
+    latest_data_date = stock_df["tanggal"].max() if "tanggal" in stock_df and not stock_df.empty else None
+
+    # Checkpoint hit check
+    if not force_retrain and is_checkpoint_fresh(symbol, target_col, latest_data_date, model_type="symbol"):
+        cached_model, _ = load_model_checkpoint(symbol, target_col, model_type="symbol")
+        if cached_model is not None:
+            logger.info("  [Checkpoint Hit] Symbol %s / %s loaded from checkpoint.", symbol, target_col.upper())
+            return cached_model, pd.DataFrame(), np.array([]), np.array([])
 
     data = stock_df.copy()
 
@@ -144,48 +158,49 @@ def train_model(symbol, stock_df, target_col):
         **best_params
     )
 
-    final_model.fit(
-        X,
-        y
+    final_model.fit(X, y)
+
+    # Save Checkpoint
+    save_model_checkpoint(
+        identifier=symbol,
+        target=target_col,
+        model=final_model,
+        metadata={
+            "symbol": symbol,
+            "target": target_col,
+            "last_trained_date": str(latest_data_date)[:10] if latest_data_date else None,
+            "n_samples": len(X),
+        },
+        model_type="symbol"
     )
 
     return (
-
         final_model,
-
         metrics_df,
-
         np.array(all_actual),
-
         np.array(all_prediction)
-
     )
 
-def train_all_models(df):
 
+def train_all_models(df, force_retrain=False):
     all_models = {}
     all_stock_data = {}
 
     symbols = sorted(df["symbol"].unique())
 
     for symbol in symbols:
-
         stock = df[df["symbol"] == symbol].copy()
-
         stock = create_features(stock)
-
         stock = stock.dropna().reset_index(drop=True)
 
         models = {}
-
         for target in TARGETS:
-
             model, _, _, _ = train_model(
                 symbol,
                 stock,
-                target
+                target,
+                force_retrain=force_retrain
             )
-
             models[target] = model
 
         all_models[symbol] = models

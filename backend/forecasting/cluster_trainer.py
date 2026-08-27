@@ -27,6 +27,11 @@ from .config import TARGETS, FORECAST_HORIZON
 from .feature_engineering import create_features, feature_cols
 from .hyperparameter_tuner import get_params_for_cluster
 from .database import save_accuracy_records
+from .checkpoint import (
+    save_model_checkpoint,
+    load_model_checkpoint,
+    is_checkpoint_fresh
+)
 from .logger import logger
 
 
@@ -40,9 +45,9 @@ def _confidence_level(accuracy_pct):
         return "Low"
 
 
-def train_cluster_model(cluster_id, cluster_df, target_col, cluster_assignments):
+def train_cluster_model(cluster_id, cluster_df, target_col, cluster_assignments, force_retrain=False):
     """
-    Train a single LightGBM model for one cluster × one target.
+    Train a single LightGBM model for one cluster × one target (with Checkpoint support).
 
     Pools data from all stocks in the cluster. Uses per-cluster tuned
     hyperparameters. Evaluates with 5-fold TimeSeriesSplit and tracks
@@ -53,11 +58,22 @@ def train_cluster_model(cluster_id, cluster_df, target_col, cluster_assignments)
         cluster_df: OHLCV DataFrame for all stocks in this cluster
         target_col: one of ['open', 'high', 'low', 'close', 'volume']
         cluster_assignments: dict {symbol: cluster_id}
+        force_retrain: bool, if True ignores existing fresh checkpoints
 
     Returns:
         model: trained LGBMRegressor
         accuracy_records: list of dicts (per-symbol accuracy)
     """
+    # --- Checkpoint Check: Resume / Skip if already trained on latest data ---
+    latest_data_date = cluster_df['tanggal'].max() if 'tanggal' in cluster_df and not cluster_df.empty else None
+
+    if not force_retrain and is_checkpoint_fresh(cluster_id, target_col, latest_data_date, model_type="cluster"):
+        cached_model, metadata = load_model_checkpoint(cluster_id, target_col, model_type="cluster")
+        if cached_model is not None:
+            logger.info("  [Checkpoint Hit] Cluster %d / %s loaded from checkpoint (Latest Data: %s).",
+                        cluster_id, target_col.upper(), str(latest_data_date)[:10])
+            accuracy_records = metadata.get("accuracy_records", []) if metadata else []
+            return cached_model, accuracy_records
     # --- Prepare pooled data with symbol encoding ---
     label_encoder = LabelEncoder()
     all_parts = []
@@ -166,16 +182,33 @@ def train_cluster_model(cluster_id, cluster_df, target_col, cluster_assignments)
             'model_version': model_version,
         })
 
+    # --- Save Checkpoint to Disk ---
+    save_model_checkpoint(
+        identifier=cluster_id,
+        target=target_col,
+        model=final_model,
+        metadata={
+            "cluster_id": cluster_id,
+            "target_col": target_col,
+            "last_trained_date": str(latest_data_date)[:10] if latest_data_date else None,
+            "accuracy_records": accuracy_records,
+            "n_train_samples": len(X),
+            "model_version": model_version,
+        },
+        model_type="cluster"
+    )
+
     return final_model, accuracy_records
 
 
-def train_all_cluster_models(df, cluster_assignments):
+def train_all_cluster_models(df, cluster_assignments, force_retrain=False):
     """
-    Train LGBM models for ALL clusters × ALL targets.
+    Train LGBM models for ALL clusters × ALL targets (with Checkpoint Resume).
 
     Args:
         df: Full OHLCV DataFrame
         cluster_assignments: dict {symbol: cluster_id}
+        force_retrain: bool, if True re-trains all models regardless of checkpoints
 
     Returns:
         all_models: dict {cluster_id: {target: model}}
@@ -200,7 +233,7 @@ def train_all_cluster_models(df, cluster_assignments):
         models = {}
         for target in TARGETS:
             model, accuracy_records = train_cluster_model(
-                cid, cluster_df, target, cluster_assignments
+                cid, cluster_df, target, cluster_assignments, force_retrain=force_retrain
             )
             if model is not None:
                 models[target] = model

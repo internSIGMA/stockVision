@@ -293,6 +293,7 @@ def trigger_pipeline():
     is_async = data.get("async", True)
     force_recluster = data.get("force_recluster", False)
     run_tuning = data.get("run_tuning", False)
+    force_retrain = data.get("force_retrain", False)
     n_trials = data.get("n_trials", None)
 
     def worker():
@@ -303,6 +304,7 @@ def trigger_pipeline():
             success = run_pipeline(
                 force_recluster=force_recluster,
                 run_tuning=run_tuning,
+                force_retrain=force_retrain,
                 n_trials=n_trials
             )
             _pipeline_status["last_status"] = "success" if success else "failed"
@@ -339,3 +341,36 @@ def get_pipeline_status():
         "status": "success",
         "data": _pipeline_status
     }), 200
+
+
+@forecast_bp.route("/api/forecast/checkpoints", methods=["GET"])
+def get_checkpoints():
+    """
+    Returns summary of all saved model checkpoints and their metadata.
+    """
+    try:
+        from .checkpoint import get_all_checkpoints_summary
+        checkpoints = get_all_checkpoints_summary()
+        return jsonify({
+            "status": "success",
+            "count": len(checkpoints),
+            "data": checkpoints
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@forecast_bp.route("/api/forecast/checkpoints/clear", methods=["POST"])
+def clear_checkpoints():
+    """
+    Clears all saved model checkpoints.
+    """
+    try:
+        from .checkpoint import clear_all_checkpoints
+        success = clear_all_checkpoints()
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": "All checkpoints cleared." if success else "Failed to clear checkpoints."
+        }), 200 if success else 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
