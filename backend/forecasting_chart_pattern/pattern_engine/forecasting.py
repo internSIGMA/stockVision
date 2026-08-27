@@ -36,54 +36,70 @@ class PatternSignal:
     tp3: float = 0.0
     fibo_support: Optional[float] = None
     fibo_resistance: Optional[float] = None
+    buy_area: Dict = field(default_factory=dict)
+    sell_area: Dict = field(default_factory=dict)
     detection_reasons: List[str] = field(default_factory=list)
 
 
 def generate_detection_reasons(pattern: DetectedPattern) -> List[str]:
     """
-    Menghasilkan narasi penjelasan mengapa pola ini teridentifikasi.
+    Generate human-readable reasons explaining why a specific pattern was detected.
     """
     reasons = []
 
-    # Key points
+    # Key point analysis
     kp_names = [kp['name'] for kp in pattern.key_points] if pattern.key_points else []
     n_points = len(pattern.key_points) if pattern.key_points else 0
     if n_points >= 2:
-        reasons.append(f"Ditemukan {n_points} titik referensi geometrik: {', '.join(kp_names)}")
+        reasons.append(
+            f"Ditemukan {n_points} titik referensi utama: {', '.join(kp_names)}"
+        )
 
-    # Rentang harga
+    # Price levels
     if n_points >= 2:
         prices = [kp['price'] for kp in pattern.key_points]
-        min_p, max_p = min(prices), max(prices)
-        spread_pct = ((max_p - min_p) / (min_p + 1e-9)) * 100
-        reasons.append(f"Rentang formasi harga: {min_p:,.2f} – {max_p:,.2f} (spread {spread_pct:.1f}%)")
+        price_range_pct = ((max(prices) - min(prices)) / (min(prices) + 1e-9)) * 100
+        reasons.append(
+            f"Rentang harga formasi: {min(prices):,.2f} – {max(prices):,.2f} "
+            f"(spread {price_range_pct:.1f}%)"
+        )
 
-    # Rentang tanggal
+    # Duration
     if pattern.start_date and pattern.end_date:
-        s_str = pattern.start_date.strftime('%d %b %Y') if hasattr(pattern.start_date, 'strftime') else str(pattern.start_date)
-        e_str = pattern.end_date.strftime('%d %b %Y') if hasattr(pattern.end_date, 'strftime') else str(pattern.end_date)
-        bar_count = max(1, pattern.end_index - pattern.start_index)
-        reasons.append(f"Formasi terbentuk dari {s_str} hingga {e_str} ({bar_count} bar)")
+        start_str = pattern.start_date.strftime('%d %b %Y') if hasattr(pattern.start_date, 'strftime') else str(pattern.start_date)
+        end_str = pattern.end_date.strftime('%d %b %Y') if hasattr(pattern.end_date, 'strftime') else str(pattern.end_date)
+        bar_count = pattern.end_index - pattern.start_index
+        reasons.append(
+            f"Formasi terbentuk dari {start_str} hingga {end_str} ({bar_count} bar)"
+        )
 
-    # Level breakout & target
-    reasons.append(f"Level trigger breakout di harga {pattern.breakout_level:,.2f}")
-    bias_word = "naik" if "Bullish" in pattern.directional_bias else "turun"
-    reasons.append(f"Target terukur (measured move): {pattern.target_price:,.2f} — proyeksi {bias_word}")
+    # Breakout level
+    reasons.append(f"Level breakout teridentifikasi di harga {pattern.breakout_level:,.2f}")
+
+    # Target price
+    if "Bullish" in pattern.directional_bias:
+        reasons.append(
+            f"Target harga kenaikan (TP): {pattern.target_price:,.2f} — proyeksi naik"
+        )
+    else:
+        reasons.append(
+            f"Target penurunan (support bawah): {pattern.target_price:,.2f} — proyeksi koreksi jika breakdown neckline {pattern.breakout_level:,.2f}"
+        )
 
     # Breakout status
     status_map = {
-        "PENDING_BREAKOUT": "⏳ Pola terbentuk, menunggu konfirmasi penutupan harga di atas/bawah level breakout",
+        "PENDING_BREAKOUT": "⏳ Pola terbentuk, menunggu konfirmasi breakout",
         "CONFIRMED_BREAKOUT": "✅ Breakout terkonfirmasi",
         "TARGET_REACHED": "🎯 Target harga sudah tercapai",
-        "INVALIDATED": "❌ Pola terinvalidsi / tertembus level stop loss",
+        "INVALIDATED": "❌ Pola gagal / tertembus invalidation level",
     }
     reasons.append(f"Status: {status_map.get(pattern.status, pattern.status)}")
 
     # Volume confirmation
     if pattern.volume_confirmed:
-        reasons.append("✅ Volume saat breakout melampaui rata-rata MA-20 (tervalidasi)")
+        reasons.append("✅ Volume saat breakout melebihi rata-rata 20-MA (terkonfirmasi)")
     else:
-        reasons.append("⚠️ Volume saat breakout belum melampaui rata-rata MA-20")
+        reasons.append("⚠️ Volume saat breakout belum melampaui rata-rata 20-MA")
 
     return reasons
 
@@ -113,7 +129,7 @@ def generate_future_trajectory(df: pd.DataFrame, pattern: DetectedPattern, is_bu
             from ..trading_calendar import get_next_trading_days
             trading_dates = get_next_trading_days(last_date, n_days=n_steps)
             future_dates = [pd.to_datetime(d) for d in trading_dates]
-        except Exception as e:
+        except Exception:
             # Fallback jika query calendar gagal
             future_dates = []
             step_d = pd.to_datetime(last_date).date()
@@ -179,9 +195,11 @@ def generate_forecast(df: pd.DataFrame, pattern: DetectedPattern, symbol: str, t
         current_price=current_price
     )
     
-    tp1 = fibo_data["tp1"]  # 100% Measured Move / Fibo 1.000
+    tp1 = fibo_data["tp1"]  # 100% Measured Move
     tp2 = fibo_data["tp2"]  # 127.2% Fibo Extension
     tp3 = fibo_data["tp3"]  # 161.8% Fibo Golden Extension
+    buy_area = fibo_data.get("buy_area", {})
+    sell_area = fibo_data.get("sell_area", {})
     
     # Expected Return & Potential Risk %
     if is_bullish:
@@ -226,18 +244,18 @@ def generate_forecast(df: pd.DataFrame, pattern: DetectedPattern, symbol: str, t
         },
         {
             "rule": "Teknik Pengukuran (Measured Move & Fibo 100%)",
-            "description": f"{pattern.measuring_technique} -> TP1: {tp1:,.2f}",
+            "description": f"Target harga diproyeksikan pada level {target_price:,.2f}",
             "passed": True
         },
         {
-            "rule": "Fibonacci Golden Extension (161.8%)",
-            "description": f"Target ekstensi Fibonacci optimal -> TP3: {tp3:,.2f}",
-            "passed": True
+            "rule": "Golden Ratio Fibo (161.8%) Confluence",
+            "description": f"Target ekstensi lanjutan TP3 pada level {tp3:,.2f}",
+            "passed": tp3 > 0
         },
         {
-            "rule": "Catatan Statistik Bulkowski",
-            "description": pattern.statistical_notes,
-            "passed": True
+            "rule": "Manajemen Risiko (Stop Loss & RRR)",
+            "description": f"Level proteksi Stop Loss di {stop_loss:,.2f} dengan RRR {risk_reward_ratio:.2f}:1",
+            "passed": risk_reward_ratio >= 1.0
         }
     ]
     
@@ -268,6 +286,8 @@ def generate_forecast(df: pd.DataFrame, pattern: DetectedPattern, symbol: str, t
         tp3=round(tp3, 2),
         fibo_support=round(fibo_data["nearest_support"], 2) if fibo_data.get("nearest_support") is not None else None,
         fibo_resistance=round(fibo_data["nearest_resistance"], 2) if fibo_data.get("nearest_resistance") is not None else None,
+        buy_area=buy_area,
+        sell_area=sell_area,
         detection_reasons=detection_reasons
     )
 
@@ -275,7 +295,7 @@ def generate_forecast(df: pd.DataFrame, pattern: DetectedPattern, symbol: str, t
 def evaluate_all_pattern_forecasts(df: pd.DataFrame, patterns: List[DetectedPattern], timeframe: str) -> Dict[str, Any]:
     """
     Evaluasi akurasi historis peramalan (MAE, RMSE, MAPE, Directional Accuracy, Win Rate)
-    pada seluruh pola historis yang terdeteksi.
+    pada seluruh pola historis yang terdeteksi dengan rincian per pola.
     """
     if "1h" in timeframe:
         n_steps = 15
@@ -298,6 +318,7 @@ def evaluate_all_pattern_forecasts(df: pd.DataFrame, patterns: List[DetectedPatt
             continue
             
         actual_close = actual_sub_df['Close'].values
+        dates = actual_sub_df.index
         start_price = float(actual_close[0])
         pred_pathway = np.linspace(start_price, p.target_price, len(actual_close))
         
@@ -317,18 +338,33 @@ def evaluate_all_pattern_forecasts(df: pd.DataFrame, patterns: List[DetectedPatt
             best_realized = float(actual_sub_df['Low'].min())
             dir_correct = bool(actual_close[-1] < start_price or best_realized <= p.breakout_level)
             
+        target_error = abs(best_realized - p.target_price)
         target_reached = (p.status == "TARGET_REACHED")
+        
+        start_date_str = p.start_date.strftime('%Y-%m-%d') if hasattr(p.start_date, 'strftime') else str(p.start_date)
+        end_date_str = p.end_date.strftime('%Y-%m-%d') if hasattr(p.end_date, 'strftime') else str(p.end_date)
         
         eval_records.append({
             "pattern_id": p.id,
             "pattern_name": p.name,
             "directional_bias": p.directional_bias,
             "pattern_type": p.pattern_type,
+            "start_date": start_date_str,
+            "end_date": end_date_str,
+            "breakout_level": float(p.breakout_level),
+            "target_price": float(p.target_price),
+            "stop_loss": float(p.stop_loss),
+            "status": p.status,
+            "best_realized": best_realized,
+            "target_error": float(target_error),
             "mae": round(mae, 2),
             "rmse": round(rmse, 2),
             "mape": round(mape, 2),
             "dir_correct": dir_correct,
             "target_reached": target_reached,
+            "eval_dates": [d.strftime('%Y-%m-%d %H:%M') if '1h' in timeframe else d.strftime('%Y-%m-%d') for d in dates],
+            "actual_close": [round(float(x), 2) for x in actual_close],
+            "pred_pathway": [round(float(x), 2) for x in pred_pathway],
             "bars_count": len(actual_close)
         })
         
@@ -341,17 +377,36 @@ def evaluate_all_pattern_forecasts(df: pd.DataFrame, patterns: List[DetectedPatt
             "avg_mape": 0.0,
             "win_rate": 0.0,
             "dir_accuracy": 0.0,
-            "eval_records": []
+            "eval_records": [],
+            "by_pattern": []
         }
         
     df_eval = pd.DataFrame(eval_records)
+    avg_mae = round(float(df_eval['mae'].mean()), 2)
+    avg_rmse = round(float(df_eval['rmse'].mean()), 2)
+    avg_mape = round(float(df_eval['mape'].mean()), 2)
+    win_rate = round(float(df_eval['target_reached'].mean() * 100.0), 2)
+    dir_accuracy = round(float(df_eval['dir_correct'].mean() * 100.0), 2)
+    
+    # Aggregated by pattern name
+    by_pattern_df = df_eval.groupby('pattern_name').agg(
+        total_count=('pattern_id', 'count'),
+        avg_mae=('mae', 'mean'),
+        avg_rmse=('rmse', 'mean'),
+        avg_mape=('mape', 'mean'),
+        win_rate=('target_reached', lambda x: round(float(x.mean() * 100.0), 2))
+    ).reset_index().sort_values('total_count', ascending=False)
+    
+    by_pattern_list = by_pattern_df.to_dict(orient='records')
+    
     return {
         "has_data": True,
         "total_evaluated": len(eval_records),
-        "avg_mae": round(float(df_eval['mae'].mean()), 2),
-        "avg_rmse": round(float(df_eval['rmse'].mean()), 2),
-        "avg_mape": round(float(df_eval['mape'].mean()), 2),
-        "win_rate": round(float(df_eval['target_reached'].mean() * 100.0), 2),
-        "dir_accuracy": round(float(df_eval['dir_correct'].mean() * 100.0), 2),
-        "eval_records": eval_records
+        "avg_mae": avg_mae,
+        "avg_rmse": avg_rmse,
+        "avg_mape": avg_mape,
+        "win_rate": win_rate,
+        "dir_accuracy": dir_accuracy,
+        "eval_records": eval_records,
+        "by_pattern": by_pattern_list
     }

@@ -743,11 +743,17 @@ def detect_flags_and_pennants(df: pd.DataFrame, peaks: List[Dict], valleys: List
         pole_pct = pole_height / (p_low + 1e-9)
         
         if pole_pct >= 0.08 and p_high_pos > p_low_pos:
-            # Consolidation area after pole
-            flag_df = df.iloc[p_high_pos:min(n, p_high_pos + 20)]
-            if len(flag_df) >= 4:
+            # Consolidation area after pole: stops when breakout occurs or up to 20 bars
+            flag_end_pos = p_high_pos + 1
+            while flag_end_pos < n and (flag_end_pos - p_high_pos) < 20:
+                if df['Close'].iloc[flag_end_pos] > p_high * 1.01:
+                    break
+                flag_end_pos += 1
+
+            flag_df = df.iloc[p_high_pos:flag_end_pos]
+            if len(flag_df) >= 3:
                 flag_low = flag_df['Low'].min()
-                # Retracement should not exceed 50% of pole
+                # Retracement should not exceed 55% of pole
                 if (p_high - flag_low) <= (pole_height * 0.55):
                     # Check High & Tight Flag (#17): pole doubles (>90%)
                     if pole_pct >= 0.85:

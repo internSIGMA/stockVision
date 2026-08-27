@@ -51,8 +51,10 @@ def calculate_fibonacci_levels(
     retracements = []
     for ratio, label, color in FIBO_RETRACEMENT_RATIOS:
         if is_bullish:
+            # Pullback from high to low
             level_price = swing_high - (diff * ratio)
         else:
+            # Pullback from low to high
             level_price = swing_low + (diff * ratio)
             
         retracements.append({
@@ -65,9 +67,11 @@ def calculate_fibonacci_levels(
     extensions = []
     for ratio, label, color in FIBO_EXTENSION_RATIOS:
         if is_bullish:
-            level_price = swing_low + (diff * ratio)
+            # Target projections above swing high (Measured move from high)
+            level_price = swing_high + (diff * ratio)
         else:
-            level_price = max(0.01, swing_high - (diff * ratio))
+            # Target projections below swing low (Measured move from low)
+            level_price = max(0.01, swing_low - (diff * ratio))
             
         extensions.append({
             "ratio": ratio,
@@ -76,6 +80,7 @@ def calculate_fibonacci_levels(
             "color": color
         })
         
+    # Determine nearest support and resistance to current price if provided
     nearest_support = None
     nearest_resistance = None
     
@@ -89,6 +94,30 @@ def calculate_fibonacci_levels(
         if resistances:
             nearest_resistance = min(resistances)
             
+    # Calculate User-Friendly Buy Area and Sell Area (Zona Beli & Zona Jual)
+    if is_bullish:
+        # For Bullish Setup:
+        # Buy Area = Golden Pocket Pullback (50.0% to 61.8% retracement)
+        buy_area_min = float(swing_high - (diff * 0.618))
+        buy_area_max = float(swing_high - (diff * 0.382))
+        # Sell Area = Extension Targets (TP1 100% to TP3 161.8% Golden Extension)
+        sell_area_min = float(swing_low + (diff * 1.000))
+        sell_area_max = float(swing_low + (diff * 1.618))
+        stop_loss_level = float(swing_low * 0.985)
+        buy_label = "Zona Beli (Golden Pocket Entry)"
+        sell_label = "Zona Jual / Take Profit (TP1 - TP3)"
+    else:
+        # For Bearish Setup:
+        # Sell Area = Upper Pullback Rebound (38.2% to 61.8% retracement)
+        sell_area_min = float(swing_low + (diff * 0.382))
+        sell_area_max = float(swing_low + (diff * 0.618))
+        # Buy Area = Lower Target Projections (Cover / Take Profit targets)
+        buy_area_max = float(max(0.01, swing_high - (diff * 1.000)))
+        buy_area_min = float(max(0.01, swing_high - (diff * 1.618)))
+        stop_loss_level = float(swing_high * 1.015)
+        buy_label = "Zona Beli Kembali / Target Cover (TP1 - TP3)"
+        sell_label = "Zona Jual / Short Entry (Pullback Resistance)"
+
     return {
         "swing_high": float(swing_high),
         "swing_low": float(swing_low),
@@ -98,9 +127,22 @@ def calculate_fibonacci_levels(
         "extensions": extensions,
         "nearest_support": nearest_support,
         "nearest_resistance": nearest_resistance,
-        "tp1": extensions[0]["price"],  # 100% Measured Move
-        "tp2": extensions[1]["price"],  # 127.2% Fibo Extension
-        "tp3": extensions[2]["price"],  # 161.8% Golden Extension
+        "tp1": extensions[0]["price"],  # 100%
+        "tp2": extensions[1]["price"],  # 127.2%
+        "tp3": extensions[2]["price"],  # 161.8% Golden Ratio
+        "buy_area": {
+            "min_price": min(buy_area_min, buy_area_max),
+            "max_price": max(buy_area_min, buy_area_max),
+            "label": buy_label,
+            "description": "Area harga diskon optimal (Fibonacci Golden Pocket 38.2% - 61.8%)"
+        },
+        "sell_area": {
+            "min_price": min(sell_area_min, sell_area_max),
+            "max_price": max(sell_area_min, sell_area_max),
+            "label": sell_label,
+            "description": "Area target realisasi profit (Fibonacci Extension 100% - 161.8%)"
+        },
+        "stop_loss_level": stop_loss_level
     }
 
 
@@ -115,6 +157,7 @@ def find_major_trend_swing(df: pd.DataFrame, lookback: int = 100) -> Tuple[float
     high_idx = subset['High'].idxmax()
     low_idx = subset['Low'].idxmin()
     
+    # If low occurred before high => macro uptrend, else downtrend
     is_bullish = subset.index.get_loc(low_idx) <= subset.index.get_loc(high_idx)
     
     return swing_high, swing_low, is_bullish
