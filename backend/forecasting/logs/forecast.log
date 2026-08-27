@@ -1257,3 +1257,16 @@ sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to serve
 2026-08-24 15:47:11,770 | INFO | forecast | ==================================================
 2026-08-24 15:47:11,771 | INFO | forecast | === StockVision Enhanced ML Pipeline Finished  ===
 2026-08-24 15:47:11,771 | INFO | forecast | ==================================================
+2026-08-27 02:38:35,467 | INFO | Bootstrap | [Bootstrap] Memulai inisialisasi otomatis StockVision di background...
+2026-08-27 02:38:35,472 | INFO | werkzeug | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.18.0.2:8080
+2026-08-27 02:38:35,473 | INFO | werkzeug | [33mPress CTRL+C to quit[0m
+2026-08-27 02:38:38,480 | INFO | Bootstrap | [Bootstrap] trading_calendar sudah berisi 365 hari trading.
+2026-08-27 02:38:38,492 | INFO | Bootstrap | [Bootstrap] idx_company_list sudah berisi 941 emiten.
+2026-08-27 02:38:38,606 | INFO | Bootstrap | [Bootstrap] ohlc_forecasting sudah memiliki 1011087 baris data.
+2026-08-27 02:38:38,620 | INFO | Bootstrap | [Bootstrap] insider_activity sudah berisi 84 baris data.
+2026-08-27 02:38:38,629 | INFO | Bootstrap | [Bootstrap] stock_forecasting sudah berisi 14 baris data.
+2026-08-27 02:38:38,630 | INFO | Bootstrap | [Bootstrap] Daily Forecast Cron aktif (berjalan setiap hari pukul 02:00 WIB).
+2026-08-27 02:38:38,631 | INFO | Bootstrap | [Bootstrap] Inisialisasi background selesai. Seluruh sistem siap!
