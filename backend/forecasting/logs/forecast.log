@@ -1270,3 +1270,6 @@ sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to serve
 2026-08-27 02:38:38,629 | INFO | Bootstrap | [Bootstrap] stock_forecasting sudah berisi 14 baris data.
 2026-08-27 02:38:38,630 | INFO | Bootstrap | [Bootstrap] Daily Forecast Cron aktif (berjalan setiap hari pukul 02:00 WIB).
 2026-08-27 02:38:38,631 | INFO | Bootstrap | [Bootstrap] Inisialisasi background selesai. Seluruh sistem siap!
+2026-08-27 16:23:54,936 | INFO | forecast | [Checkpoint] Saved model checkpoint for cluster 0 / CLOSE -> cluster_0_close.joblib
+2026-08-27 16:23:54,975 | INFO | forecast | [Checkpoint] Loaded existing model checkpoint: cluster_0_close.joblib (Trained: 2026-08-27)
+2026-08-27 16:23:54,983 | INFO | forecast | [Checkpoint] Checkpoint for cluster 0 / close is outdated (Model: 2026-08-27 < Data: 2026-08-28). Retraining needed.

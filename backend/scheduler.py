@@ -505,10 +505,22 @@ def _run_scheduled_crawl(app_context_func=None, is_manual=False, override_symbol
             print(f"[Scheduler] {err_msg}")
 
         # =============================================================
-        # PHASE 3: TRAINING & DYNAMIC FORECASTING GENERATION
+        # PHASE 3: TRAINING & FORECASTING GENERATION (WITH CHECKPOINT RESUME)
         # =============================================================
         try:
-            print("[Scheduler] --- FASE 3: TRAINING & GENERATING DYNAMIC FORECASTS ---")
+            print("[Scheduler] --- FASE 3: TRAINING & GENERATING FORECASTS (WITH CHECKPOINT RESUME) ---")
+            
+            # 3.1 Run Cluster-Aware ML Pipeline with Checkpoint Resume
+            try:
+                from forecasting.pipeline import run_pipeline as run_forecast_ml_pipeline
+                print("[Scheduler] Menjalankan Enhanced ML Pipeline (memuat checkpoint / retrain jika ada data baru)...")
+                ml_success = run_forecast_ml_pipeline(force_retrain=False)
+                if ml_success:
+                    print("[Scheduler] Enhanced ML Cluster Pipeline berhasil diselesaikan.")
+            except Exception as ml_err:
+                print(f"[Scheduler] Enhanced ML Cluster Pipeline warning: {ml_err}")
+
+            # 3.2 Dynamic Forecasting Per Emiten
             from forecasting.dynamic_forecast import generate_dynamic_forecast
             fc_count = 0
             for sym in target_symbols:

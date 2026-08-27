@@ -1,0 +1,14 @@
+{
+  "cluster_0_close": {
+    "cluster_id": 0,
+    "target_col": "close",
+    "last_trained_date": "2026-08-27",
+    "accuracy_pct": 96.5,
+    "n_samples": 50,
+    "model_type": "cluster",
+    "identifier": "0",
+    "target": "close",
+    "filename": "cluster_0_close.joblib",
+    "saved_at": "2026-08-27T16:23:54.935930"
+  }
+}
