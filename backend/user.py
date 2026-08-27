@@ -609,73 +609,6 @@ def login_user(payload):
     }
 
 
-class PasswordError(Exception):
-    """Kegagalan yang aman ditampilkan ke pengguna saat mengubah kata sandi."""
-
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.message = message
-        self.status = status
-
-
-def change_password(user_id, payload):
-    """
-    Mengganti kata sandi setelah memverifikasi kata sandi lama.
-
-    Terpisah dari update_user karena syaratnya beda: di sini penggantian hanya
-    boleh jalan kalau pemohon membuktikan tahu kata sandi yang berlaku, dan
-    nilainya wajib di-hash sebelum masuk kolom password.
-    """
-    if not user_id:
-        raise ValueError("user_id is required")
-
-    payload = payload or {}
-    current_password = str(payload.get("current_password") or "")
-    new_password = str(payload.get("new_password") or "")
-
-    if not current_password or not new_password:
-        raise PasswordError("Kata sandi lama dan baru wajib diisi")
-
-    if len(new_password) < 6:
-        raise PasswordError("Kata sandi baru minimal 6 karakter")
-
-    if new_password == current_password:
-        raise PasswordError("Kata sandi baru harus berbeda dari kata sandi lama")
-
-    _ensure_users_table()
-
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT password FROM idxsaham.users WHERE id = %s;",
-        (user_id,),
-    )
-    row = cur.fetchone()
-
-    if not row:
-        cur.close()
-        conn.close()
-        raise PasswordError("user not found", status=404)
-
-    stored_hash = row[0]
-
-    if not stored_hash or not check_password_hash(stored_hash, current_password):
-        cur.close()
-        conn.close()
-        raise PasswordError("Kata sandi lama tidak sesuai", status=401)
-
-    cur.execute(
-        "UPDATE idxsaham.users SET password = %s WHERE id = %s RETURNING id;",
-        (generate_password_hash(new_password), user_id),
-    )
-    updated = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"id": updated[0], "password_changed": True}
-
-
 def delete_user(user_id):
     if not user_id:
         raise ValueError("user_id is required")
@@ -723,16 +656,6 @@ def update_user_route(user_id):
     if not user:
         return jsonify({"error": "user not found"}), 404
     return jsonify(user)
-
-
-@user_bp.route("/users/<int:user_id>/change-password", methods=["POST"])
-def change_password_route(user_id):
-    payload = request.get_json(silent=True) or {}
-    try:
-        return jsonify(change_password(user_id, payload))
-    except PasswordError as exc:
-        # Pesannya sudah disusun untuk dibaca pengguna, jadi diteruskan apa adanya.
-        return jsonify({"error": exc.message}), exc.status
 
 
 @user_bp.route("/users/<int:user_id>/watchlists", methods=["GET"])

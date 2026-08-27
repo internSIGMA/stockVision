@@ -8,12 +8,9 @@ import {
   watch,
 } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { changePassword } from '@/api/StockVision'
-import {
-  User, Mail, Phone, AtSign, Camera, X,
-  Lock, KeyRound, Eye, EyeOff,
-} from '@lucide/vue'
+import { User, Mail, Phone, AtSign, Camera, X, Lock, KeyRound } from '@lucide/vue'
 
 const props = defineProps({
   open: {
@@ -24,6 +21,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const router = useRouter()
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 
@@ -76,6 +74,18 @@ function fillForm() {
 
   form.emailNotification =
     user.value?.emailNotification ?? true
+}
+
+/*
+ * Penggantian sandi dialihkan ke alur lupa sandi yang sudah ada: alur itu
+ * memverifikasi lewat kode email dan menyimpan hash dengan benar, sementara
+ * jalur update profil biasa menulis sandi mentah-mentah.
+ */
+function bukaLupaSandi() {
+  if (saving.value) return
+
+  emit('close')
+  router.push('/forgot-password')
 }
 
 function closeModal() {
@@ -204,115 +214,6 @@ async function saveProfile() {
 }
 
 /*
- * Ubah kata sandi berdiri sendiri dari form profil: operasinya butuh bukti
- * kepemilikan (sandi lama) dan punya jalur gagal sendiri, jadi tombol "Simpan
- * perubahan" tidak boleh ikut menanggungnya.
- */
-const passwordForm = reactive({
-  current: '',
-  next: '',
-  confirm: '',
-})
-
-const passwordVisible = reactive({
-  current: false,
-  next: false,
-  confirm: false,
-})
-
-const changingPassword = ref(false)
-
-/* { tipe: 'error' | 'sukses', teks } — ditampilkan di dalam seksinya sendiri. */
-const passwordStatus = ref(null)
-
-const passwordFilled = computed(
-  () =>
-    passwordForm.current.length > 0 &&
-    passwordForm.next.length > 0 &&
-    passwordForm.confirm.length > 0,
-)
-
-function resetPasswordForm() {
-  passwordForm.current = ''
-  passwordForm.next = ''
-  passwordForm.confirm = ''
-
-  passwordVisible.current = false
-  passwordVisible.next = false
-  passwordVisible.confirm = false
-
-  passwordStatus.value = null
-}
-
-function togglePasswordVisible(field) {
-  passwordVisible[field] = !passwordVisible[field]
-}
-
-async function submitPassword() {
-  if (changingPassword.value) return
-
-  if (!user.value?.id) {
-    passwordStatus.value = {
-      tipe: 'error',
-      teks: 'Sesi tidak dikenali. Coba masuk ulang.',
-    }
-    return
-  }
-
-  /*
-   * Kecocokan konfirmasi diperiksa di sini, bukan di backend: backend tidak
-   * pernah menerima field konfirmasi, dan salah ketik tidak perlu satu putaran
-   * jaringan untuk ketahuan.
-   */
-  if (passwordForm.next !== passwordForm.confirm) {
-    passwordStatus.value = {
-      tipe: 'error',
-      teks: 'Konfirmasi kata sandi tidak sama dengan kata sandi baru.',
-    }
-    return
-  }
-
-  if (passwordForm.next.length < 6) {
-    passwordStatus.value = {
-      tipe: 'error',
-      teks: 'Kata sandi baru minimal 6 karakter.',
-    }
-    return
-  }
-
-  changingPassword.value = true
-  passwordStatus.value = null
-
-  try {
-    await changePassword(
-      user.value.id,
-      passwordForm.current,
-      passwordForm.next,
-    )
-
-    resetPasswordForm()
-
-    passwordStatus.value = {
-      tipe: 'sukses',
-      teks: 'Kata sandi berhasil diubah.',
-    }
-  } catch (error) {
-    /*
-     * Interceptor api sudah memadatkan { error } dari backend jadi
-     * error.message, termasuk "Kata sandi lama tidak sesuai".
-     */
-    passwordStatus.value = {
-      tipe: 'error',
-      teks:
-        error?.message ||
-        'Kata sandi gagal diubah.',
-    }
-  } finally {
-    changingPassword.value = false
-  }
-}
-
-/*
  * Menyimpan pengaturan overflow halaman sebelum modal dibuka.
  */
 let previousBodyOverflow = ''
@@ -323,7 +224,6 @@ watch(
   async (isOpen) => {
     if (isOpen) {
       fillForm()
-      resetPasswordForm()
 
       previousBodyOverflow =
         document.body.style.overflow
@@ -530,111 +430,21 @@ onBeforeUnmount(() => {
               <div>
                 <h3>Ubah Kata Sandi</h3>
                 <p>
-                  Masukkan kata sandi lama untuk memastikan ini benar akun Anda.
+                  Demi keamanan, penggantian sandi diverifikasi lewat kode yang
+                  dikirim ke email Anda.
                 </p>
-              </div>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group form-group-full">
-                <label for="password-current">Kata sandi lama</label>
-                <div class="input-wrapper">
-                  <div class="icon-box icon-password">
-                    <Lock :size="17" />
-                  </div>
-                  <input
-                    id="password-current"
-                    v-model="passwordForm.current"
-                    :type="passwordVisible.current ? 'text' : 'password'"
-                    autocomplete="current-password"
-                    placeholder="Kata sandi yang berlaku sekarang"
-                  />
-                  <button
-                    type="button"
-                    class="reveal-button"
-                    :aria-label="passwordVisible.current ? 'Sembunyikan kata sandi lama' : 'Tampilkan kata sandi lama'"
-                    @click="togglePasswordVisible('current')"
-                  >
-                    <EyeOff v-if="passwordVisible.current" :size="16" />
-                    <Eye v-else :size="16" />
-                  </button>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="password-next">Kata sandi baru</label>
-                <div class="input-wrapper">
-                  <div class="icon-box icon-password-new">
-                    <KeyRound :size="16" />
-                  </div>
-                  <input
-                    id="password-next"
-                    v-model="passwordForm.next"
-                    :type="passwordVisible.next ? 'text' : 'password'"
-                    autocomplete="new-password"
-                    placeholder="Minimal 6 karakter"
-                  />
-                  <button
-                    type="button"
-                    class="reveal-button"
-                    :aria-label="passwordVisible.next ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'"
-                    @click="togglePasswordVisible('next')"
-                  >
-                    <EyeOff v-if="passwordVisible.next" :size="16" />
-                    <Eye v-else :size="16" />
-                  </button>
-                </div>
-
-                <p class="input-hint">
-                  Gunakan kombinasi huruf, angka, dan simbol untuk kata sandi
-                  yang lebih kuat.
-                </p>
-              </div>
-
-              <div class="form-group">
-                <label for="password-confirm">Ulangi kata sandi baru</label>
-                <div class="input-wrapper">
-                  <div class="icon-box icon-password-new">
-                    <KeyRound :size="16" />
-                  </div>
-                  <input
-                    id="password-confirm"
-                    v-model="passwordForm.confirm"
-                    :type="passwordVisible.confirm ? 'text' : 'password'"
-                    autocomplete="new-password"
-                    placeholder="Ketik ulang kata sandi baru"
-                    @keyup.enter="submitPassword"
-                  />
-                  <button
-                    type="button"
-                    class="reveal-button"
-                    :aria-label="passwordVisible.confirm ? 'Sembunyikan konfirmasi' : 'Tampilkan konfirmasi'"
-                    @click="togglePasswordVisible('confirm')"
-                  >
-                    <EyeOff v-if="passwordVisible.confirm" :size="16" />
-                    <Eye v-else :size="16" />
-                  </button>
-                </div>
               </div>
             </div>
 
             <div class="password-footer">
-              <p
-                v-if="passwordStatus"
-                class="password-status"
-                :class="passwordStatus.tipe"
-                role="status"
-              >
-                {{ passwordStatus.teks }}
-              </p>
-
               <button
                 type="button"
                 class="password-button"
-                :disabled="changingPassword || !passwordFilled"
-                @click="submitPassword"
+                :disabled="saving"
+                @click="bukaLupaSandi"
               >
-                {{ changingPassword ? 'Menyimpan...' : 'Ubah kata sandi' }}
+                <KeyRound :size="16" />
+                Ubah kata sandi
               </button>
             </div>
           </section>
@@ -1075,78 +885,18 @@ onBeforeUnmount(() => {
   color: var(--primary);
 }
 
-/* Ruang untuk tombol mata di kanan, supaya teks tidak tertimpa ikonnya. */
-.password-block .form-group input {
-  padding: 14px 44px 14px 44px;
-
-  border-radius: 12px;
-}
-
-.password-block .form-group label {
-  margin-bottom: 2px;
-}
-
-.reveal-button {
-  position: absolute;
-  right: 6px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 28px;
-  height: 28px;
-
-  padding: 0;
-
-  border: 0;
-  border-radius: 6px;
-
-  color: var(--muted-foreground);
-  background: transparent;
-
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.reveal-button:hover {
-  color: var(--foreground);
-  background: var(--muted);
-}
-
-.reveal-button:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--ring) 30%, transparent);
-  outline-offset: 1px;
-}
-
 .password-footer {
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-
-  flex-wrap: wrap;
-  gap: 12px;
 
   margin-top: 18px;
 }
 
-.password-status {
-  /* Pesan mengambil sisa ruang supaya tombol tetap menempel di kanan. */
-  flex: 1 1 220px;
-  margin: 0;
-
-  font-size: 13px;
-}
-
-.password-status.error {
-  color: var(--destructive);
-}
-
-.password-status.sukses {
-  color: var(--success);
-}
-
 .password-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
   padding: 10px 18px;
 
   border: 1px solid var(--border);
@@ -1347,13 +1097,9 @@ onBeforeUnmount(() => {
     grid-column: auto;
   }
 
-  .password-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .password-button {
     width: 100%;
+    justify-content: center;
   }
 
   .secondary-button {

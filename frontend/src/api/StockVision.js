@@ -423,26 +423,6 @@ export function deleteUser(userId) {
   return api.delete(`/users/${userId}`)
 }
 
-/**
- * Mengganti kata sandi akun yang sedang login.
- *
- * Terpisah dari updateUser karena backend mewajibkan bukti kepemilikan:
- * kata sandi lama diverifikasi dulu, dan yang baru di-hash sebelum disimpan.
- * Jangan kirim kata sandi lewat updateUser — jalur itu menulis nilainya
- * mentah-mentah ke kolom password.
- *
- * Backend membalas 401 kalau sandi lama salah, 400 kalau sandi baru tidak
- * memenuhi syarat; keduanya sudah berpesan bahasa Indonesia yang siap tampil.
- *
- * → { id, password_changed: true }
- */
-export function changePassword(userId, currentPassword, newPassword) {
-  return api.post(`/users/${userId}/change-password`, {
-    current_password: currentPassword,
-    new_password: newPassword,
-  })
-}
-
 /** → [{ id, name, symbols: [...] }] */
 export function getWatchlists(userId) {
   return api.get(`/users/${userId}/watchlists`)

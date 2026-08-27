@@ -49,7 +49,9 @@ const routes = [
     component: () => import('@/pages/ForgotPasswordPage.vue'),
     meta: {
       public: true,
-      guestOnly: true,
+      // TIDAK guestOnly: Kelola Akun mengarahkan pengguna yang sudah masuk ke
+      // sini untuk mengganti sandi. Dengan guestOnly mereka akan dipantulkan
+      // ke /stream dan tombolnya tidak pernah sampai ke halaman ini.
       hideHeader: true,
     },
   },

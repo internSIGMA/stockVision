@@ -1,14 +1,7 @@
+import google.generativeai as genai
 import logging
 import os
 from dotenv import load_dotenv, find_dotenv
-
-# SDK Gemini bersifat opsional: modul ini punya narasi deterministik sendiri.
-# Kalau paketnya tidak terpasang, impor tingkat-modul yang gagal akan
-# menjatuhkan seluruh pipeline diagnostik — termasuk jalur fallback-nya.
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
 
 load_dotenv(find_dotenv(), override=True)
 
@@ -16,17 +9,11 @@ logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if genai is None:
-    logger.warning(
-        "Paket google-generativeai tidak terpasang. "
-        "Modul Diagnostik memakai narasi deterministik."
-    )
-    llm_model = None
-elif GEMINI_API_KEY:
+if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        llm_model = genai.GenerativeModel("gemini-2.5-flash")
-        logger.info("Google Gemini AI (gemini-2.5-flash) berhasil terkonfigurasi untuk Diagnostik.")
+        llm_model = genai.GenerativeModel("gemini-3.5-flash")
+        logger.info("Google Gemini AI (gemini-3.5-flash) berhasil terkonfigurasi untuk Diagnostik.")
     except Exception as e:
         logger.warning(f"Gagal mengonfigurasi Gemini AI: {e}")
         llm_model = None

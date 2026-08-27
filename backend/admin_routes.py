@@ -49,15 +49,6 @@ def ensure_admin_tables():
         DEFAULT TRUE;
     """)
 
-    # `role` menyimpan jabatan ("Trader — Perbankan"), bukan izin akses.
-    # Kolomnya tidak ada di skema dasar db/database.sql, sementara seluruh
-    # endpoint admin di bawah membaca dan menulisnya — tanpa baris ini setiap
-    # permintaan /admin/* gagal dengan UndefinedColumn.
-    cur.execute("""
-        ALTER TABLE idxsaham.users
-        ADD COLUMN IF NOT EXISTS role VARCHAR(150);
-    """)
-
     # Role / jabatan
     cur.execute("""
         CREATE TABLE IF NOT EXISTS idxsaham.roles (
