@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useEmitenData } from '@/composables/useEmitenData'
@@ -10,7 +10,9 @@ import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
 import DiagnosticPanel from '@/components/stream/DiagnosticPanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
-import CombinedChart from '@/components/charts/CombinedChart.vue'
+import ForecastCandlestickChart from '@/components/charts/ForecastCandlestickChart.vue'
+import RsiChart from '@/components/charts/RsiChart.vue'
+import MacdChart from '@/components/charts/MacdChart.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -20,6 +22,7 @@ import { usePrescriptive } from '@/composables/usePrescriptive'
 import { useDiagnostic } from '@/composables/useDiagnostic'
 import { useTechnicalData } from '@/composables/useTechnicalData'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
+import { rsiReading, macdReading } from '@/utils/technicalIndicators'
 
 /**
  * Satu halaman scroll panjang: semua section berbagi ticker aktif yang sama
@@ -83,6 +86,35 @@ const ASAL = {
 }
 const asalIndikator = computed(() => ASAL[indikatorSumber.value] ?? null)
 
+// Pembacaan status nilai terakhir indikator untuk pill ringkasan di header panel
+const nilaiRsiTerakhir = computed(() => {
+  const arr = indikatorDeret.value?.rsi
+  if (!arr || !arr.length) return null
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i] != null) return arr[i]
+  }
+  return null
+})
+
+const bacaanRsi = computed(() => rsiReading(nilaiRsiTerakhir.value))
+
+const nilaiMacdTerakhir = computed(() => {
+  const m = indikatorDeret.value?.macd
+  if (!m || !m.macdLine || !m.macdLine.length) return null
+  for (let i = m.macdLine.length - 1; i >= 0; i--) {
+    if (m.macdLine[i] != null) {
+      return {
+        macd: m.macdLine[i],
+        signal: m.signalLine?.[i] ?? 0,
+        histogram: m.histogram?.[i] ?? 0,
+      }
+    }
+  }
+  return null
+})
+
+const bacaanMacd = computed(() => macdReading(nilaiMacdTerakhir.value))
+
 // Prescriptive juga berdiri sendiri: emiten yang belum pernah dianalisis
 // pipeline wajar kosong, dan itu tidak boleh menjatuhkan bagian lain.
 const {
@@ -116,7 +148,7 @@ const TIMEFRAMES = [
   { value: '6M', label: '6M' },
   { value: 'YTD', label: 'YTD' },
   { value: '1Y', label: '1Y' },
-  { value: 'ALL', label: 'All' }
+  { value: 'ALL', label: 'All' },
 ]
 const selectedTimeframe = ref('6M')
 </script>
@@ -143,135 +175,233 @@ const selectedTimeframe = ref('6M')
       </div>
 
       <div class="flex flex-col gap-4">
+        <!-- 2 — Stat Cards Ringkasan Pasar -->
         <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <StatCard
-              label="Last Price"
-              :value="formatNumber(summary?.harga)"
-              :change="summary?.perubahan_persen ?? null"
-              :sub="summary?.perubahan != null ? `${summary.perubahan > 0 ? '+' : ''}${formatNumber(summary.perubahan)}` : null"
-              :loading="loading"
-            />
-            <StatCard
-              label="Best Bid"
-              :value="formatNumber(summary?.bid_price)"
-              :sub="summary?.bid_volume != null ? `${formatCompact(summary.bid_volume)} lot` : null"
-              :loading="loading"
-            />
-            <StatCard
-              label="Best Offer"
-              :value="formatNumber(summary?.offer_price)"
-              :sub="summary?.offer_volume != null ? `${formatCompact(summary.offer_volume)} lot` : null"
-              :loading="loading"
-            />
-            <StatCard
-              label="Volume"
-              :value="formatCompact(volume)"
-              :sub="summary?.rata_rata != null ? `Avg ${formatNumber(summary.rata_rata)}` : null"
-              :loading="loading"
-            >
-              <template #badge>
-                <StatusPill v-if="statusPasar" :label="statusPasar" />
-              </template>
-            </StatCard>
-          </div>
+          <StatCard
+            label="Last Price"
+            :value="formatNumber(summary?.harga)"
+            :change="summary?.perubahan_persen ?? null"
+            :sub="summary?.perubahan != null ? `${summary.perubahan > 0 ? '+' : ''}${formatNumber(summary.perubahan)}` : null"
+            :loading="loading"
+          />
+          <StatCard
+            label="Best Bid"
+            :value="formatNumber(summary?.bid_price)"
+            :sub="summary?.bid_volume != null ? `${formatCompact(summary.bid_volume)} lot` : null"
+            :loading="loading"
+          />
+          <StatCard
+            label="Best Offer"
+            :value="formatNumber(summary?.offer_price)"
+            :sub="summary?.offer_volume != null ? `${formatCompact(summary.offer_volume)} lot` : null"
+            :loading="loading"
+          />
+          <StatCard
+            label="Volume"
+            :value="formatCompact(volume)"
+            :sub="summary?.rata_rata != null ? `Avg ${formatNumber(summary.rata_rata)}` : null"
+            :loading="loading"
+          >
+            <template #badge>
+              <StatusPill v-if="statusPasar" :label="statusPasar" />
+            </template>
+          </StatCard>
+        </div>
 
-          <!-- 3 — Advanced Combined Chart -->
-          <section class="rounded-lg border-[0.5px] border-border bg-card">
-            <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
-              <div class="min-w-0">
-                <h2 class="text-[13px] font-medium">
-                  Technical & Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
-                </h2>
-                <p class="mt-0.5 text-[10px] text-muted-foreground">
-                  Grafik historis, proyeksi, RSI, dan MACD terintegrasi.
-                </p>
-              </div>
-
-              <div class="ml-auto flex shrink-0 items-center gap-1.5" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': horizonTersedia.length > 1 }">
-                <Button
-                  v-for="tf in TIMEFRAMES"
-                  :key="tf.value"
-                  variant="ghost"
-                  size="sm"
-                  class="tabular h-8 px-3 text-[13px] transition-colors"
-                  :class="tf.value === selectedTimeframe ? 'bg-primary/15 font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary'"
-                  :aria-pressed="tf.value === selectedTimeframe"
-                  @click="selectedTimeframe = tf.value"
-                >
-                  {{ tf.label }}
-                </Button>
-              </div>
-
-              <!-- Hanya horizon yang datanya benar-benar dikirim backend yang muncul. -->
-              <div v-if="horizonTersedia.length > 1" class="flex shrink-0 items-center gap-1">
-                <Button
-                  v-for="h in horizonTersedia"
-                  :key="h"
-                  variant="ghost"
-                  size="sm"
-                  class="tabular h-7 px-2.5 text-xs"
-                  :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'"
-                  :aria-pressed="h === horizon"
-                  @click="setHorizon(h)"
-                >
-                  {{ h }} Hari
-                </Button>
-              </div>
-            </header>
-
-            <div v-if="forecastLoading || loading" class="h-[600px] animate-pulse bg-muted/50" />
-
-            <EmptyState
-              v-else-if="!ohlc.length"
-              title="Belum ada data grafik"
-              description="Emiten ini belum memiliki histori harga."
-            />
-
-            <div v-else class="flex flex-col gap-3.5 p-3.5">
-              <CombinedChart 
-                :rows="ohlc" 
-                :points="titikProyeksi"
-                :rsi="{ dates: indikatorDeret?.tanggal || [], rsi: indikatorDeret?.rsi || [] }"
-                :macd="{ dates: indikatorDeret?.tanggal || [], macdLine: indikatorDeret?.macd?.macdLine || [], signalLine: indikatorDeret?.macd?.signalLine || [], histogram: indikatorDeret?.macd?.histogram || [] }"
-                :timeframe="selectedTimeframe"
-              />
-
-              <!-- Keempat angka ini seluruhnya kolom dari /api/data/forecast -->
-              <div v-if="adaProyeksi" class="grid grid-cols-2 gap-3 xl:grid-cols-4 mt-2 border-t-[0.5px] border-border pt-4">
-                <StatCard
-                  label="Proyeksi Harga Penutupan"
-                  :value="formatNumber(proyeksiAkhir?.prediksi)"
-                  :sub="proyeksiAkhir ? formatDate(proyeksiAkhir.tanggal) : null"
-                />
-                <StatCard
-                  label="Arah Tren"
-                  :value="trenProyeksi ?? '—'"
-                  :change="proyeksiPersen"
-                  :value-class="trenClass"
-                />
-                <StatCard
-                  label="Rentang Proyeksi"
-                  :value="
-                    rentangProyeksi
-                      ? `${formatNumber(rentangProyeksi.bawah)}–${formatNumber(rentangProyeksi.atas)}`
-                      : '—'
-                  "
-                  :sub="rentangProyeksi ? `Terendah–tertinggi ${horizon} hari` : null"
-                />
-                <StatCard
-                  label="Volume Proyeksi"
-                  :value="formatCompact(volumeProyeksi)"
-                  :sub="volumeProyeksi != null ? `Rata-rata ${horizon} hari` : null"
-                />
-              </div>
-
-              <p v-if="adaProyeksi" class="text-[11px] italic leading-relaxed text-muted-foreground">
-                Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
-                rekomendasi investasi.
+        <!-- 3 — Kotak 1: Technical & Forecasting Chart (Candlestick + Forecast + Volume) -->
+        <section class="rounded-lg border-[0.5px] border-border bg-card">
+          <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <div class="min-w-0">
+              <h2 class="text-[13px] font-medium">
+                Technical &amp; Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
+              </h2>
+              <p class="mt-0.5 text-[10px] text-muted-foreground">
+                Grafik historis OHLC, volume transaksi, dan proyeksi model time-series.
               </p>
             </div>
-          </section>
-        </div>
+
+            <div class="ml-auto flex shrink-0 items-center gap-1.5" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': horizonTersedia.length > 1 }">
+              <Button
+                v-for="tf in TIMEFRAMES"
+                :key="tf.value"
+                variant="ghost"
+                size="sm"
+                class="tabular h-8 px-3 text-[13px] transition-colors"
+                :class="tf.value === selectedTimeframe ? 'bg-primary/15 font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary'"
+                :aria-pressed="tf.value === selectedTimeframe"
+                @click="selectedTimeframe = tf.value"
+              >
+                {{ tf.label }}
+              </Button>
+            </div>
+
+            <!-- Horizon selector untuk proyeksi -->
+            <div v-if="horizonTersedia.length > 1" class="flex shrink-0 items-center gap-1">
+              <Button
+                v-for="h in horizonTersedia"
+                :key="h"
+                variant="ghost"
+                size="sm"
+                class="tabular h-7 px-2.5 text-xs"
+                :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="h === horizon"
+                @click="setHorizon(h)"
+              >
+                {{ h }} Hari
+              </Button>
+            </div>
+          </header>
+
+          <div v-if="forecastLoading || loading" class="h-[440px] animate-pulse bg-muted/50" />
+
+          <EmptyState
+            v-else-if="!ohlc.length"
+            title="Belum ada data grafik"
+            description="Emiten ini belum memiliki histori harga."
+          />
+
+          <div v-else class="flex flex-col gap-3.5 p-3.5">
+            <ForecastCandlestickChart 
+              :rows="ohlc" 
+              :points="titikProyeksi"
+              :timeframe="selectedTimeframe"
+              :height="400"
+            />
+
+            <!-- Ringkasan Statistik Proyeksi -->
+            <div v-if="adaProyeksi" class="grid grid-cols-2 gap-3 xl:grid-cols-4 mt-2 border-t-[0.5px] border-border pt-4">
+              <StatCard
+                label="Proyeksi Harga Penutupan"
+                :value="formatNumber(proyeksiAkhir?.prediksi)"
+                :sub="proyeksiAkhir ? formatDate(proyeksiAkhir.tanggal) : null"
+              />
+              <StatCard
+                label="Arah Tren"
+                :value="trenProyeksi ?? '—'"
+                :change="proyeksiPersen"
+                :value-class="trenClass"
+              />
+              <StatCard
+                label="Rentang Proyeksi"
+                :value="
+                  rentangProyeksi
+                    ? `${formatNumber(rentangProyeksi.bawah)}–${formatNumber(rentangProyeksi.atas)}`
+                    : '—'
+                "
+                :sub="rentangProyeksi ? `Terendah–tertinggi ${horizon} hari` : null"
+              />
+              <StatCard
+                label="Volume Proyeksi"
+                :value="formatCompact(volumeProyeksi)"
+                :sub="volumeProyeksi != null ? `Rata-rata ${horizon} hari` : null"
+              />
+            </div>
+
+            <p v-if="adaProyeksi" class="text-[11px] italic leading-relaxed text-muted-foreground">
+              Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
+              rekomendasi investasi.
+            </p>
+          </div>
+        </section>
+
+        <!-- 4 — Kotak 2: Relative Strength Index (RSI 14) -->
+        <section class="rounded-lg border-[0.5px] border-border bg-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h2 class="text-[13px] font-medium">
+                  Relative Strength Index (RSI 14) — <span class="tabular">{{ ticker ?? '—' }}</span>
+                </h2>
+                <span
+                  v-if="bacaanRsi?.value != null"
+                  class="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  :class="
+                    bacaanRsi.tone === 'down'
+                      ? 'bg-[var(--color-down-bg)] text-[var(--color-down-ink)]'
+                      : bacaanRsi.tone === 'up'
+                        ? 'bg-[var(--color-up-bg)] text-[var(--color-up-ink)]'
+                        : 'bg-muted text-muted-foreground'
+                  "
+                >
+                  {{ bacaanRsi.label }} ({{ bacaanRsi.display }})
+                </span>
+              </div>
+              <p class="mt-0.5 text-[10px] text-muted-foreground">
+                Indikator momentum harga pada skala 0–100 dengan batas overbought (70) dan oversold (30).
+              </p>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+              <span
+                v-if="asalIndikator"
+                class="rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                :title="asalIndikator.title"
+              >
+                {{ asalIndikator.label }}
+              </span>
+            </div>
+          </header>
+
+          <div class="p-3.5">
+            <RsiChart
+              :dates="indikatorDeret?.tanggal || []"
+              :data="indikatorDeret?.rsi || []"
+              :loading="indikatorLoading && !indikatorDeret"
+              :timeframe="selectedTimeframe"
+              :height="220"
+            />
+          </div>
+        </section>
+
+        <!-- 5 — Kotak 3: MACD (12, 26, 9) -->
+        <section class="rounded-lg border-[0.5px] border-border bg-card">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <h2 class="text-[13px] font-medium">
+                  MACD (12, 26, 9) — <span class="tabular">{{ ticker ?? '—' }}</span>
+                </h2>
+                <span
+                  v-if="bacaanMacd?.value != null"
+                  class="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  :class="
+                    bacaanMacd.tone === 'up'
+                      ? 'bg-[var(--color-up-bg)] text-[var(--color-up-ink)]'
+                      : 'bg-[var(--color-down-bg)] text-[var(--color-down-ink)]'
+                  "
+                >
+                  {{ bacaanMacd.label }} ({{ bacaanMacd.display }})
+                </span>
+              </div>
+              <p class="mt-0.5 text-[10px] text-muted-foreground">
+                Moving Average Convergence Divergence, sinyal tren garis MACD &amp; sinyal beserta histogram momentum.
+              </p>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+              <span
+                v-if="asalIndikator"
+                class="rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                :title="asalIndikator.title"
+              >
+                {{ asalIndikator.label }}
+              </span>
+            </div>
+          </header>
+
+          <div class="p-3.5">
+            <MacdChart
+              :dates="indikatorDeret?.tanggal || []"
+              :macd-line="indikatorDeret?.macd?.macdLine || []"
+              :signal-line="indikatorDeret?.macd?.signalLine || []"
+              :histogram="indikatorDeret?.macd?.histogram || []"
+              :loading="indikatorLoading && !indikatorDeret"
+              :timeframe="selectedTimeframe"
+              :height="220"
+            />
+          </div>
+        </section>
+      </div>
 
       <!-- 6 — Prescriptive, berdampingan dengan Diagnostic -->
       <PrescriptivePanel
@@ -293,12 +423,12 @@ const selectedTimeframe = ref('6M')
         </template>
       </PrescriptivePanel>
 
-      <!-- 7 — Analysis/Broker -->
+      <!-- 7 — Analysis/Broker Summary -->
       <div class="flex flex-col gap-4">
         <AnalysisBrokerCard :ohlc="ohlc" :broker="broker" :loading="loading" />
       </div>
 
-      <!-- 7 — Insider -->
+      <!-- 8 — Insider Activity -->
       <InsiderTable :rows="insider" :loading="loading" />
     </div>
   </div>
