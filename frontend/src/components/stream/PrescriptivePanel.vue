@@ -118,8 +118,13 @@ function warnaStrategi(teks) {
 
 <template>
   <section class="flex flex-col gap-3.5">
-    <!-- Box utama yang menyatukan header dan ringkasan AI -->
-    <div class="flex flex-col gap-4 sm:gap-5 rounded-xl border-[0.5px] border-[var(--primary-light)]/50 bg-[var(--background-secondary)] p-4 sm:p-5">
+    <!-- Preskriptif dan diagnostik berdampingan sebagai sepasang kotak setinggi
+         sama. Dipecah dua kolom mulai lg (1024px), bukan xl: di layar 1280px
+         dengan penskalaan Windows 150% viewport-nya jatuh di bawah 1280 dan
+         panel diagnostik terlempar jauh ke bawah, bukan ke samping. -->
+    <div class="grid items-stretch gap-3.5" :class="$slots.samping ? 'lg:grid-cols-2' : ''">
+    <!-- Box utama: ringkasan AI, strategi, dan level trading dalam satu kotak -->
+    <div class="flex h-full flex-col gap-4 rounded-xl border-[0.5px] border-[var(--primary-light)]/50 bg-[var(--background-secondary)] p-4 sm:p-5">
       <!-- Bar judul: identitas panel di kiri, aksi dan waktu data di kanan -->
       <header class="flex flex-wrap items-start justify-between gap-3">
         <h2
@@ -208,176 +213,178 @@ function warnaStrategi(teks) {
             Ringkasan AI belum tersedia untuk emiten ini.
           </p>
 
-          <p class="mt-4 border-t-[0.5px] border-border pt-2.5 text-[10px] text-muted-foreground">
-            Disclaimer: AI tidak 100% akurat. Gunakan analisis ini sebagai referensi tambahan.
-          </p>
         </div>
       </div>
-    </div>
 
-    <!-- State Loading untuk grid strategi bawah -->
-    <div v-if="loading" class="grid gap-3.5 lg:grid-cols-2">
-      <div v-for="i in 2" :key="i" class="h-[190px] animate-pulse rounded-xl bg-muted" />
-    </div>
+      <!-- Strategi Menurut Posisi. Dipisah garis, bukan dibungkus kartu:
+           kartu di dalam kartu di dalam box membuat tiga tepi bersarang yang
+           saling bersaing dan bikin isinya susah dipindai. -->
+      <section
+        v-if="!loading && (backend?.new_buyer_strategy?.recommendation || backend?.holding_strategy?.recommendation)"
+        class="flex flex-col border-t-[0.5px] border-border pt-4"
+      >
+        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Strategi Menurut Posisi
+        </p>
 
-    <template v-else-if="hasil">
+        <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <div
+            v-if="backend.new_buyer_strategy?.recommendation"
+            class="flex gap-3 rounded-lg border-[0.5px] border-border bg-card p-3.5"
+          >
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--background-secondary)] text-muted-foreground"
+            >
+              <UserPlus class="size-4" aria-hidden="true" />
+            </span>
 
-      <!-- Gabungan Strategi, Level Trading & Ringkasan Teknikal -->
-      <div class="flex flex-col gap-3.5">
-        <!-- Level Trading -->
-        <div
-          v-if="levels"
-          class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4"
-        >
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Level Trading
-          </p>
-
-          <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-            <div class="rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                Entry
+            <div class="min-w-0">
+              <p class="text-[10px] text-muted-foreground">Belum punya posisi</p>
+              <p
+                class="text-[14px] font-semibold uppercase leading-snug"
+                :class="warnaStrategi(backend.new_buyer_strategy.recommendation)"
+              >
+                {{ backend.new_buyer_strategy.recommendation }}
               </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none">
-                {{ formatNumber(levels.entry) }}
-              </p>
-              <p class="mt-1.5 text-[10px] text-muted-foreground">Zona masuk ideal</p>
-            </div>
-
-            <div class="rounded-lg border-[0.5px] border-[var(--up)]/40 bg-[var(--up-bg)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-up-ink)]">
-                Target
-              </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-up-ink)]">
-                {{ formatNumber(levels.target) }}
-              </p>
-              <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
-                {{ persen(levels.persenTarget) ?? '—' }} dari entry
-              </p>
-            </div>
-
-            <div class="rounded-lg border-[0.5px] border-[var(--down)]/40 bg-[var(--down-bg)] p-3">
-              <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-down-ink)]">
-                Stop Loss
-              </p>
-              <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-down-ink)]">
-                {{ formatNumber(levels.stopLoss) }}
-              </p>
-              <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
-                {{ persen(levels.persenStopLoss) ?? '—' }} dari entry
+              <p
+                v-if="backend.new_buyer_strategy.reason"
+                class="mt-1.5 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+              >
+                {{ backend.new_buyer_strategy.reason }}
               </p>
             </div>
           </div>
 
           <div
-            v-if="mutuRR"
-            class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-[0.5px] border-border px-3 py-2.5"
+            v-if="backend.holding_strategy?.recommendation"
+            class="flex gap-3 rounded-lg border-[0.5px] border-border bg-card p-3.5"
           >
-            <span class="text-[11px] text-muted-foreground">Risk / Reward</span>
-            <span class="tabular text-[13px] font-bold">1 : {{ levels.riskReward.toFixed(2) }}</span>
-            <StatusPill :label="mutuRR.teks" :tone="mutuRR.tone" />
-
-            <button
-              type="button"
-              :disabled="backendLoading"
-              class="ml-auto flex items-center gap-1.5 rounded-md border-[0.5px] border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-[var(--card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-60"
-              @click="emit('recompute')"
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--background-secondary)] text-muted-foreground"
             >
-              <RefreshCw class="size-3" :class="{ 'animate-spin': backendLoading }" aria-hidden="true" />
-              Hitung ulang RR
-            </button>
+              <Wallet class="size-4" aria-hidden="true" />
+            </span>
+
+            <div class="min-w-0">
+              <p class="text-[10px] text-muted-foreground">Sudah pegang</p>
+              <p
+                class="text-[14px] font-semibold uppercase leading-snug"
+                :class="warnaStrategi(backend.holding_strategy.recommendation)"
+              >
+                {{ backend.holding_strategy.recommendation }}
+              </p>
+              <p
+                v-if="backend.holding_strategy.reason"
+                class="mt-1.5 text-[11px] leading-relaxed text-[var(--foreground-body)]"
+              >
+                {{ backend.holding_strategy.reason }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Level Trading -->
+      <section
+        v-if="!loading && hasil && levels"
+        class="flex flex-col border-t-[0.5px] border-border pt-4"
+      >
+        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Level Trading
+        </p>
+
+        <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <div class="rounded-lg border-[0.5px] border-border bg-card p-3">
+            <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              Entry
+            </p>
+            <p class="tabular mt-1.5 text-[22px] font-bold leading-none">
+              {{ formatNumber(levels.entry) }}
+            </p>
+            <p class="mt-1.5 text-[10px] text-muted-foreground">Zona masuk ideal</p>
+          </div>
+
+          <div class="rounded-lg border-[0.5px] border-[var(--up)]/40 bg-[var(--up-bg)] p-3">
+            <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-up-ink)]">
+              Target
+            </p>
+            <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-up-ink)]">
+              {{ formatNumber(levels.target) }}
+            </p>
+            <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
+              {{ persen(levels.persenTarget) ?? '—' }} dari entry
+            </p>
+          </div>
+
+          <div class="rounded-lg border-[0.5px] border-[var(--down)]/40 bg-[var(--down-bg)] p-3">
+            <p class="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--color-down-ink)]">
+              Stop Loss
+            </p>
+            <p class="tabular mt-1.5 text-[22px] font-bold leading-none text-[var(--color-down-ink)]">
+              {{ formatNumber(levels.stopLoss) }}
+            </p>
+            <p class="tabular mt-1.5 text-[10px] text-muted-foreground">
+              {{ persen(levels.persenStopLoss) ?? '—' }} dari entry
+            </p>
           </div>
         </div>
 
-        <!-- Strategi Menurut Posisi -->
         <div
-          v-if="backend?.new_buyer_strategy?.recommendation || backend?.holding_strategy?.recommendation"
-          class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4"
+          v-if="mutuRR"
+          class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-[0.5px] border-border bg-card px-3 py-2.5"
         >
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Strategi Menurut Posisi
-          </p>
+          <span class="text-[11px] text-muted-foreground">Risk / Reward</span>
+          <span class="tabular text-[13px] font-bold">1 : {{ levels.riskReward.toFixed(2) }}</span>
+          <StatusPill :label="mutuRR.teks" :tone="mutuRR.tone" />
 
-          <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <div
-              v-if="backend.new_buyer_strategy?.recommendation"
-              class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3.5"
-            >
-              <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
-              >
-                <UserPlus class="size-4" aria-hidden="true" />
-              </span>
-
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground">Belum punya posisi</p>
-                <p
-                  class="text-[14px] font-semibold uppercase leading-snug"
-                  :class="warnaStrategi(backend.new_buyer_strategy.recommendation)"
-                >
-                  {{ backend.new_buyer_strategy.recommendation }}
-                </p>
-                <p
-                  v-if="backend.new_buyer_strategy.reason"
-                  class="mt-1.5 text-[11px] leading-relaxed text-[var(--foreground-body)]"
-                >
-                  {{ backend.new_buyer_strategy.reason }}
-                </p>
-              </div>
-            </div>
-
-            <div
-              v-if="backend.holding_strategy?.recommendation"
-              class="flex gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3.5"
-            >
-              <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground"
-              >
-                <Wallet class="size-4" aria-hidden="true" />
-              </span>
-
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground">Sudah pegang</p>
-                <p
-                  class="text-[14px] font-semibold uppercase leading-snug"
-                  :class="warnaStrategi(backend.holding_strategy.recommendation)"
-                >
-                  {{ backend.holding_strategy.recommendation }}
-                </p>
-                <p
-                  v-if="backend.holding_strategy.reason"
-                  class="mt-1.5 text-[11px] leading-relaxed text-[var(--foreground-body)]"
-                >
-                  {{ backend.holding_strategy.reason }}
-                </p>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            :disabled="backendLoading"
+            class="ml-auto flex items-center gap-1.5 rounded-md border-[0.5px] border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-[var(--card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-60"
+            @click="emit('recompute')"
+          >
+            <RefreshCw class="size-3" :class="{ 'animate-spin': backendLoading }" aria-hidden="true" />
+            Hitung ulang RR
+          </button>
         </div>
+      </section>
 
-        <!-- Ringkasan Teknikal -->
-        <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Ringkasan Teknikal
-          </p>
+      <p class="mt-auto border-t-[0.5px] border-border pt-2.5 text-[10px] text-muted-foreground">
+        Disclaimer: AI tidak 100% akurat. Gunakan analisis ini sebagai referensi tambahan.
+      </p>
+    </div>
 
-          <ul class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-            <li
-              v-for="ind in indikator"
-              :key="ind.key"
-              class="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
-            >
-              <span class="text-[12px] text-muted-foreground">{{ ind.name }}</span>
-              <div class="flex items-center gap-2.5">
-                <span class="tabular text-[13px] font-semibold">{{ ind.display }}</span>
-                <StatusPill :label="ind.label" :tone="ind.tone" />
-              </div>
-            </li>
-          </ul>
-        </div>
+      <slot name="samping" />
+    </div>
+
+    <!-- State Loading untuk kartu-kartu di bawah kotak -->
+    <div v-if="loading" class="grid gap-3.5 lg:grid-cols-2">
+      <div v-for="i in 2" :key="i" class="h-[190px] animate-pulse rounded-xl bg-muted" />
+    </div>
+
+    <template v-else-if="hasil">
+      <!-- Ringkasan Teknikal -->
+      <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4">
+        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Ringkasan Teknikal
+        </p>
+
+        <ul class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <li
+            v-for="ind in indikator"
+            :key="ind.key"
+            class="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-border bg-[var(--background-secondary)] p-3"
+          >
+            <span class="text-[12px] text-muted-foreground">{{ ind.name }}</span>
+            <div class="flex items-center gap-2.5">
+              <span class="tabular text-[13px] font-semibold">{{ ind.display }}</span>
+              <StatusPill :label="ind.label" :tone="ind.tone" />
+            </div>
+          </li>
+        </ul>
       </div>
 
-      <!-- 3 — Proyeksi harga; melebar penuh karena barisnya panjang -->
+      <!-- Proyeksi harga; melebar penuh karena barisnya panjang -->
       <div class="flex flex-col rounded-xl border-[0.5px] border-border bg-card p-4">
         <div class="mb-1 flex items-baseline justify-between gap-2">
           <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">

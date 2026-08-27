@@ -41,13 +41,10 @@ const masalah = computed(() => {
 })
 
 function lanjut() {
-  // Pemilihan emiten hanya untuk pendaftar baru — admin langsung masuk.
-  if (
-    !auth.isAdmin &&
-    auth.user &&
-    auth.isNewRegistration
-  ) {
-    router.push('/onboarding')
+  // Setiap pengguna biasa melewati pemilihan emiten dulu — bukan hanya
+  // pendaftar baru. Admin tidak punya watchlist sendiri, jadi langsung masuk.
+  if (!auth.isAdmin && auth.user) {
+    router.push('/preferences')
     return
   }
   router.push('/stream')
@@ -64,7 +61,8 @@ async function onSubmit() {
       username: form.value.username.trim(),
       name: form.value.name.trim(),
     })
-    lanjut()
+    // Setelah sukses registrasi, arahkan ke halaman login
+    router.push('/login')
   } catch (err) {
     if (/duplicate|unique/i.test(err.message)) {
       error.value = 'Email atau username ini sudah terdaftar. Silakan gunakan yang lain atau langsung masuk.'

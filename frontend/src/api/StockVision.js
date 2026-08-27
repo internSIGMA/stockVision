@@ -162,6 +162,24 @@ export async function getPrescriptive(symbol) {
   return res?.results?.[0] ?? null
 }
 
+/**
+ * Hasil analisis diagnostik terbaru: menjawab "kenapa harganya begini?" —
+ * fase tren (MA5/MA20), akumulasi-distribusi bandar, anomali volume,
+ * aktivitas insider, konteks fundamental, dan narasi akar masalahnya.
+ *
+ * Isinya dibaca dari tabel idxsaham.diagnostic_results yang diisi pipeline
+ * terjadwal, jadi emiten yang belum pernah dianalisis wajar mengembalikan
+ * null — bukan error yang perlu ditampilkan sebagai kegagalan.
+ *
+ * → { symbol, company_name, sector, tanggal_analisis, last_close, return_pct,
+ *     trend_diagnostic, bandarmology_diagnostic, volume_diagnostic,
+ *     insider_diagnostic, fundamental_context, llm_diagnostic_summary } | null
+ */
+export async function getDiagnostic(symbol) {
+  const res = await api.get('/api/diagnostic/results', { params: { symbol } })
+  return res?.results?.[0] ?? null
+}
+
 // ============================================================
 // TRIGGER CRAWL MANUAL
 // ============================================================
@@ -403,6 +421,26 @@ export function getProfile(userId) {
 /** Menghapus akun beserta watchlist-nya. → { id, deleted: true } | 404 */
 export function deleteUser(userId) {
   return api.delete(`/users/${userId}`)
+}
+
+/**
+ * Mengganti kata sandi akun yang sedang login.
+ *
+ * Terpisah dari updateUser karena backend mewajibkan bukti kepemilikan:
+ * kata sandi lama diverifikasi dulu, dan yang baru di-hash sebelum disimpan.
+ * Jangan kirim kata sandi lewat updateUser — jalur itu menulis nilainya
+ * mentah-mentah ke kolom password.
+ *
+ * Backend membalas 401 kalau sandi lama salah, 400 kalau sandi baru tidak
+ * memenuhi syarat; keduanya sudah berpesan bahasa Indonesia yang siap tampil.
+ *
+ * → { id, password_changed: true }
+ */
+export function changePassword(userId, currentPassword, newPassword) {
+  return api.post(`/users/${userId}/change-password`, {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
 }
 
 /** → [{ id, name, symbols: [...] }] */

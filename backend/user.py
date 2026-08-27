@@ -20,6 +20,10 @@ load_dotenv(find_dotenv(), override=True)
 _reset_codes = {}   # email -> { "code": code, "expires_at": timestamp }
 _reset_tokens = {}  # temp_token -> email
 
+# In-memory stores for user signup verification mechanism
+_signup_codes = {}   # email -> { "code": code, "expires_at": timestamp }
+_signup_tokens = {}  # temp_token -> email
+
 user_bp = Blueprint("user_bp", __name__)
 
 
@@ -360,17 +364,6 @@ def get_watchlists(user_id):
     cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
     rows = cur.fetchall()
 
-    if not rows:
-        default_name = "Daftar Utama"
-        default_symbols = ["BBCA", "BBRI", "BMRI", "TLKM", "ANTM", "PTBA"]
-        cur.execute(
-            "INSERT INTO idxsaham.watchlists (user_id, name, symbols) VALUES (%s, %s, %s) RETURNING id, user_id, name, symbols, created_at;",
-            (user_id, default_name, json.dumps(default_symbols))
-        )
-        conn.commit()
-        cur.execute("SELECT id, user_id, name, symbols, created_at FROM idxsaham.watchlists WHERE user_id = %s ORDER BY id ASC;", (user_id,))
-        rows = cur.fetchall()
-
     cur.close()
     conn.close()
 
@@ -616,6 +609,73 @@ def login_user(payload):
     }
 
 
+class PasswordError(Exception):
+    """Kegagalan yang aman ditampilkan ke pengguna saat mengubah kata sandi."""
+
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+def change_password(user_id, payload):
+    """
+    Mengganti kata sandi setelah memverifikasi kata sandi lama.
+
+    Terpisah dari update_user karena syaratnya beda: di sini penggantian hanya
+    boleh jalan kalau pemohon membuktikan tahu kata sandi yang berlaku, dan
+    nilainya wajib di-hash sebelum masuk kolom password.
+    """
+    if not user_id:
+        raise ValueError("user_id is required")
+
+    payload = payload or {}
+    current_password = str(payload.get("current_password") or "")
+    new_password = str(payload.get("new_password") or "")
+
+    if not current_password or not new_password:
+        raise PasswordError("Kata sandi lama dan baru wajib diisi")
+
+    if len(new_password) < 6:
+        raise PasswordError("Kata sandi baru minimal 6 karakter")
+
+    if new_password == current_password:
+        raise PasswordError("Kata sandi baru harus berbeda dari kata sandi lama")
+
+    _ensure_users_table()
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT password FROM idxsaham.users WHERE id = %s;",
+        (user_id,),
+    )
+    row = cur.fetchone()
+
+    if not row:
+        cur.close()
+        conn.close()
+        raise PasswordError("user not found", status=404)
+
+    stored_hash = row[0]
+
+    if not stored_hash or not check_password_hash(stored_hash, current_password):
+        cur.close()
+        conn.close()
+        raise PasswordError("Kata sandi lama tidak sesuai", status=401)
+
+    cur.execute(
+        "UPDATE idxsaham.users SET password = %s WHERE id = %s RETURNING id;",
+        (generate_password_hash(new_password), user_id),
+    )
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"id": updated[0], "password_changed": True}
+
+
 def delete_user(user_id):
     if not user_id:
         raise ValueError("user_id is required")
@@ -663,6 +723,16 @@ def update_user_route(user_id):
     if not user:
         return jsonify({"error": "user not found"}), 404
     return jsonify(user)
+
+
+@user_bp.route("/users/<int:user_id>/change-password", methods=["POST"])
+def change_password_route(user_id):
+    payload = request.get_json(silent=True) or {}
+    try:
+        return jsonify(change_password(user_id, payload))
+    except PasswordError as exc:
+        # Pesannya sudah disusun untuk dibaca pengguna, jadi diteruskan apa adanya.
+        return jsonify({"error": exc.message}), exc.status
 
 
 @user_bp.route("/users/<int:user_id>/watchlists", methods=["GET"])
@@ -792,6 +862,42 @@ def send_reset_email(email, code):
             return True
         except Exception as e:
             print(f"[SMTP] Error sending email via SMTP: {e}")
+            return False
+    else:
+        # Fallback simulation
+        print(f"\n==========================================")
+        print(f"[SMTP SIMULATION] To: {email}")
+        print(f"Subject: {subject}")
+        print(f"Body: {body}")
+        print(f"==========================================\n")
+        return False
+
+
+def send_signup_code_email(email, code):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+    
+    subject = "Kode Verifikasi Pendaftaran Akun stockVision"
+    body = f"Kode verifikasi pendaftaran akun stockVision Anda adalah: {code}\nKode ini berlaku selama 5 menit."
+    
+    if smtp_host and smtp_port and smtp_user and smtp_pass:
+        try:
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = email
+            
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+            print(f"[SMTP] Signup verification code sent to {email} successfully.")
+            return True
+        except Exception as e:
+            print(f"[SMTP] Error sending signup verification code via SMTP: {e}")
             return False
     else:
         # Fallback simulation
@@ -985,6 +1091,147 @@ def reset_password_route():
     return jsonify({
         "message": "Kata sandi berhasil direset. Silakan masuk kembali."
     })
+
+
+@user_bp.route("/users/register/send-code", methods=["POST"])
+def send_signup_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    username = str(payload.get("username") or "").strip()
+    
+    if not email:
+        return jsonify({"error": "Email wajib diisi"}), 400
+        
+    _ensure_users_table()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM idxsaham.users WHERE email = %s;", (email,))
+    user_by_email = cur.fetchone()
+    
+    user_by_username = None
+    if username:
+        cur.execute("SELECT id FROM idxsaham.users WHERE username = %s;", (username,))
+        user_by_username = cur.fetchone()
+        
+    cur.close()
+    conn.close()
+    
+    if user_by_email:
+        return jsonify({"error": "Email sudah terdaftar"}), 400
+    if user_by_username:
+        return jsonify({"error": "Username sudah digunakan"}), 400
+        
+    # Generate 6-char alphanumeric code (uppercase letters + numbers)
+    code = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    _signup_codes[email] = {
+        "code": code,
+        "expires_at": time.time() + 300  # 5 minutes
+    }
+    
+    # Send email (or simulate)
+    smtp_sent = send_signup_code_email(email, code)
+    
+    resp = {
+        "message": "Kode verifikasi telah dikirim ke email.",
+        "simulated": not smtp_sent
+    }
+    if not smtp_sent:
+        resp["debug_code"] = code  # helper for testing in Postman/browser without SMTP
+        
+    return jsonify(resp)
+
+
+@user_bp.route("/users/register/verify-code", methods=["POST"])
+def verify_signup_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    code = str(payload.get("code") or "").strip().upper()
+    
+    if not email or not code:
+        return jsonify({"error": "Email dan kode verifikasi wajib diisi"}), 400
+        
+    entry = _signup_codes.get(email)
+    if not entry:
+        return jsonify({"error": "Silakan kirim kode terlebih dahulu"}), 400
+        
+    if time.time() > entry["expires_at"]:
+        _signup_codes.pop(email, None)
+        return jsonify({"error": "Kode verifikasi telah kadaluwarsa (berlaku 5 menit)"}), 400
+        
+    if entry["code"] != code:
+        return jsonify({"error": "Kode verifikasi salah"}), 400
+        
+    # Validation succeeded, remove code and generate temp signup token
+    _signup_codes.pop(email, None)
+    temp_token = str(uuid.uuid4())
+    _signup_tokens[temp_token] = email
+    
+    return jsonify({
+        "message": "Verifikasi email berhasil.",
+        "token": temp_token
+    })
+
+
+@user_bp.route("/users/register/complete", methods=["POST"])
+def complete_signup_route():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    name = str(payload.get("name") or "").strip()
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    default_ticker = str(payload.get("default_ticker") or "BBCA").strip().upper()
+    phone_number = str(payload.get("phone_number") or "").strip() or None
+    
+    if not token:
+        return jsonify({"error": "Token pendaftaran wajib diisi"}), 400
+        
+    email = _signup_tokens.get(token)
+    if not email:
+        return jsonify({"error": "Token pendaftaran tidak valid atau telah kadaluwarsa"}), 400
+        
+    if not username:
+        return jsonify({"error": "Username wajib diisi"}), 400
+        
+    if not password:
+        return jsonify({"error": "Kata sandi wajib diisi"}), 400
+        
+    if len(password) < 6:
+        return jsonify({"error": "Kata sandi minimal 6 karakter"}), 400
+        
+    try:
+        user = create_user({
+            "email": email,
+            "username": username,
+            "password": password,
+            "name": name or username,
+            "access_role": "user",
+            "default_ticker": default_ticker,
+            "phone_number": phone_number,
+        })
+    except psycopg2.IntegrityError:
+        return jsonify({"error": "Email atau username sudah terdaftar"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            return jsonify({"error": "Email atau username sudah terdaftar"}), 400
+        return jsonify({"error": f"Gagal membuat akun: {str(e)}"}), 500
+        
+    # Revoke token
+    _signup_tokens.pop(token, None)
+    
+    try:
+        send_registration_email(user["email"], user.get("name"), user.get("username"))
+    except Exception as e:
+        print(f"[SMTP] Error sending registration notification: {e}")
+        
+    log_activity(
+        user["id"],
+        "REGISTER",
+        "Pengguna baru berhasil mendaftar via email verifikasi"
+    )
+    
+    return jsonify(user), 201
 
 
 @user_bp.route("/users/google-login", methods=["POST"])

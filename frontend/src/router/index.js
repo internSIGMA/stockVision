@@ -65,6 +65,17 @@ const routes = [
     },
   },
   {
+    path: '/preferences',
+    name: 'preferences',
+    component: () => import('@/pages/PreferencesPage.vue'),
+    meta: {
+      requiresAuth: true,
+      // Sama seperti onboarding: emiten pantauan milik user biasa, admin tidak
+      // punya watchlist sendiri jadi halaman ini tidak berlaku untuknya.
+      userOnly: true,
+    },
+  },
+  {
     path: '/stream',
     name: 'stream',
     component: () => import('@/pages/StreamPage.vue'),

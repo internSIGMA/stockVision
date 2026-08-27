@@ -7,20 +7,17 @@ import EmitenHeader from '@/components/layout/EmitenHeader.vue'
 import TrendingStocksStrip from '@/components/shared/TrendingStocksStrip.vue'
 import WatchlistPanel from '@/components/stream/WatchlistPanel.vue'
 import PrescriptivePanel from '@/components/stream/PrescriptivePanel.vue'
+import DiagnosticPanel from '@/components/stream/DiagnosticPanel.vue'
 import AnalysisBrokerCard from '@/components/stream/AnalysisBrokerCard.vue'
 import InsiderTable from '@/components/stream/InsiderTable.vue'
-import CandlestickChart from '@/components/charts/CandlestickChart.vue'
-
-import ForecastCandlestickChart from '@/components/charts/ForecastCandlestickChart.vue'
-import RsiChart from '@/components/charts/RsiChart.vue'
-import MacdChart from '@/components/charts/MacdChart.vue'
-import IndicatorSection from '@/components/stream/IndicatorSection.vue'
+import CombinedChart from '@/components/charts/CombinedChart.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { useForecastData } from '@/composables/useForecastData'
 import { usePrescriptive } from '@/composables/usePrescriptive'
+import { useDiagnostic } from '@/composables/useDiagnostic'
 import { useTechnicalData } from '@/composables/useTechnicalData'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
@@ -38,30 +35,6 @@ const { ticker, summary, ohlc, insider, broker, loading, error, reload } = useEm
 const authStore = useAuthStore()
 
 const strip = ref(null)
-const candle = ref(null)
-
-/** Rentang waktu yang bisa dipilih di header candlestick. */
-const RENTANG_CANDLE = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y']
-/** Null = seluruh histori (hasil "Reset zoom"). */
-const rentangCandle = ref(null)
-
-function pilihRentangCandle(r) {
-  rentangCandle.value = r
-  candle.value?.setRange(r)
-}
-
-function resetRentangCandle() {
-  rentangCandle.value = null
-  candle.value?.resetZoom()
-}
-
-// Ganti emiten mengembalikan chart ke fitContent; pilihan rentang dipasang ulang
-// supaya tombol yang menyala tetap cocok dengan yang terlihat.
-watch(ohlc, () => {
-  if (!rentangCandle.value) return
-  nextTick(() => candle.value?.setRange(rentangCandle.value))
-})
-
 
 function segarkan() {
   reload()
@@ -119,12 +92,33 @@ const {
   reload: muatUlangPrescriptive,
 } = usePrescriptive()
 
+// Diagnostik menjawab "kenapa harganya begini" dan dimuat terpisah dari
+// prescriptive: tabelnya diisi pipeline lain, jadi salah satunya bisa kosong
+// tanpa mengosongkan yang lain.
+const {
+  data: diagnostic,
+  temuan: temuanDiagnostik,
+  isLoading: diagnosticLoading,
+} = useDiagnostic()
+
 const TREN_CLASS = {
   NAIK: 'text-up',
   TURUN: 'text-down',
 }
 
 const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-foreground')
+
+const TIMEFRAMES = [
+  { value: '1D', label: '1D' },
+  { value: '5D', label: '5D' },
+  { value: '1M', label: '1M' },
+  { value: '3M', label: '3M' },
+  { value: '6M', label: '6M' },
+  { value: 'YTD', label: 'YTD' },
+  { value: '1Y', label: '1Y' },
+  { value: 'ALL', label: 'All' }
+]
+const selectedTimeframe = ref('6M')
 </script>
 
 <template>
@@ -132,9 +126,6 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
     <EmitenHeader @crawled="segarkan" />
 
     <div class="flex flex-col gap-4 p-4">
-      <!-- 1 — Trending -->
-      <TrendingStocksStrip ref="strip" />
-
       <!-- Snapshot harga bisa 404 kalau emiten belum pernah di-crawl; chart & tabel tetap jalan. -->
       <p
         v-if="error && !loading"
@@ -144,12 +135,15 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         {{ error }}
       </p>
 
-      <!-- 2 — Watchlist di kiri; statistik dan candlestick berbagi kolom kanan -->
-      <div class="grid grid-cols-1 gap-4" :class="authStore.isAdmin ? '' : 'lg:grid-cols-[300px_1fr]'">
-        <WatchlistPanel v-if="!authStore.isAdmin" />
+      <!-- 1 — Trending / Watchlist -->
+      <TrendingStocksStrip v-if="authStore.isAdmin" ref="strip" class="mb-4" />
+      
+      <div v-else class="mb-4">
+        <WatchlistPanel ref="strip" />
+      </div>
 
-        <div class="flex min-w-0 flex-col gap-4">
-          <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard
               label="Last Price"
               :value="formatNumber(summary?.harga)"
@@ -181,180 +175,105 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
             </StatCard>
           </div>
 
-          <!-- 3 — Candlestick -->
+          <!-- 3 — Advanced Combined Chart -->
           <section class="rounded-lg border-[0.5px] border-border bg-card">
-            <header class="flex items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+            <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
               <div class="min-w-0">
                 <h2 class="text-[13px] font-medium">
-                  Historical Candlestick — <span class="tabular">{{ ticker ?? '—' }}</span>
+                  Technical & Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
                 </h2>
                 <p class="mt-0.5 text-[10px] text-muted-foreground">
-                  Data OHLC tersimpan di database lokal, diperbarui lewat crawler.
+                  Grafik historis, proyeksi, RSI, dan MACD terintegrasi.
                 </p>
               </div>
 
-              <div v-if="ohlc.length" class="ml-auto flex shrink-0 flex-wrap items-center gap-1">
+              <div class="ml-auto flex shrink-0 items-center gap-1.5" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': horizonTersedia.length > 1 }">
                 <Button
-                  v-for="r in RENTANG_CANDLE"
-                  :key="r"
+                  v-for="tf in TIMEFRAMES"
+                  :key="tf.value"
                   variant="ghost"
                   size="sm"
-                  class="tabular h-6 border border-transparent px-2 text-[11px] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                  :class="r === rentangCandle ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'"
-                  :aria-pressed="r === rentangCandle"
-                  @click="pilihRentangCandle(r)"
+                  class="tabular h-8 px-3 text-[13px] transition-colors"
+                  :class="tf.value === selectedTimeframe ? 'bg-primary/15 font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary'"
+                  :aria-pressed="tf.value === selectedTimeframe"
+                  @click="selectedTimeframe = tf.value"
                 >
-                  {{ r }}
+                  {{ tf.label }}
                 </Button>
+              </div>
+
+              <!-- Hanya horizon yang datanya benar-benar dikirim backend yang muncul. -->
+              <div v-if="horizonTersedia.length > 1" class="flex shrink-0 items-center gap-1">
                 <Button
+                  v-for="h in horizonTersedia"
+                  :key="h"
                   variant="ghost"
                   size="sm"
-                  class="h-6 border border-transparent px-2 text-[11px] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                  :class="rentangCandle ? 'text-muted-foreground' : 'bg-muted font-medium text-foreground'"
-                  @click="resetRentangCandle()"
+                  class="tabular h-7 px-2.5 text-xs"
+                  :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                  :aria-pressed="h === horizon"
+                  @click="setHorizon(h)"
                 >
-                  Reset zoom
+                  {{ h }} Hari
                 </Button>
               </div>
             </header>
 
-            <div v-if="loading" class="h-[340px] animate-pulse bg-muted/50" />
+            <div v-if="forecastLoading || loading" class="h-[600px] animate-pulse bg-muted/50" />
 
             <EmptyState
               v-else-if="!ohlc.length"
-              title="Belum ada data candlestick"
+              title="Belum ada data grafik"
               description="Emiten ini belum memiliki histori harga."
             />
 
-            <div v-else class="p-2">
-              <CandlestickChart ref="candle" :rows="ohlc" />
+            <div v-else class="flex flex-col gap-3.5 p-3.5">
+              <CombinedChart 
+                :rows="ohlc" 
+                :points="titikProyeksi"
+                :rsi="{ dates: indikatorDeret?.tanggal || [], rsi: indikatorDeret?.rsi || [] }"
+                :macd="{ dates: indikatorDeret?.tanggal || [], macdLine: indikatorDeret?.macd?.macdLine || [], signalLine: indikatorDeret?.macd?.signalLine || [], histogram: indikatorDeret?.macd?.histogram || [] }"
+                :timeframe="selectedTimeframe"
+              />
+
+              <!-- Keempat angka ini seluruhnya kolom dari /api/data/forecast -->
+              <div v-if="adaProyeksi" class="grid grid-cols-2 gap-3 xl:grid-cols-4 mt-2 border-t-[0.5px] border-border pt-4">
+                <StatCard
+                  label="Proyeksi Harga Penutupan"
+                  :value="formatNumber(proyeksiAkhir?.prediksi)"
+                  :sub="proyeksiAkhir ? formatDate(proyeksiAkhir.tanggal) : null"
+                />
+                <StatCard
+                  label="Arah Tren"
+                  :value="trenProyeksi ?? '—'"
+                  :change="proyeksiPersen"
+                  :value-class="trenClass"
+                />
+                <StatCard
+                  label="Rentang Proyeksi"
+                  :value="
+                    rentangProyeksi
+                      ? `${formatNumber(rentangProyeksi.bawah)}–${formatNumber(rentangProyeksi.atas)}`
+                      : '—'
+                  "
+                  :sub="rentangProyeksi ? `Terendah–tertinggi ${horizon} hari` : null"
+                />
+                <StatCard
+                  label="Volume Proyeksi"
+                  :value="formatCompact(volumeProyeksi)"
+                  :sub="volumeProyeksi != null ? `Rata-rata ${horizon} hari` : null"
+                />
+              </div>
+
+              <p v-if="adaProyeksi" class="text-[11px] italic leading-relaxed text-muted-foreground">
+                Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
+                rekomendasi investasi.
+              </p>
             </div>
           </section>
         </div>
-      </div>
 
-      <!-- 4 — Forecasting -->
-      <section class="rounded-lg border-[0.5px] border-border bg-card">
-        <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
-          <div class="min-w-0">
-            <h2 class="text-[13px] font-medium">
-              Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
-            </h2>
-            <p class="mt-0.5 text-[10px] text-muted-foreground">
-              Proyeksi harga berdasarkan model time-series.
-            </p>
-          </div>
-
-          <!-- Hanya horizon yang datanya benar-benar dikirim backend yang muncul. -->
-          <div v-if="horizonTersedia.length > 1" class="ml-auto flex shrink-0 items-center gap-1">
-            <Button
-              v-for="h in horizonTersedia"
-              :key="h"
-              variant="ghost"
-              size="sm"
-              class="tabular h-6 px-2 text-[10px]"
-              :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'"
-              :aria-pressed="h === horizon"
-              @click="setHorizon(h)"
-            >
-              {{ h }} Hari
-            </Button>
-          </div>
-
-          <span
-            v-else-if="adaProyeksi"
-            class="tabular ml-auto shrink-0 rounded-full border-[0.5px] border-border px-2 py-0.5 text-[10px] text-muted-foreground"
-          >
-            {{ horizon }} hari ke depan
-          </span>
-        </header>
-
-        <div v-if="forecastLoading || loading" class="h-[320px] animate-pulse bg-muted/50" />
-
-        <EmptyState
-          v-else-if="forecastError || !adaProyeksi"
-          title="Data forecasting belum tersedia untuk emiten ini"
-          :description="forecastError || 'Proyeksi muncul setelah emiten ini punya histori harga yang cukup.'"
-        />
-
-        <div v-else class="flex flex-col gap-3.5 p-3.5">
-          <ForecastCandlestickChart :rows="ohlc" :points="titikProyeksi" />
-
-          <!-- Keempat angka ini seluruhnya kolom dari /api/data/forecast:
-               close, low, high, dan volume. Backend tidak mengirim skor
-               confidence atau nama model, jadi tidak ada kartu untuk itu. -->
-          <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <StatCard
-              label="Proyeksi Harga Penutupan"
-              :value="formatNumber(proyeksiAkhir?.prediksi)"
-              :sub="proyeksiAkhir ? formatDate(proyeksiAkhir.tanggal) : null"
-            />
-            <StatCard
-              label="Arah Tren"
-              :value="trenProyeksi ?? '—'"
-              :change="proyeksiPersen"
-              :value-class="trenClass"
-            />
-            <StatCard
-              label="Rentang Proyeksi"
-              :value="
-                rentangProyeksi
-                  ? `${formatNumber(rentangProyeksi.bawah)}–${formatNumber(rentangProyeksi.atas)}`
-                  : '—'
-              "
-              :sub="rentangProyeksi ? `Terendah–tertinggi ${horizon} hari` : null"
-            />
-            <StatCard
-              label="Volume Proyeksi"
-              :value="formatCompact(volumeProyeksi)"
-              :sub="volumeProyeksi != null ? `Rata-rata ${horizon} hari` : null"
-            />
-          </div>
-
-          <p class="text-[11px] italic leading-relaxed text-muted-foreground">
-            Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
-            rekomendasi investasi.
-          </p>
-        </div>
-      </section>
-
-      <!-- 5 — Indikator teknikal; tiap indikator punya container sendiri dan
-           default tertutup supaya halaman tidak langsung penuh chart. -->
-      <IndicatorSection
-        title="RSI (14)"
-        subtitle="Relative Strength Index — momentum harga pada skala 0–100."
-        storage-key="sv_show_rsi"
-        :ticker="ticker"
-        :badge="asalIndikator?.label"
-        :badge-title="asalIndikator?.title"
-      >
-        <RsiChart
-          :dates="indikatorDeret?.tanggal || []"
-          :data="indikatorDeret?.rsi || []"
-          :loading="indikatorLoading && !indikatorDeret"
-          :height="260"
-        />
-      </IndicatorSection>
-
-      <IndicatorSection
-        title="MACD (12, 26, 9)"
-        subtitle="Selisih dua EMA beserta garis sinyal dan histogramnya."
-        storage-key="sv_show_macd"
-        :ticker="ticker"
-        :badge="asalIndikator?.label"
-        :badge-title="asalIndikator?.title"
-      >
-        <MacdChart
-          :dates="indikatorDeret?.tanggal || []"
-          :macd-line="indikatorDeret?.macd?.macdLine || []"
-          :signal-line="indikatorDeret?.macd?.signalLine || []"
-          :histogram="indikatorDeret?.macd?.histogram || []"
-          :loading="indikatorLoading && !indikatorDeret"
-          :height="260"
-        />
-      </IndicatorSection>
-
-      <!-- 6 — Prescriptive -->
+      <!-- 6 — Prescriptive, berdampingan dengan Diagnostic -->
       <PrescriptivePanel
         :rows="ohlc"
         :forecast="titikProyeksi"
@@ -364,7 +283,15 @@ const trenClass = computed(() => TREN_CLASS[trenProyeksi.value] ?? 'text-muted-f
         :backend-loading="prescriptiveLoading"
         :levels="tradingLevels"
         @recompute="muatUlangPrescriptive"
-      />
+      >
+        <template #samping>
+          <DiagnosticPanel
+            :backend="diagnostic"
+            :backend-loading="diagnosticLoading"
+            :temuan="temuanDiagnostik"
+          />
+        </template>
+      </PrescriptivePanel>
 
       <!-- 7 — Analysis/Broker -->
       <div class="flex flex-col gap-4">
