@@ -20,6 +20,10 @@ load_dotenv(find_dotenv(), override=True)
 _reset_codes = {}   # email -> { "code": code, "expires_at": timestamp }
 _reset_tokens = {}  # temp_token -> email
 
+# In-memory stores for user signup verification mechanism
+_signup_codes = {}   # email -> { "code": code, "expires_at": timestamp }
+_signup_tokens = {}  # temp_token -> email
+
 user_bp = Blueprint("user_bp", __name__)
 
 
@@ -792,6 +796,42 @@ def send_reset_email(email, code):
         return False
 
 
+def send_signup_code_email(email, code):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+    
+    subject = "Kode Verifikasi Pendaftaran Akun stockVision"
+    body = f"Kode verifikasi pendaftaran akun stockVision Anda adalah: {code}\nKode ini berlaku selama 5 menit."
+    
+    if smtp_host and smtp_port and smtp_user and smtp_pass:
+        try:
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = email
+            
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+            print(f"[SMTP] Signup verification code sent to {email} successfully.")
+            return True
+        except Exception as e:
+            print(f"[SMTP] Error sending signup verification code via SMTP: {e}")
+            return False
+    else:
+        # Fallback simulation
+        print(f"\n==========================================")
+        print(f"[SMTP SIMULATION] To: {email}")
+        print(f"Subject: {subject}")
+        print(f"Body: {body}")
+        print(f"==========================================\n")
+        return False
+
+
 def _make_display_name(name, username, email):
     if name and str(name).strip():
         return str(name).strip()
@@ -974,6 +1014,147 @@ def reset_password_route():
     return jsonify({
         "message": "Kata sandi berhasil direset. Silakan masuk kembali."
     })
+
+
+@user_bp.route("/users/register/send-code", methods=["POST"])
+def send_signup_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    username = str(payload.get("username") or "").strip()
+    
+    if not email:
+        return jsonify({"error": "Email wajib diisi"}), 400
+        
+    _ensure_users_table()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM idxsaham.users WHERE email = %s;", (email,))
+    user_by_email = cur.fetchone()
+    
+    user_by_username = None
+    if username:
+        cur.execute("SELECT id FROM idxsaham.users WHERE username = %s;", (username,))
+        user_by_username = cur.fetchone()
+        
+    cur.close()
+    conn.close()
+    
+    if user_by_email:
+        return jsonify({"error": "Email sudah terdaftar"}), 400
+    if user_by_username:
+        return jsonify({"error": "Username sudah digunakan"}), 400
+        
+    # Generate 6-char alphanumeric code (uppercase letters + numbers)
+    code = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    _signup_codes[email] = {
+        "code": code,
+        "expires_at": time.time() + 300  # 5 minutes
+    }
+    
+    # Send email (or simulate)
+    smtp_sent = send_signup_code_email(email, code)
+    
+    resp = {
+        "message": "Kode verifikasi telah dikirim ke email.",
+        "simulated": not smtp_sent
+    }
+    if not smtp_sent:
+        resp["debug_code"] = code  # helper for testing in Postman/browser without SMTP
+        
+    return jsonify(resp)
+
+
+@user_bp.route("/users/register/verify-code", methods=["POST"])
+def verify_signup_code_route():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    code = str(payload.get("code") or "").strip().upper()
+    
+    if not email or not code:
+        return jsonify({"error": "Email dan kode verifikasi wajib diisi"}), 400
+        
+    entry = _signup_codes.get(email)
+    if not entry:
+        return jsonify({"error": "Silakan kirim kode terlebih dahulu"}), 400
+        
+    if time.time() > entry["expires_at"]:
+        _signup_codes.pop(email, None)
+        return jsonify({"error": "Kode verifikasi telah kadaluwarsa (berlaku 5 menit)"}), 400
+        
+    if entry["code"] != code:
+        return jsonify({"error": "Kode verifikasi salah"}), 400
+        
+    # Validation succeeded, remove code and generate temp signup token
+    _signup_codes.pop(email, None)
+    temp_token = str(uuid.uuid4())
+    _signup_tokens[temp_token] = email
+    
+    return jsonify({
+        "message": "Verifikasi email berhasil.",
+        "token": temp_token
+    })
+
+
+@user_bp.route("/users/register/complete", methods=["POST"])
+def complete_signup_route():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get("token") or "").strip()
+    name = str(payload.get("name") or "").strip()
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    default_ticker = str(payload.get("default_ticker") or "BBCA").strip().upper()
+    phone_number = str(payload.get("phone_number") or "").strip() or None
+    
+    if not token:
+        return jsonify({"error": "Token pendaftaran wajib diisi"}), 400
+        
+    email = _signup_tokens.get(token)
+    if not email:
+        return jsonify({"error": "Token pendaftaran tidak valid atau telah kadaluwarsa"}), 400
+        
+    if not username:
+        return jsonify({"error": "Username wajib diisi"}), 400
+        
+    if not password:
+        return jsonify({"error": "Kata sandi wajib diisi"}), 400
+        
+    if len(password) < 6:
+        return jsonify({"error": "Kata sandi minimal 6 karakter"}), 400
+        
+    try:
+        user = create_user({
+            "email": email,
+            "username": username,
+            "password": password,
+            "name": name or username,
+            "access_role": "user",
+            "default_ticker": default_ticker,
+            "phone_number": phone_number,
+        })
+    except psycopg2.IntegrityError:
+        return jsonify({"error": "Email atau username sudah terdaftar"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            return jsonify({"error": "Email atau username sudah terdaftar"}), 400
+        return jsonify({"error": f"Gagal membuat akun: {str(e)}"}), 500
+        
+    # Revoke token
+    _signup_tokens.pop(token, None)
+    
+    try:
+        send_registration_email(user["email"], user.get("name"), user.get("username"))
+    except Exception as e:
+        print(f"[SMTP] Error sending registration notification: {e}")
+        
+    log_activity(
+        user["id"],
+        "REGISTER",
+        "Pengguna baru berhasil mendaftar via email verifikasi"
+    )
+    
+    return jsonify(user), 201
 
 
 @user_bp.route("/users/google-login", methods=["POST"])
