@@ -124,6 +124,32 @@ export function getBrokerActivity(ticker, params = {}) {
 // ============================================================
 
 /**
+ * Proyeksi harga berbasis Chart Pattern Recognition dari tabel idxsaham.chart_pattern_forecasting.
+ * → { status, symbol, timeframe, total_patterns, patterns: [...] }
+ */
+export function getChartPatternForecast(symbol, timeframe = '1d') {
+  return api.get('/api/chart-pattern/forecast', {
+    params: { symbol, timeframe }
+  })
+}
+
+/**
+ * Daftar seluruh pola chart yang aktif terdeteksi di pasar.
+ * → { status, count, data: [...] }
+ */
+export function getAllDetectedPatterns(params = {}) {
+  return api.get('/api/chart-pattern/patterns', { params })
+}
+
+/**
+ * Ringkasan analitik agregat pola chart untuk dashboard UI/UX.
+ * → { status, market_calendar, summary: { total_patterns, bullish_count, bearish_count, ... } }
+ */
+export function getChartPatternSummary() {
+  return api.get('/api/chart-pattern/summary')
+}
+
+/**
  * Proyeksi harga dari model time-series di backend.
  *
  * TODO: sambungkan ke endpoint forecasting backend. Path dan bentuk response

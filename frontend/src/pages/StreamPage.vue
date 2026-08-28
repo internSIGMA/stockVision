@@ -18,11 +18,14 @@ import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Button } from '@/components/ui/button'
 import { useForecastData } from '@/composables/useForecastData'
+import { useChartPatternData } from '@/composables/useChartPatternData'
 import { usePrescriptive } from '@/composables/usePrescriptive'
 import { useDiagnostic } from '@/composables/useDiagnostic'
 import { useTechnicalData } from '@/composables/useTechnicalData'
-import { formatCompact, formatDate, formatNumber } from '@/utils/format'
+import { formatCompact, formatDate, formatNumber, formatPercent } from '@/utils/format'
 import { rsiReading, macdReading } from '@/utils/technicalIndicators'
+import ChartPatternForecastingChart from '@/components/charts/ChartPatternForecastingChart.vue'
+import ChartPatternInsightPanel from '@/components/stream/ChartPatternInsightPanel.vue'
 
 /**
  * Satu halaman scroll panjang: semua section berbagi ticker aktif yang sama
@@ -39,9 +42,33 @@ const authStore = useAuthStore()
 
 const strip = ref(null)
 
+// Mode Switcher: 'ML' (Machine Learning) vs 'PATTERN' (Chart Pattern)
+const forecastMode = ref('ML')
+const showGeometry = ref(true)
+
+// Chart Pattern Composable
+const {
+  patterns: chartPatterns,
+  selectedPatternIndex,
+  selectedPattern,
+  hasPattern: adaPolaChart,
+  isLoading: patternLoading,
+  error: patternError,
+  pricing: patternPricing,
+  rulesChecklist: patternChecklist,
+  detectionReasons: patternReasons,
+  statisticalNotes: patternStatisticalNotes,
+  description: patternDescription,
+  timeline: patternTimeline,
+  calendarInfo: patternCalendarInfo,
+  selectPattern,
+  reload: muatUlangPattern,
+} = useChartPatternData({ ohlc })
+
 function segarkan() {
   reload()
   strip.value?.reload()
+  muatUlangPattern()
 }
 
 const statusPasar = computed(() => summary.value?.status_pasar || null)
@@ -175,8 +202,9 @@ const selectedTimeframe = ref('6M')
       </div>
 
       <div class="flex flex-col gap-4">
-        <!-- 2 — Stat Cards Ringkasan Pasar -->
-        <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <!-- 2 — Stat Cards Ringkasan Pasar / KPI Pola -->
+        <!-- MODE ML: Stat Cards Ringkasan Pasar Standar -->
+        <div v-if="forecastMode === 'ML'" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <StatCard
             label="Last Price"
             :value="formatNumber(summary?.harga)"
@@ -208,51 +236,118 @@ const selectedTimeframe = ref('6M')
           </StatCard>
         </div>
 
-        <!-- 3 — Kotak 1: Technical & Forecasting Chart (Candlestick + Forecast + Volume) -->
+        <!-- MODE PATTERN: 4 KPI Cards Chart Pattern Sesuai Pola Emiten Aktif -->
+        <div v-else class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <!-- 1. Harga Saat Ini -->
+          <StatCard
+            :label="`Harga (${ticker ?? '—'})`"
+            :value="formatNumber(patternPricing.current_price ?? summary?.harga)"
+            :change="summary?.perubahan_persen ?? null"
+            :sub="summary?.perubahan != null ? `${summary.perubahan > 0 ? '+' : ''}${formatNumber(summary.perubahan)}` : null"
+            :loading="patternLoading || loading"
+          />
+
+          <!-- 2. Pola Terdeteksi -->
+          <StatCard
+            label="Pola Terdeteksi"
+            :value="selectedPattern?.pattern_name || (adaPolaChart ? 'Pola Terdeteksi' : 'Belum Ada Pola')"
+            :sub="selectedPattern ? `${selectedPattern.directional_bias} (${selectedPattern.directional_bias?.toLowerCase()?.includes('bullish') ? 'Naik' : 'Turun'})` : null"
+            :value-class="selectedPattern?.directional_bias?.toLowerCase()?.includes('bullish') ? 'text-[var(--up)]' : selectedPattern ? 'text-[var(--down)]' : ''"
+            :loading="patternLoading"
+          />
+
+          <!-- 3. Target TP -->
+          <StatCard
+            :label="selectedPattern?.directional_bias?.toLowerCase()?.includes('bullish') ? 'Target TP (Kenaikan)' : 'Target TP (Penurunan)'"
+            :value="patternPricing.target_price ? formatNumber(patternPricing.target_price) : '—'"
+            :change="patternPricing.expected_return_pct"
+            :sub="patternPricing.expected_return_pct != null ? `+${formatPercent(patternPricing.expected_return_pct, 2)}` : (patternTimeline?.target_date ? `Estimasi ${formatDate(patternTimeline.target_date)}` : null)"
+            :loading="patternLoading"
+          />
+
+          <!-- 4. Batas Stop Loss -->
+          <StatCard
+            label="Batas Stop Loss"
+            :value="patternPricing.stop_loss ? formatNumber(patternPricing.stop_loss) : '—'"
+            :change="patternPricing.potential_risk_pct ? -patternPricing.potential_risk_pct : null"
+            :sub="patternPricing.risk_reward_ratio ? `R/R: ${patternPricing.risk_reward_ratio}` : (patternPricing.potential_risk_pct ? `Risiko ${formatPercent(patternPricing.potential_risk_pct, 2)}` : null)"
+            :loading="patternLoading"
+          />
+        </div>
+
+        <!-- 3 — Kotak 1: Technical & Forecasting Chart -->
         <section class="rounded-lg border-[0.5px] border-border bg-card">
-          <header class="flex flex-wrap items-center gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
             <div class="min-w-0">
-              <h2 class="text-[13px] font-medium">
-                Technical &amp; Forecasting — <span class="tabular">{{ ticker ?? '—' }}</span>
-              </h2>
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-[13px] font-medium">
+                  Technical &amp; Forecasting — <span class="tabular font-bold">{{ ticker ?? '—' }}</span>
+                </h2>
+
+                <!-- Mode Switcher Pill Group -->
+                <div class="inline-flex rounded-lg bg-muted/60 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all cursor-pointer"
+                    :class="forecastMode === 'ML' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                    @click="forecastMode = 'ML'"
+                  >
+                    <span>🤖</span> Machine Learning
+                  </button>
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all cursor-pointer"
+                    :class="forecastMode === 'PATTERN' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                    @click="forecastMode = 'PATTERN'"
+                  >
+                    <span>📐</span> Chart Pattern
+                  </button>
+                </div>
+              </div>
+
               <p class="mt-0.5 text-[10px] text-muted-foreground">
-                Grafik historis OHLC, volume transaksi, dan proyeksi model time-series.
+                <span v-if="forecastMode === 'ML'">Grafik historis OHLC, volume transaksi, dan proyeksi model time-series.</span>
+                <span v-else>Geometri pola klasik Bulkowski, Fibonacci multi-targets (TP1-3), Stop Loss, dan lintasan proyeksi.</span>
               </p>
             </div>
 
-            <div class="ml-auto flex shrink-0 items-center gap-1.5" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': horizonTersedia.length > 1 }">
-              <Button
-                v-for="tf in TIMEFRAMES"
-                :key="tf.value"
-                variant="ghost"
-                size="sm"
-                class="tabular h-8 px-3 text-[13px] transition-colors"
-                :class="tf.value === selectedTimeframe ? 'bg-primary/15 font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary'"
-                :aria-pressed="tf.value === selectedTimeframe"
-                @click="selectedTimeframe = tf.value"
-              >
-                {{ tf.label }}
-              </Button>
-            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- Timeframe Selector -->
+              <div class="flex shrink-0 items-center gap-1" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': (forecastMode === 'ML' && horizonTersedia.length > 1) }">
+                <Button
+                  v-for="tf in TIMEFRAMES"
+                  :key="tf.value"
+                  variant="ghost"
+                  size="sm"
+                  class="tabular h-8 px-3 text-[13px] transition-colors"
+                  :class="tf.value === selectedTimeframe ? 'bg-primary/15 font-bold text-primary' : 'font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary'"
+                  :aria-pressed="tf.value === selectedTimeframe"
+                  @click="selectedTimeframe = tf.value"
+                >
+                  {{ tf.label }}
+                </Button>
+              </div>
 
-            <!-- Horizon selector untuk proyeksi -->
-            <div v-if="horizonTersedia.length > 1" class="flex shrink-0 items-center gap-1">
-              <Button
-                v-for="h in horizonTersedia"
-                :key="h"
-                variant="ghost"
-                size="sm"
-                class="tabular h-7 px-2.5 text-xs"
-                :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'"
-                :aria-pressed="h === horizon"
-                @click="setHorizon(h)"
-              >
-                {{ h }} Hari
-              </Button>
+              <!-- Horizon selector untuk proyeksi ML -->
+              <div v-if="forecastMode === 'ML' && horizonTersedia.length > 1" class="flex shrink-0 items-center gap-1">
+                <Button
+                  v-for="h in horizonTersedia"
+                  :key="h"
+                  variant="ghost"
+                  size="sm"
+                  class="tabular h-7 px-2.5 text-xs"
+                  :class="h === horizon ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                  :aria-pressed="h === horizon"
+                  @click="setHorizon(h)"
+                >
+                  {{ h }} Hari
+                </Button>
+              </div>
             </div>
           </header>
 
-          <div v-if="forecastLoading || loading" class="h-[440px] animate-pulse bg-muted/50" />
+          <!-- Loading State -->
+          <div v-if="(forecastMode === 'ML' && (forecastLoading || loading)) || (forecastMode === 'PATTERN' && patternLoading)" class="h-[440px] animate-pulse bg-muted/50" />
 
           <EmptyState
             v-else-if="!ohlc.length"
@@ -260,7 +355,8 @@ const selectedTimeframe = ref('6M')
             description="Emiten ini belum memiliki histori harga."
           />
 
-          <div v-else class="flex flex-col gap-3.5 p-3.5">
+          <!-- MODE 1: Machine Learning Forecasting View -->
+          <div v-else-if="forecastMode === 'ML'" class="flex flex-col gap-3.5 p-3.5">
             <ForecastCandlestickChart 
               :rows="ohlc" 
               :points="titikProyeksi"
@@ -301,6 +397,40 @@ const selectedTimeframe = ref('6M')
               Proyeksi ini bersifat estimatif berdasarkan data historis dan bukan merupakan
               rekomendasi investasi.
             </p>
+          </div>
+
+          <!-- MODE 2: Chart Pattern Forecasting View -->
+          <div v-else-if="forecastMode === 'PATTERN'" class="flex flex-col gap-3.5 p-3.5">
+            <EmptyState
+              v-if="!adaPolaChart && !patternLoading"
+              title="Pola Chart Belum Terdeteksi"
+              description="Belum ada pola chart klasik yang aktif terdeteksi untuk emiten ini pada timeframe yang dipilih."
+            />
+
+            <template v-else>
+              <!-- Chart Pattern Forecasting Chart dengan 6 Toggle Layers -->
+              <ChartPatternForecastingChart
+                :rows="ohlc"
+                :pattern="selectedPattern"
+                :timeframe="selectedTimeframe"
+                :height="440"
+                v-model:show-geometry="showGeometry"
+              />
+
+              <!-- Penjelasan & Deskripsi Pola Dibawah Chart (Hanya tampil saat toggle candle pattern geometry aktif) -->
+              <ChartPatternInsightPanel
+                v-if="showGeometry"
+                :pattern="selectedPattern"
+                :pricing="patternPricing"
+                :rules-checklist="patternChecklist"
+                :statistical-notes="patternStatisticalNotes"
+                :description="patternDescription"
+                :detection-reasons="patternReasons"
+                :timeline="patternTimeline"
+                :calendar-info="patternCalendarInfo"
+                :loading="patternLoading"
+              />
+            </template>
           </div>
         </section>
 
