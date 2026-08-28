@@ -1,7 +1,7 @@
 import logging
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
-from .db_writer import _get_connection
+from .db_writer import _get_connection, ensure_table_exists
 
 logger = logging.getLogger(__name__)
 
@@ -34,23 +34,42 @@ def get_diagnostic_results():
     """Endpoint untuk mendapatkan data hasil analisis diagnostik terbaru."""
     ticker = request.args.get("symbol", "").strip().upper()
 
-    sql = """
-        SELECT symbol, company_name, sector, tanggal_analisis,
-               last_close, return_pct, trend_status, ma5, ma20,
-               trend_gap_pct, return_20d, bandar_status,
-               net_big_money_rp, top_buyers, top_sellers,
-               volume_anomaly_status, latest_volume, vol_zscore,
-               insider_status, total_insider_trxs, beta, 
-               trailing_pe, roe, llm_diagnostic_summary
-        FROM idxsaham.diagnostic_results
-        WHERE tanggal_analisis = (SELECT MAX(tanggal_analisis) FROM idxsaham.diagnostic_results)
-    """
-    args = []
-    if ticker:
-        sql += " AND symbol = %s"
-        args.append(ticker)
-    sql += " ORDER BY symbol ASC;"
+    try:
+        ensure_table_exists()
+    except Exception as e:
+        logger.warning(f"Gagal ensure_table_exists: {e}")
 
+    if ticker:
+        sql = """
+            SELECT symbol, company_name, sector, tanggal_analisis,
+                   last_close, return_pct, trend_status, ma5, ma20,
+                   trend_gap_pct, return_20d, bandar_status,
+                   net_big_money_rp, top_buyers, top_sellers,
+                   volume_anomaly_status, latest_volume, vol_zscore,
+                   insider_status, total_insider_trxs, beta, 
+                   trailing_pe, roe, llm_diagnostic_summary
+            FROM idxsaham.diagnostic_results
+            WHERE symbol = %s
+            ORDER BY tanggal_analisis DESC
+            LIMIT 1;
+        """
+        args = [ticker]
+    else:
+        sql = """
+            SELECT symbol, company_name, sector, tanggal_analisis,
+                   last_close, return_pct, trend_status, ma5, ma20,
+                   trend_gap_pct, return_20d, bandar_status,
+                   net_big_money_rp, top_buyers, top_sellers,
+                   volume_anomaly_status, latest_volume, vol_zscore,
+                   insider_status, total_insider_trxs, beta, 
+                   trailing_pe, roe, llm_diagnostic_summary
+            FROM idxsaham.diagnostic_results
+            WHERE tanggal_analisis = (SELECT MAX(tanggal_analisis) FROM idxsaham.diagnostic_results)
+            ORDER BY symbol ASC;
+        """
+        args = []
+
+    data = []
     try:
         conn = _get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -58,7 +77,25 @@ def get_diagnostic_results():
         data = cur.fetchall()
         cur.close()
         conn.close()
+    except Exception as e:
+        logger.warning(f"Error query diagnostic results: {e}")
 
+    # On-demand calculation if table is empty or symbol not found
+    if not data:
+        try:
+            from .pipeline import run_diagnostic_pipeline
+            run_diagnostic_pipeline()
+
+            conn = _get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute(sql, args)
+            data = cur.fetchall()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            logger.warning(f"On-demand diagnostic pipeline failed: {e}")
+
+    try:
         items = [
             {
                 "symbol": r["symbol"],
@@ -102,5 +139,5 @@ def get_diagnostic_results():
         return jsonify({"status": "success", "count": len(items), "results": items}), 200
 
     except Exception:
-        logger.exception("Gagal mengambil data diagnostik dari DB")
+        logger.exception("Gagal menyusun data diagnostik")
         return jsonify({"status": "error", "message": "Gagal mengambil data"}), 500

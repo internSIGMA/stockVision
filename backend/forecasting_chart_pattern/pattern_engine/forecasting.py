@@ -183,9 +183,10 @@ def generate_forecast(df: pd.DataFrame, pattern: DetectedPattern, symbol: str, t
     is_bullish = "Bullish" in pattern.directional_bias
     
     # Ekstraksi swing high dan low untuk kalkulasi Fibonacci
-    pattern_prices = [kp['price'] for kp in pattern.key_points] if pattern.key_points else [breakout_level, stop_loss]
-    swing_high = max(pattern_prices + [breakout_level, target_price if not is_bullish else stop_loss])
-    swing_low = min(pattern_prices + [breakout_level, stop_loss if not is_bullish else target_price])
+    pattern_prices = [float(kp['price']) for kp in pattern.key_points] if pattern.key_points else [breakout_level, stop_loss]
+    all_ref_prices = pattern_prices + [breakout_level, target_price, stop_loss]
+    swing_high = max(all_ref_prices)
+    swing_low = min(all_ref_prices)
     
     # Fibonacci Levels
     fibo_data = calculate_fibonacci_levels(

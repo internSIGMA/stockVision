@@ -25,7 +25,6 @@ import { useTechnicalData } from '@/composables/useTechnicalData'
 import { formatCompact, formatDate, formatNumber, formatPercent } from '@/utils/format'
 import { rsiReading, macdReading } from '@/utils/technicalIndicators'
 import ChartPatternForecastingChart from '@/components/charts/ChartPatternForecastingChart.vue'
-import ChartPatternInsightPanel from '@/components/stream/ChartPatternInsightPanel.vue'
 
 /**
  * Satu halaman scroll panjang: semua section berbagi ticker aktif yang sama
@@ -150,6 +149,106 @@ const {
   isLoading: prescriptiveLoading,
   reload: muatUlangPrescriptive,
 } = usePrescriptive()
+
+// DUAL-MODE PRESCRIPTIVE:
+// Saat Mode 'ML': Menampilkan Preskriptif Tekno-Fundamental Machine Learning.
+// Saat Mode 'PATTERN': Menampilkan Preskriptif Chart Pattern Bulkowski & Fibonacci Trade Setup.
+const activePrescriptiveData = computed(() => {
+  if (forecastMode.value === 'ML') {
+    return prescriptive.value
+  }
+
+  // PATTERN MODE PRESCRIPTIVE
+  if (!selectedPattern.value) return null
+
+  const p = selectedPattern.value
+  const pr = patternPricing.value
+  const isBull = p.directional_bias?.toLowerCase()?.includes('bullish') ?? true
+  const curPrice = summary.value?.harga ?? pr.current_price ?? 0
+  const isTargetReached =
+    p.pattern_status === 'TARGET_REACHED' ||
+    (isBull && curPrice && pr.target_price && curPrice >= pr.target_price)
+
+  let recNewBuyer = 'BUY (BREAKOUT)'
+  let reasonNewBuyer = ''
+  let recHolding = 'HOLD'
+  let reasonHolding = ''
+  let recommendation = 'BUY'
+
+  if (isBull) {
+    if (isTargetReached) {
+      recommendation = 'TAKE PROFIT'
+      recNewBuyer = 'JANGAN FOMO (Target Tercapai)'
+      reasonNewBuyer = `Pola ${p.pattern_name} telah sukses mencapai target kenaikan (Rp ${formatNumber(pr.target_price)}). Risiko koreksi profit taking tinggi; hindari mengejar beli di pucuk.`
+      recHolding = 'TAKE PROFIT (Realisasi Laba)'
+      reasonHolding = `Target pola tercapai sepenuhnya. Amankan laba Anda atau pasang trailing stop ketat di Rp ${formatNumber(curPrice * 0.95)}.`
+    } else {
+      recommendation = 'BUY'
+      recNewBuyer =
+        p.pattern_status === 'CONFIRMED_BREAKOUT'
+          ? 'BUY ON CONFIRMED BREAKOUT'
+          : 'BUY ON WEAKNESS'
+      reasonNewBuyer = `Struktur formasi ${p.pattern_name} mendukung kelanjutan tren naik. Area beli disarankan Rp ${formatNumber(pr.breakout_level ?? curPrice)} dengan Stop Loss di Rp ${formatNumber(pr.stop_loss)}.`
+      recHolding = 'HOLD (Tahan Posisi)'
+      reasonHolding = `Struktur tren harga Bullish. Pertahankan posisi dan pasang trailing stop disiplin di Rp ${formatNumber(pr.stop_loss)} dengan target bertahap TP1–TP3.`
+    }
+  } else {
+    // Bearish Pattern
+    recommendation = 'SELL / WAIT & SEE'
+    recNewBuyer = 'WAIT & SEE (Jangan Beli)'
+    reasonNewBuyer = `Terdeteksi pola pembalikan arah turun ${p.pattern_name}. Tunggu harga menyelesaikan koreksi menuju lantai support Rp ${formatNumber(pr.target_price)}.`
+    recHolding = 'SELL / EXIT (Amankan Modal)'
+    reasonHolding = `Waspada sinyal breakdown neckline Rp ${formatNumber(pr.breakout_level)}. Segera exit / pasang cut loss untuk menghindari penurunan lanjutan.`
+  }
+
+  const llmNarrative = `Analisis Preskriptif Pola **${p.pattern_name}** (${p.directional_bias} • ${p.pattern_type}). Formasi geometri mengindikasikan level trigger breakout di **Rp ${formatNumber(pr.breakout_level)}**, target proyeksi harga di **Rp ${formatNumber(pr.target_price)}** (+${formatPercent(pr.expected_return_pct, 2)}), dan batas proteksi stop loss di **Rp ${formatNumber(pr.stop_loss)}** (Rasio Imbal/Risiko: 1 : ${pr.risk_reward_ratio ? pr.risk_reward_ratio.toFixed(2) : '1.50'}).`
+
+  return {
+    symbol: ticker.value,
+    company_name: summary.value?.nama_perusahaan,
+    tanggal_analisis: p.end_date,
+    recommendation,
+    new_buyer_strategy: {
+      recommendation: recNewBuyer,
+      reason: reasonNewBuyer,
+    },
+    holding_strategy: {
+      recommendation: recHolding,
+      reason: reasonHolding,
+    },
+    llm_summary: llmNarrative,
+  }
+})
+
+const activeTradingLevels = computed(() => {
+  if (forecastMode.value === 'ML') {
+    return tradingLevels.value
+  }
+
+  if (!selectedPattern.value) return null
+  const pr = patternPricing.value
+  const cur = pr.current_price ?? summary.value?.harga ?? 1
+  const entry = pr.breakout_level ?? cur
+  const target = pr.target_price ?? cur * 1.05
+  const sl = pr.stop_loss ?? cur * 0.95
+
+  const persenTarget = pr.expected_return_pct ?? ((target - cur) / cur) * 100
+  const persenStopLoss = pr.potential_risk_pct
+    ? -pr.potential_risk_pct
+    : ((sl - cur) / cur) * 100
+  const rr =
+    pr.risk_reward_ratio ??
+    Math.abs(persenTarget) / (Math.abs(persenStopLoss) || 1)
+
+  return {
+    entry,
+    target,
+    stopLoss: sl,
+    persenTarget,
+    persenStopLoss,
+    riskReward: rr,
+  }
+})
 
 // Diagnostik menjawab "kenapa harganya begini" dan dimuat terpisah dari
 // prescriptive: tabelnya diisi pipeline lain, jadi salah satunya bisa kosong
@@ -413,22 +512,8 @@ const selectedTimeframe = ref('6M')
                 :rows="ohlc"
                 :pattern="selectedPattern"
                 :timeframe="selectedTimeframe"
-                :height="440"
+                :height="460"
                 v-model:show-geometry="showGeometry"
-              />
-
-              <!-- Penjelasan & Deskripsi Pola Dibawah Chart (Hanya tampil saat toggle candle pattern geometry aktif) -->
-              <ChartPatternInsightPanel
-                v-if="showGeometry"
-                :pattern="selectedPattern"
-                :pricing="patternPricing"
-                :rules-checklist="patternChecklist"
-                :statistical-notes="patternStatisticalNotes"
-                :description="patternDescription"
-                :detection-reasons="patternReasons"
-                :timeline="patternTimeline"
-                :calendar-info="patternCalendarInfo"
-                :loading="patternLoading"
               />
             </template>
           </div>
@@ -536,13 +621,13 @@ const selectedTimeframe = ref('6M')
       <!-- 6 — Prescriptive, berdampingan dengan Diagnostic -->
       <PrescriptivePanel
         :rows="ohlc"
-        :forecast="titikProyeksi"
+        :forecast="forecastMode === 'ML' ? titikProyeksi : []"
         :loading="loading"
-        :forecast-loading="forecastLoading"
-        :backend="prescriptive"
-        :backend-loading="prescriptiveLoading"
-        :levels="tradingLevels"
-        @recompute="muatUlangPrescriptive"
+        :forecast-loading="forecastMode === 'ML' ? forecastLoading : patternLoading"
+        :backend="activePrescriptiveData"
+        :backend-loading="forecastMode === 'ML' ? prescriptiveLoading : patternLoading"
+        :levels="activeTradingLevels"
+        @recompute="forecastMode === 'ML' ? muatUlangPrescriptive() : muatUlangPattern()"
       >
         <template #samping>
           <DiagnosticPanel

@@ -333,13 +333,39 @@ function updateFibonacciLines() {
 
   const p = props.pattern.pricing || {}
   const w = warna()
+  const isBull = props.pattern?.directional_bias?.toLowerCase()?.includes('bullish') ?? true
 
   const linesToCreate = [
-    { price: p.tp1_measured_move, title: '🎯 TP1 Measured Move', color: w.fiboTp1, style: LineStyle.Solid },
-    { price: p.tp2_fibo_127, title: '🎯 TP2 Fibo 127.2%', color: w.fiboTp2, style: LineStyle.Dashed },
-    { price: p.tp3_fibo_161_golden, title: '👑 TP3 Golden 161.8%', color: w.fiboTp3, style: LineStyle.Dashed },
-    { price: p.breakout_level, title: '⚡ Breakout Level', color: w.fiboBreakout, style: LineStyle.LargeDashed },
-    { price: p.stop_loss, title: '🛡️ Stop Loss', color: w.fiboStopLoss, style: LineStyle.Solid },
+    {
+      price: p.tp1_measured_move,
+      title: isBull ? '🎯 TP1 Measured Move' : '🎯 Target Penurunan (Support)',
+      color: isBull ? w.fiboTp1 : '#06B6D4',
+      style: LineStyle.Solid,
+    },
+    {
+      price: p.tp2_fibo_127,
+      title: isBull ? '🎯 TP2 Fibo 127.2%' : '🎯 Support Ekstensi 127.2%',
+      color: w.fiboTp2,
+      style: LineStyle.Dashed,
+    },
+    {
+      price: p.tp3_fibo_161_golden,
+      title: isBull ? '👑 TP3 Golden 161.8%' : '👑 Support Ekstensi 161.8%',
+      color: w.fiboTp3,
+      style: LineStyle.Dashed,
+    },
+    {
+      price: p.breakout_level,
+      title: isBull ? '⚡ Breakout Level' : '⚡ Neckline (Batas Jual)',
+      color: w.fiboBreakout,
+      style: LineStyle.LargeDashed,
+    },
+    {
+      price: p.stop_loss,
+      title: isBull ? '🛡️ Stop Loss' : '🛑 Invalidation (Pola Batal)',
+      color: w.fiboStopLoss,
+      style: LineStyle.Solid,
+    },
     { price: p.fibo_support, title: 'Fibo Support', color: w.fiboSupport, style: LineStyle.Dotted },
     { price: p.fibo_resistance, title: 'Fibo Resistance', color: w.fiboResistance, style: LineStyle.Dotted },
   ]
