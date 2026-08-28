@@ -93,7 +93,19 @@ def _ensure_users_table():
     cur.execute(
         """
         ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE idxsaham.users
         ADD COLUMN IF NOT EXISTS access_role VARCHAR(20) NOT NULL DEFAULT 'user';
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
         """
     )
     cur.execute(

@@ -252,4 +252,138 @@ CREATE TABLE IF NOT EXISTS idxsaham.analytics_results (
 );
 
 CREATE INDEX IF NOT EXISTS idx_analytics_results_symbol ON idxsaham.analytics_results (symbol);
-CREATE INDEX IF NOT EXISTS idx_analytics_results_tanggal ON idxsaham.analytics_results (tanggal_analisis);
+CREATE INDEX IF NOT EXISTS idx_analytics_results_tanggal ON idxsaham.analytics_results (tanggal_analisis);
+
+-- =============================================================
+-- TABLE: idxsaham.diagnostic_results
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.diagnostic_results (
+    id BIGSERIAL PRIMARY KEY,
+    symbol VARCHAR(10) NOT NULL,
+    company_name VARCHAR(255),
+    sector VARCHAR(100),
+    tanggal_analisis DATE NOT NULL,
+    last_close NUMERIC(15,2),
+    return_pct NUMERIC(10,2),
+    trend_status VARCHAR(100),
+    ma5 NUMERIC(15,2),
+    ma20 NUMERIC(15,2),
+    trend_gap_pct NUMERIC(8,2),
+    return_20d NUMERIC(8,2),
+    bandar_status VARCHAR(100),
+    net_big_money_rp NUMERIC(18,2),
+    top_buyers VARCHAR(255),
+    top_sellers VARCHAR(255),
+    volume_anomaly_status VARCHAR(100),
+    latest_volume BIGINT,
+    vol_zscore NUMERIC(6,2),
+    insider_status VARCHAR(100),
+    total_insider_trxs INT,
+    beta NUMERIC(6,2),
+    trailing_pe NUMERIC(10,2),
+    roe NUMERIC(10,4),
+    llm_diagnostic_summary TEXT,
+    CONSTRAINT uq_diagnostic_symbol_date UNIQUE (symbol, tanggal_analisis)
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnostic_symbol ON idxsaham.diagnostic_results (symbol);
+CREATE INDEX IF NOT EXISTS idx_diagnostic_tanggal ON idxsaham.diagnostic_results (tanggal_analisis);
+
+-- =============================================================
+-- TABLE: idxsaham.prescriptive_results
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.prescriptive_results (
+    id BIGSERIAL PRIMARY KEY,
+    symbol VARCHAR(10) NOT NULL,
+    company_name VARCHAR(255),
+    sector VARCHAR(100),
+    tanggal_analisis DATE NOT NULL,
+    current_close NUMERIC(15,2),
+    entry_price NUMERIC(15,2),
+    target_price NUMERIC(15,2),
+    stop_loss NUMERIC(15,2),
+    support_price NUMERIC(15,2),
+    resistance_price NUMERIC(15,2),
+    forecast_close NUMERIC(15,2),
+    expected_return NUMERIC(10,2),
+    risk_reward_ratio NUMERIC(5,2),
+    trend VARCHAR(10),
+    ema20 NUMERIC(15,2),
+    ema50 NUMERIC(15,2),
+    rsi_signal VARCHAR(15),
+    rsi_value NUMERIC(10,2),
+    macd_signal VARCHAR(10),
+    macd_value NUMERIC(10,4),
+    macd_signal_value NUMERIC(10,4),
+    volume_signal VARCHAR(10),
+    volume BIGINT,
+    vol_ma20 BIGINT,
+    score_trend INT,
+    score_rsi INT,
+    score_macd INT,
+    score_forecast INT,
+    score_valuation INT,
+    score_profitability INT,
+    score_growth INT,
+    total_score INT NOT NULL,
+    trailing_pe NUMERIC(10,2),
+    roe NUMERIC(10,4),
+    earnings_growth NUMERIC(10,4),
+    recommendation VARCHAR(30) NOT NULL,
+    rec_new_buyer VARCHAR(50),
+    rec_holding VARCHAR(50),
+    reason_buyer TEXT,
+    reason_holding TEXT,
+    llm_summary TEXT,
+    CONSTRAINT uq_prescriptive_symbol_date UNIQUE (symbol, tanggal_analisis)
+);
+
+CREATE INDEX IF NOT EXISTS idx_prescriptive_symbol ON idxsaham.prescriptive_results (symbol);
+CREATE INDEX IF NOT EXISTS idx_prescriptive_tanggal ON idxsaham.prescriptive_results (tanggal_analisis);
+
+-- =============================================================
+-- TABLE: idxsaham.users & Admin Management Tables
+-- =============================================================
+CREATE TABLE IF NOT EXISTS idxsaham.users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(255),
+    role VARCHAR(100),
+    access_role VARCHAR(30) NOT NULL DEFAULT 'user',
+    default_ticker VARCHAR(20),
+    phone_number VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS idxsaham.roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS idxsaham.menus (
+    id SERIAL PRIMARY KEY,
+    menu_key VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    route VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS idxsaham.menu_permissions (
+    id SERIAL PRIMARY KEY,
+    access_role VARCHAR(30) NOT NULL,
+    menu_key VARCHAR(100) NOT NULL,
+    enabled BOOLEAN DEFAULT FALSE,
+    UNIQUE(access_role, menu_key)
+);
+
+CREATE TABLE IF NOT EXISTS idxsaham.user_activity (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    activity VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
