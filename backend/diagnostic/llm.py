@@ -1,4 +1,3 @@
-import google.generativeai as genai
 import logging
 import os
 from dotenv import load_dotenv, find_dotenv
@@ -8,14 +7,19 @@ load_dotenv(find_dotenv(), override=True)
 logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+llm_model = None
 
 if GEMINI_API_KEY:
     try:
+        import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        llm_model = genai.GenerativeModel("gemini-3.5-flash")
-        logger.info("Google Gemini AI (gemini-3.5-flash) berhasil terkonfigurasi untuk Diagnostik.")
+        try:
+            llm_model = genai.GenerativeModel("gemini-1.5-flash")
+        except Exception:
+            llm_model = genai.GenerativeModel("gemini-2.0-flash")
+        logger.info("Google Gemini AI berhasil terkonfigurasi untuk Diagnostik.")
     except Exception as e:
-        logger.warning(f"Gagal mengonfigurasi Gemini AI: {e}")
+        logger.warning(f"Gagal mengonfigurasi Gemini AI untuk Diagnostik: {e}")
         llm_model = None
 else:
     logger.warning("GEMINI_API_KEY tidak ditemukan untuk modul Diagnostik.")

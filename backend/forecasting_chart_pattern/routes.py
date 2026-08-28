@@ -146,7 +146,17 @@ def get_chart_pattern_forecast():
             query += " AND pattern_status = %s"
             params.append(pattern_status.upper())
 
-        query += " ORDER BY quality_score DESC, updated_at DESC;"
+        query += """
+            ORDER BY 
+                CASE 
+                    WHEN pattern_status = 'CONFIRMED_BREAKOUT' THEN 1
+                    WHEN pattern_status = 'PENDING_BREAKOUT' THEN 2
+                    WHEN pattern_status = 'TARGET_REACHED' THEN 3
+                    ELSE 4
+                END ASC,
+                end_date DESC,
+                quality_score DESC;
+        """
 
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -257,7 +267,18 @@ def get_all_detected_patterns():
         query += " AND pattern_status = %s"
         params.append(status_filter.upper())
 
-    query += " ORDER BY quality_score DESC, updated_at DESC LIMIT %s;"
+    query += """
+        ORDER BY 
+            CASE 
+                WHEN pattern_status = 'CONFIRMED_BREAKOUT' THEN 1
+                WHEN pattern_status = 'PENDING_BREAKOUT' THEN 2
+                WHEN pattern_status = 'TARGET_REACHED' THEN 3
+                ELSE 4
+            END ASC,
+            end_date DESC,
+            quality_score DESC 
+        LIMIT %s;
+    """
     params.append(limit)
 
     try:

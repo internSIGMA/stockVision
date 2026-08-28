@@ -37,6 +37,10 @@ const isConfirmed = computed(() => {
   return st === 'CONFIRMED_BREAKOUT' || st === 'TARGET_REACHED'
 })
 
+const passedRulesCount = computed(() => {
+  return Array.isArray(props.rulesChecklist) ? props.rulesChecklist.filter((r) => r.passed).length : 0
+})
+
 // Dynamic Action Strategy recommendation based on pattern properties
 const strategyAction = computed(() => {
   if (!props.pattern) return null
@@ -192,120 +196,32 @@ const strategyAction = computed(() => {
         </p>
       </div>
 
-      <!-- Section 4: Action Strategy & Setup Trading -->
-      <div
-        v-if="strategyAction"
-        class="rounded-lg border p-3.5"
-        :class="
-          strategyAction.tone === 'up'
-            ? 'border-[var(--up)]/30 bg-[var(--up)]/5'
-            : strategyAction.tone === 'down'
-              ? 'border-[var(--down)]/30 bg-[var(--down)]/5'
-              : 'border-[var(--warning)]/30 bg-[var(--warning)]/5'
-        "
-      >
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-          <div class="flex items-center gap-1.5">
-            <Zap
-              class="h-4 w-4"
-              :class="
-                strategyAction.tone === 'up'
-                  ? 'text-[var(--up)]'
-                  : strategyAction.tone === 'down'
-                    ? 'text-[var(--down)]'
-                    : 'text-[var(--warning)]'
-              "
-            />
-            <span class="text-[11.5px] font-bold uppercase tracking-wider text-foreground">
-              {{ strategyAction.badge }}
-            </span>
-          </div>
-
-          <span class="text-[11px] text-muted-foreground">
-            Risk-to-Reward: <strong class="text-foreground tabular">{{ pricing.risk_reward_ratio ? `${pricing.risk_reward_ratio}:1` : '—' }}</strong>
-          </span>
-        </div>
-        <p class="text-[11.5px] leading-relaxed text-muted-foreground">
-          {{ strategyAction.desc }}
-        </p>
-      </div>
-
-      <!-- Setup Grid & Fibonacci Targets -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[11px]">
-        <!-- Buy Area -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">Area Beli</span>
-          <span class="font-bold tabular text-foreground">
-            {{ pricing.buy_area?.min ? `${formatNumber(pricing.buy_area.min)}–${formatNumber(pricing.buy_area.max)}` : formatNumber(pricing.current_price) }}
-          </span>
-        </div>
-
-        <!-- Breakout Level -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">Level Breakout</span>
-          <span class="font-bold tabular text-[#3B82F6]">
-            {{ formatNumber(pricing.breakout_level) }}
-          </span>
-        </div>
-
-        <!-- TP1 Measured Move -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">TP1 (Measured)</span>
-          <span class="font-bold tabular text-[var(--up)]">
-            {{ formatNumber(pricing.tp1_measured_move || pricing.target_price) }}
-          </span>
-        </div>
-
-        <!-- TP2 Fibo 127% -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">TP2 (Fibo 127%)</span>
-          <span class="font-bold tabular text-[#06B6D4]">
-            {{ formatNumber(pricing.tp2_fibo_127) }}
-          </span>
-        </div>
-
-        <!-- TP3 Golden 161.8% -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">TP3 (Golden 161%)</span>
-          <span class="font-bold tabular text-[#EAB308]">
-            {{ formatNumber(pricing.tp3_fibo_161_golden) }}
-          </span>
-        </div>
-
-        <!-- Stop Loss -->
-        <div class="rounded-md border-[0.5px] border-border bg-card-secondary/50 p-2.5">
-          <span class="text-[10px] text-muted-foreground block mb-0.5">Batas Stop Loss</span>
-          <span class="font-bold tabular text-[var(--down)]">
-            {{ formatNumber(pricing.stop_loss) }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Checklist Aturan Geometri -->
-      <div v-if="rulesChecklist.length" class="flex flex-col gap-2 rounded-lg border-[0.5px] border-border bg-card-secondary/30 p-3">
-        <div class="flex items-center justify-between mb-0.5">
-          <span class="text-[11.5px] font-bold text-foreground flex items-center gap-1.5">
-            <Award class="h-3.5 w-3.5 text-[#10B981]" />
+      <!-- Section 4: Checklist Validasi Aturan Pola -->
+      <div v-if="rulesChecklist.length" class="flex flex-col gap-2.5 border-t-[0.5px] border-border pt-3.5">
+        <div class="flex items-center justify-between">
+          <h4 class="text-[12px] font-bold text-foreground flex items-center gap-1.5">
+            <Award class="h-3.5 w-3.5 text-[var(--up)]" />
             Checklist Validasi Aturan Pola
-          </span>
-          <span class="text-[10px] text-muted-foreground">
-            {{ rulesChecklist.filter(r => r.passed).length }}/{{ rulesChecklist.length }} Aturan Terpenuhi
+          </h4>
+          <span class="text-[11px] font-medium text-muted-foreground">
+            {{ passedRulesCount }}/{{ rulesChecklist.length }} Aturan Terpenuhi
           </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           <div
-            v-for="(item, idx) in rulesChecklist"
+            v-for="(rule, idx) in rulesChecklist"
             :key="idx"
-            class="flex items-start gap-2 rounded-md border-[0.5px] border-border bg-card p-2 text-[11px]"
+            class="flex items-start gap-2.5 rounded-lg border-[0.5px] border-border bg-card-secondary/30 p-2.5 text-xs"
           >
-            <CheckCircle2 v-if="item.passed" class="h-3.5 w-3.5 text-[var(--up)] shrink-0 mt-0.5" />
-            <AlertCircle v-else class="h-3.5 w-3.5 text-[var(--warning)] shrink-0 mt-0.5" />
-
+            <div class="mt-0.5 shrink-0">
+              <CheckCircle2 v-if="rule.passed" class="h-4 w-4 text-[var(--up)]" />
+              <AlertCircle v-else class="h-4 w-4 text-[var(--warning)]" />
+            </div>
             <div class="min-w-0 flex-1">
-              <span class="font-semibold text-foreground block">{{ item.rule }}</span>
-              <p class="text-[10.5px] text-muted-foreground leading-snug">
-                {{ item.description }}
+              <span class="font-semibold text-foreground block text-[11.5px]">{{ rule.rule }}</span>
+              <p class="text-[10.5px] text-muted-foreground leading-relaxed mt-0.5">
+                {{ rule.description }}
               </p>
             </div>
           </div>
