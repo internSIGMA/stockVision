@@ -1,7 +1,8 @@
 import logging
 from flask import Blueprint, jsonify, request
+import psycopg2
 from psycopg2.extras import RealDictCursor
-from .db_writer import _get_connection
+from .db_writer import _get_connection, ensure_table_exists
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,11 @@ def run_diagnostic():
 @diagnostic_bp.route("/api/diagnostic/results", methods=["GET"])
 def get_diagnostic_results():
     """Endpoint untuk mendapatkan data hasil analisis diagnostik terbaru."""
+    try:
+        ensure_table_exists()
+    except Exception as e:
+        logger.warning(f"Tidak dapat memastikan tabel diagnostic_results: {e}")
+
     ticker = request.args.get("symbol", "").strip().upper()
 
     sql = """
@@ -101,6 +107,13 @@ def get_diagnostic_results():
 
         return jsonify({"status": "success", "count": len(items), "results": items}), 200
 
+    except psycopg2.errors.UndefinedTable:
+        return jsonify({
+            "status": "success",
+            "count": 0,
+            "results": [],
+            "message": "Tabel diagnostic_results belum dibuat. Jalankan pipeline diagnostik terlebih dahulu."
+        }), 200
     except Exception:
         logger.exception("Gagal mengambil data diagnostik dari DB")
         return jsonify({"status": "error", "message": "Gagal mengambil data"}), 500

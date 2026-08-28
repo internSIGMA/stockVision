@@ -39,6 +39,11 @@ def ensure_admin_tables():
     # Tambahan kolom ke users lama
     cur.execute("""
         ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+    """)
+
+    cur.execute("""
+        ALTER TABLE idxsaham.users
         ADD COLUMN IF NOT EXISTS access_role VARCHAR(30)
         DEFAULT 'user';
     """)
