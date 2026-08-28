@@ -100,7 +100,9 @@ async function onSimpan() {
               class="rounded-lg border-[0.5px] border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[12px] leading-relaxed text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100"
             >
               Kode verifikasi {{ PANJANG_KODE }} digit telah dikirim ke
-              <span class="font-medium">{{ email }}</span>
+              <span class="font-medium">{{ email }}</span>.
+              <br/>
+              <span class="mt-1 block opacity-80">Mohon periksa folder <strong class="font-semibold">Spam</strong> atau <strong class="font-semibold">Junk</strong> Anda jika tidak ada di Kotak Masuk.</span>
             </p>
 
             <!-- SMTP belum dikonfigurasi: backend menitipkan kodenya lewat response. -->

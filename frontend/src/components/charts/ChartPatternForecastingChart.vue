@@ -298,7 +298,7 @@ function toKeyPointMarkers(pattern, candles) {
         position: isBullish ? 'aboveBar' : 'belowBar',
         color: '#3B82F6',
         shape: isBullish ? 'arrowUp' : 'arrowDown',
-        text: '⚡ Breakout',
+        text: 'Breakout',
         size: 2,
       })
     }
@@ -338,31 +338,31 @@ function updateFibonacciLines() {
   const linesToCreate = [
     {
       price: p.tp1_measured_move,
-      title: isBull ? '🎯 TP1 Measured Move' : '🎯 Target Penurunan (Support)',
+      title: isBull ? 'TP1 Measured Move' : 'Target Penurunan (Support)',
       color: isBull ? w.fiboTp1 : '#06B6D4',
       style: LineStyle.Solid,
     },
     {
       price: p.tp2_fibo_127,
-      title: isBull ? '🎯 TP2 Fibo 127.2%' : '🎯 Support Ekstensi 127.2%',
+      title: isBull ? 'TP2 Fibo 127.2%' : 'Support Ekstensi 127.2%',
       color: w.fiboTp2,
       style: LineStyle.Dashed,
     },
     {
       price: p.tp3_fibo_161_golden,
-      title: isBull ? '👑 TP3 Golden 161.8%' : '👑 Support Ekstensi 161.8%',
+      title: isBull ? 'TP3 Golden 161.8%' : 'Support Ekstensi 161.8%',
       color: w.fiboTp3,
       style: LineStyle.Dashed,
     },
     {
       price: p.breakout_level,
-      title: isBull ? '⚡ Breakout Level' : '⚡ Neckline (Batas Jual)',
+      title: isBull ? 'Breakout Level' : 'Neckline (Batas Jual)',
       color: w.fiboBreakout,
       style: LineStyle.LargeDashed,
     },
     {
       price: p.stop_loss,
-      title: isBull ? '🛡️ Stop Loss' : '🛑 Invalidation (Pola Batal)',
+      title: isBull ? 'Stop Loss' : 'Invalidation (Pola Batal)',
       color: w.fiboStopLoss,
       style: LineStyle.Solid,
     },
@@ -739,7 +739,7 @@ watch(() => props.timeframe, applyTimeframe)
 
         <!-- Trajectory Value -->
         <div v-if="legendData?.forecast != null && showForecast" class="flex items-center text-[#8B5CF6]">
-          <span class="font-bold mr-1">📐 Trajectory</span>
+          <span class="font-bold mr-1">Trajectory</span>
           <span class="tabular font-semibold">{{ formatNumber(legendData.forecast) }}</span>
         </div>
       </div>
@@ -815,74 +815,76 @@ watch(() => props.timeframe, applyTimeframe)
     </div>
 
     <!-- 6 Layer Toggle Buttons -->
-    <div class="flex flex-wrap items-center gap-2 border-t-[0.5px] border-border pt-3 mt-1">
-      <span class="text-xs font-medium text-muted-foreground mr-1">Tampilkan:</span>
+    <div class="flex flex-col xl:flex-row xl:items-center gap-3 border-t-[0.5px] border-border pt-4 mt-2 w-full">
+      <span class="text-[13px] font-medium text-muted-foreground shrink-0">Tampilkan:</span>
 
-      <!-- 1. Historical -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showHist ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showHist = !showHist"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showHist ? 'bg-primary' : 'bg-muted'" />
-        Historical
-      </button>
+      <div class="flex flex-wrap w-full items-center rounded-lg border-[0.5px] border-border bg-muted/40 p-1 shadow-inner flex-1 gap-1">
+        <!-- 1. Historical -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showHist ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showHist = !showHist"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showHist ? 'bg-primary' : 'bg-muted'" />
+          Historical
+        </button>
 
-      <!-- 2. Forecast -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showForecast ? 'border-[#8B5CF6] bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showForecast = !showForecast"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showForecast ? 'bg-[#8B5CF6]' : 'bg-muted'" />
-        Forecast Trajectory
-      </button>
+        <!-- 2. Forecast -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showForecast ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showForecast = !showForecast"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showForecast ? 'bg-[#8B5CF6]' : 'bg-muted'" />
+          Forecast Trajectory
+        </button>
 
-      <!-- 3. Volume -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showVolume ? 'border-foreground/40 bg-foreground/10 text-foreground font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showVolume = !showVolume"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showVolume ? 'bg-foreground' : 'bg-muted'" />
-        Volume
-      </button>
+        <!-- 3. Volume -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showVolume ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showVolume = !showVolume"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showVolume ? 'bg-foreground' : 'bg-muted'" />
+          Volume
+        </button>
 
-      <!-- 4. Fibonacci -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showFibonacci ? 'border-[#06B6D4] bg-[#06B6D4]/10 text-[#06B6D4] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showFibonacci = !showFibonacci"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showFibonacci ? 'bg-[#06B6D4]' : 'bg-muted'" />
-        Fibonacci (TP1-3 / SL)
-      </button>
+        <!-- 4. Fibonacci -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showFibonacci ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showFibonacci = !showFibonacci"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showFibonacci ? 'bg-[#06B6D4]' : 'bg-muted'" />
+          Fibonacci (TP1-3)
+        </button>
 
-      <!-- 5. SMA 50/200 -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showSma ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-[#F59E0B] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showSma = !showSma"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showSma ? 'bg-[#F59E0B]' : 'bg-muted'" />
-        SMA 50 & 200
-      </button>
+        <!-- 5. SMA 50/200 -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showSma ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showSma = !showSma"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showSma ? 'bg-[#F59E0B]' : 'bg-muted'" />
+          SMA 50 & 200
+        </button>
 
-      <!-- 6. Chart Pattern -->
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors cursor-pointer"
-        :class="showGeometryLocal ? 'border-[var(--up)] bg-[var(--up)]/10 text-[var(--up)] font-medium shadow-xs' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="toggleGeometry"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showGeometryLocal ? 'bg-[var(--up)]' : 'bg-muted'" />
-        Chart Pattern Geometry
-      </button>
+        <!-- 6. Chart Pattern -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showGeometryLocal ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="toggleGeometry"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showGeometryLocal ? 'bg-[var(--up)]' : 'bg-muted'" />
+          Chart Pattern
+        </button>
+      </div>
     </div>
   </div>
 </template>
