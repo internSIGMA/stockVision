@@ -27,6 +27,7 @@ const props = defineProps({
   height: { type: Number, default: 240 },
   /** Jumlah bar yang terlihat saat pertama dibuka; sisanya dijangkau via zoom. */
   jendelaAwal: { type: Number, default: 150 },
+  timeframe: { type: String, default: '6M' },
 })
 
 const container = ref(null)
@@ -175,13 +176,55 @@ function bukaDiEkor() {
   })
 }
 
+function applyTimeframe() {
+  if (!chart.value || !titikHist.value.length) return
+
+  if (props.timeframe === 'ALL') {
+    chart.value.timeScale().fitContent()
+    return
+  }
+
+  const lastPointTime = titikHist.value[titikHist.value.length - 1].time
+  const lastDate = new Date(lastPointTime)
+  let fromDate = new Date(lastDate)
+
+  switch (props.timeframe) {
+    case '1D':
+      fromDate.setDate(fromDate.getDate() - 1)
+      break
+    case '5D':
+      fromDate.setDate(fromDate.getDate() - 5)
+      break
+    case '1M':
+      fromDate.setMonth(fromDate.getMonth() - 1)
+      break
+    case '3M':
+      fromDate.setMonth(fromDate.getMonth() - 3)
+      break
+    case '6M':
+      fromDate.setMonth(fromDate.getMonth() - 6)
+      break
+    case '1Y':
+      fromDate.setFullYear(fromDate.getFullYear() - 1)
+      break
+    case 'YTD':
+      fromDate = new Date(lastDate.getFullYear(), 0, 1)
+      break
+  }
+
+  chart.value.timeScale().setVisibleRange({
+    from: fromDate.toISOString().split('T')[0],
+    to: lastPointTime,
+  })
+}
+
 function render() {
   if (!seriHist.value) return
   seriHist.value.setData(titikHist.value)
   seriMacd.value.setData(titikMacd.value)
   seriSignal.value.setData(titikSignal.value)
   pasangGarisNol()
-  bukaDiEkor()
+  applyTimeframe()
   isiLegendTerakhir()
   requestAnimationFrame(hitungLebarSkala)
 }
@@ -246,9 +289,10 @@ watch(isDark, () => {
   seriSignal.value?.applyOptions({ color: w.signal })
   pasangGarisNol()
 })
+watch(() => props.timeframe, applyTimeframe)
 
 function resetZoom() {
-  bukaDiEkor()
+  applyTimeframe()
 }
 
 defineExpose({ resetZoom })

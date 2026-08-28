@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 chart_pattern_bp = Blueprint("chart_pattern_bp", __name__)
 
 
+import json as _json_mod
+
+
 def _num(val):
     """Konversi numerik atau Decimal ke float untuk JSON serialization."""
     if val is None:
@@ -32,6 +35,24 @@ def _num(val):
         return float(val)
     except (ValueError, TypeError):
         return val
+
+
+def _parse_json(val, fallback):
+    """Parse JSON string column from PostgreSQL. Returns native type as-is."""
+    if val is None:
+        return fallback
+    if isinstance(val, (list, dict)):
+        return val  # already deserialized (jsonb column via psycopg2)
+    if isinstance(val, str):
+        try:
+            return _json_mod.loads(val)
+        except (ValueError, _json_mod.JSONDecodeError):
+            pass
+    return fallback
+
+
+def _parse_timeline_date(val):
+    return str(val) if val else None
 
 
 # ============================================================
@@ -151,6 +172,7 @@ def get_chart_pattern_forecast():
 
     results = []
     for r in rows:
+        raw_ft = _parse_json(r.get("forecast_trajectory"), {})
         results.append({
             "id": r.get("id"),
             "symbol": r.get("symbol"),
@@ -174,29 +196,29 @@ def get_chart_pattern_forecast():
                 "tp3_fibo_161_golden": _num(r.get("tp3")),
                 "fibo_support": _num(r.get("fibo_support")),
                 "fibo_resistance": _num(r.get("fibo_resistance")),
-                "buy_area": r.get("forecast_trajectory", {}).get("buy_area", {}) if isinstance(r.get("forecast_trajectory"), dict) else {},
-                "sell_area": r.get("forecast_trajectory", {}).get("sell_area", {}) if isinstance(r.get("forecast_trajectory"), dict) else {},
+                "buy_area": raw_ft.get("buy_area", {}) if isinstance(raw_ft, dict) else {},
+                "sell_area": raw_ft.get("sell_area", {}) if isinstance(raw_ft, dict) else {},
             },
             "volume_confirmed": bool(r.get("volume_confirmed")),
             "timeline": {
-                "start_date": r.get("start_date"),
-                "end_date": r.get("end_date"),
-                "breakout_date": r.get("breakout_date"),
-                "target_date": r.get("target_date"),
+                "start_date": _parse_timeline_date(r.get("start_date")),
+                "end_date": _parse_timeline_date(r.get("end_date")),
+                "breakout_date": _parse_timeline_date(r.get("breakout_date")),
+                "target_date": _parse_timeline_date(r.get("target_date")),
             },
             "calendar_info": {
                 "is_today_holiday": bool(r.get("is_today_holiday")),
                 "holiday_description": r.get("holiday_description"),
                 "next_trading_day": str(r.get("next_trading_day")) if r.get("next_trading_day") else None
             },
-            "key_points": r.get("key_points") if isinstance(r.get("key_points"), list) else [],
-            "geometry_lines": r.get("geometry_lines") if isinstance(r.get("geometry_lines"), list) else [],
-            "forecast_trajectory": r.get("forecast_trajectory") if isinstance(r.get("forecast_trajectory"), dict) else {},
-            "rules_checklist": r.get("rules_checklist") if isinstance(r.get("rules_checklist"), list) else [],
-            "detection_reasons": r.get("detection_reasons") if isinstance(r.get("detection_reasons"), list) else [],
+            "key_points": _parse_json(r.get("key_points"), []),
+            "geometry_lines": _parse_json(r.get("geometry_lines"), []),
+            "forecast_trajectory": raw_ft,
+            "rules_checklist": _parse_json(r.get("rules_checklist"), []),
+            "detection_reasons": _parse_json(r.get("detection_reasons"), []),
             "statistical_notes": r.get("statistical_notes"),
             "description": r.get("description"),
-            "evaluation_metrics": r.get("evaluation_metrics") if isinstance(r.get("evaluation_metrics"), dict) else {}
+            "evaluation_metrics": _parse_json(r.get("evaluation_metrics"), {})
         })
 
     return jsonify({
@@ -246,10 +268,20 @@ def get_all_detected_patterns():
         cur.close()
         conn.close()
 
+        # Deserialize JSON string columns for each row before returning
+        deserialized = []
+        for r in rows:
+            d = dict(r)
+            for jcol, fallback in [("key_points", []), ("geometry_lines", []),
+                                    ("forecast_trajectory", {}), ("rules_checklist", []),
+                                    ("detection_reasons", []), ("evaluation_metrics", {})]:
+                d[jcol] = _parse_json(d.get(jcol), fallback)
+            deserialized.append(d)
+
         return jsonify({
             "status": "success",
-            "count": len(rows),
-            "data": rows
+            "count": len(deserialized),
+            "data": deserialized
         }), 200
     except Exception as e:
         logger.warning(f"Error query all patterns: {e}")
