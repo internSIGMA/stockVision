@@ -473,6 +473,9 @@ const labelTanggal = computed(() => {
             <p class="text-sm text-foreground">
               Kode 6 digit telah dikirimkan ke <span class="font-bold">{{ form.email }}</span>
             </p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Mohon periksa folder <strong class="font-semibold">Spam</strong> atau <strong class="font-semibold">Junk</strong> Anda jika email tidak ditemukan di Kotak Masuk.
+            </p>
             <p v-if="isSimulated" class="mt-2 text-xs text-[var(--warning)] font-medium">
               [Mode Simulasi] Kode OTP Anda: {{ debugCode }}
             </p>

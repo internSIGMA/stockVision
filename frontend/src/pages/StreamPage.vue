@@ -376,41 +376,42 @@ const selectedTimeframe = ref('6M')
 
         <!-- 3 — Kotak 1: Technical & Forecasting Chart -->
         <section class="rounded-lg border-[0.5px] border-border bg-card">
-          <header class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-border px-3.5 py-2.5">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <h2 class="text-[13px] font-medium">
-                  Technical &amp; Forecasting — <span class="tabular font-bold">{{ ticker ?? '—' }}</span>
-                </h2>
-
-                <!-- Mode Switcher Pill Group -->
-                <div class="inline-flex rounded-lg bg-muted/60 p-0.5 text-xs">
-                  <button
-                    type="button"
-                    class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all cursor-pointer"
-                    :class="forecastMode === 'ML' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'"
-                    @click="forecastMode = 'ML'"
-                  >
-                    <span>🤖</span> Machine Learning
-                  </button>
-                  <button
-                    type="button"
-                    class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all cursor-pointer"
-                    :class="forecastMode === 'PATTERN' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'"
-                    @click="forecastMode = 'PATTERN'"
-                  >
-                    <span>📐</span> Chart Pattern
-                  </button>
-                </div>
-              </div>
-
-              <p class="mt-0.5 text-[10px] text-muted-foreground">
+          <header class="flex flex-col xl:flex-row items-center justify-between gap-4 border-b-[0.5px] border-border px-4 py-3">
+            <!-- Left: Title & Subtitle -->
+            <div class="flex-1 flex flex-col min-w-0 w-full xl:w-auto text-center xl:text-left">
+              <h2 class="text-[13.5px] font-medium truncate">
+                Technical &amp; Forecasting — <span class="tabular font-bold">{{ ticker ?? '—' }}</span>
+              </h2>
+              <p class="mt-0.5 text-[10.5px] text-muted-foreground truncate hidden sm:block">
                 <span v-if="forecastMode === 'ML'">Grafik historis OHLC, volume transaksi, dan proyeksi model time-series.</span>
                 <span v-else>Geometri pola klasik Bulkowski, Fibonacci multi-targets (TP1-3), Stop Loss, dan lintasan proyeksi.</span>
               </p>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2">
+            <!-- Center: Mode Switcher -->
+            <div class="flex-none flex justify-center w-full xl:w-auto">
+              <div class="inline-flex items-center rounded-lg bg-muted/50 p-1 shadow-inner border border-border/50">
+                <button
+                  type="button"
+                  class="flex items-center justify-center rounded-md px-4 py-1.5 text-[12px] font-semibold transition-all duration-200 cursor-pointer w-[136px]"
+                  :class="forecastMode === 'ML' ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
+                  @click="forecastMode = 'ML'"
+                >
+                  Machine Learning
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center justify-center rounded-md px-4 py-1.5 text-[12px] font-semibold transition-all duration-200 cursor-pointer w-[136px]"
+                  :class="forecastMode === 'PATTERN' ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
+                  @click="forecastMode = 'PATTERN'"
+                >
+                  Chart Pattern
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Timeframes & Tools -->
+            <div class="flex-1 flex flex-wrap items-center justify-center xl:justify-end gap-2 w-full xl:w-auto">
               <!-- Timeframe Selector -->
               <div class="flex shrink-0 items-center gap-1" :class="{ 'border-r-[0.5px] border-border pr-3 mr-3': (forecastMode === 'ML' && horizonTersedia.length > 1) }">
                 <Button
