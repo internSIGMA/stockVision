@@ -17,6 +17,13 @@ dist/
 .idea/
 .DS_Store
 
+# Logs & Checkpoints
+*.log
+backend/forecasting/logs/
+backend/forecasting/models/checkpoints/
+*.joblib
+*.pkl
+
 # Arsip/tooling eksternal yang tidak ikut proyek
 *-main/
 backend/token_cache.json 

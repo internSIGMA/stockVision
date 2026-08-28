@@ -62,13 +62,14 @@ def run_tuning_pipeline(df=None, n_trials=None):
     return tuning_results
 
 
-def run_pipeline(force_recluster=False, run_tuning=False, n_trials=None):
+def run_pipeline(force_recluster=False, run_tuning=False, force_retrain=False, n_trials=None):
     """
-    Runs the complete end-to-end forecasting pipeline.
+    Runs the complete end-to-end forecasting pipeline with Model Checkpoint support.
     
     Args:
         force_recluster (bool): If True, re-runs K-Means clustering even if assignments exist.
         run_tuning (bool): If True, re-tunes hyperparameters for each cluster with Optuna.
+        force_retrain (bool): If True, ignores existing fresh checkpoints and retrains all models.
         n_trials (int): Number of trials for Optuna if tuning is executed.
     """
     try:
@@ -104,9 +105,11 @@ def run_pipeline(force_recluster=False, run_tuning=False, n_trials=None):
             logger.info("[Step 3.5/5] Running Optuna hyperparameter tuning per cluster...")
             tune_all_clusters(df, cluster_assignments, n_trials=n_trials)
 
-        # 5. Training & Accuracy evaluation
-        logger.info("[Step 4/5] Training cluster-aware LightGBM models and computing accuracy...")
-        all_models, all_stock_data, all_accuracy = train_all_cluster_models(df, cluster_assignments)
+        # 5. Training & Accuracy evaluation (with Checkpoint Resume)
+        logger.info("[Step 4/5] Training cluster-aware LightGBM models (Checkpoints enabled, force_retrain=%s)...", force_retrain)
+        all_models, all_stock_data, all_accuracy = train_all_cluster_models(
+            df, cluster_assignments, force_retrain=force_retrain
+        )
 
         # 6. Forecasting & Refresh table
         logger.info("[Step 5/5] Generating %d-day forecasts for all stocks...", FORECAST_HORIZON)
