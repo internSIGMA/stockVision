@@ -36,6 +36,22 @@ def ensure_admin_tables():
 
     cur.execute("CREATE SCHEMA IF NOT EXISTS idxsaham;")
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS idxsaham.users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            username VARCHAR(100) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(255),
+            role VARCHAR(150),
+            access_role VARCHAR(30) NOT NULL DEFAULT 'user',
+            default_ticker VARCHAR(20),
+            phone_number VARCHAR(50),
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
     # Tambahan kolom ke users lama
     cur.execute("""
         ALTER TABLE idxsaham.users
@@ -47,6 +63,11 @@ def ensure_admin_tables():
         ALTER TABLE idxsaham.users
         ADD COLUMN IF NOT EXISTS is_active BOOLEAN
         DEFAULT TRUE;
+    """)
+
+    cur.execute("""
+        ALTER TABLE idxsaham.users
+        ADD COLUMN IF NOT EXISTS role VARCHAR(150);
     """)
 
     # Role / jabatan
