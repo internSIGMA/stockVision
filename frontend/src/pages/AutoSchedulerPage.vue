@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Activity, CalendarClock, CalendarDays, Copy, Loader2, Target, BookMarked, ExternalLink } from '@lucide/vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { Activity, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Copy, Loader2, Target, BookMarked, ExternalLink } from '@lucide/vue'
 import {
   getSchedulerStatus,
   updateStockbitToken,
@@ -118,6 +118,64 @@ const targets = computed(() => {
   const t = data.value?.targets
   return Array.isArray(t) && t.length ? t : auth.watchlist
 })
+
+// --- Paginasi target emiten: 20 kartu (5 baris x 4 kolom) per halaman. ---
+const PER_HALAMAN = 20
+
+const halaman = ref(1)
+const seksiEmiten = ref(null)
+
+const totalHalaman = computed(() => Math.max(1, Math.ceil(targets.value.length / PER_HALAMAN)))
+
+// Daftar target ikut disegarkan tiap 5 detik dan bisa menyusut. Tanpa penjepitan
+// ini halaman aktif bisa menunjuk rentang yang sudah tidak berisi apa pun.
+const halamanAktif = computed(() => Math.min(halaman.value, totalHalaman.value))
+
+const targetsHalaman = computed(() => {
+  const mulai = (halamanAktif.value - 1) * PER_HALAMAN
+  return targets.value.slice(mulai, mulai + PER_HALAMAN)
+})
+
+const rentangTampil = computed(() => {
+  if (!targets.value.length) return ''
+  const mulai = (halamanAktif.value - 1) * PER_HALAMAN + 1
+  const akhir = Math.min(mulai + PER_HALAMAN - 1, targets.value.length)
+  return `${mulai}-${akhir} dari ${targets.value.length} emiten`
+})
+
+/**
+ * Target bisa mencapai ratusan emiten, jadi nomor halaman diringkas jadi
+ * maksimal 5 tombol + elipsis supaya tetap muat di layar ponsel.
+ */
+const nomorHalaman = computed(() => {
+  const total = totalHalaman.value
+  const kini = halamanAktif.value
+
+  const wajib = new Set([1, total, kini])
+  if (kini > 1) wajib.add(kini - 1)
+  if (kini < total) wajib.add(kini + 1)
+
+  const urut = [...wajib].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b)
+
+  const hasil = []
+  let sebelumnya = 0
+  for (const n of urut) {
+    if (sebelumnya && n - sebelumnya > 1) hasil.push({ key: `gap-${n}`, elipsis: true })
+    hasil.push({ key: `hal-${n}`, nomor: n })
+    sebelumnya = n
+  }
+  return hasil
+})
+
+async function keHalaman(tujuan) {
+  const n = Math.min(Math.max(1, tujuan), totalHalaman.value)
+  if (n === halamanAktif.value) return
+  halaman.value = n
+  // Tombol paginasi berada di bawah 20 kartu, jadi tanpa ini user mendarat di
+  // ujung bawah daftar baru dan harus menggulir manual ke atas.
+  await nextTick()
+  seksiEmiten.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const hariTrading = computed(() => !!market.value?.is_trading_day)
 const jamBursaBuka = computed(() => !!market.value?.is_trading_hours)
@@ -245,7 +303,7 @@ function nilai(row, ...keys) {
       </div>
 
       <!-- Target emiten melebar penuh di bawah kedua kartu -->
-      <section class="flex flex-col rounded-lg border-[0.5px] border-border bg-card">
+      <section ref="seksiEmiten" class="flex flex-col scroll-mt-3 rounded-lg border-[0.5px] border-border bg-card">
         <header class="flex items-center gap-2 border-b-[0.5px] border-border px-3.5 py-2.5">
           <Target class="size-3.5 text-muted-foreground" aria-hidden="true" />
           <h2 class="text-[13px] font-medium">Target Emiten</h2>
@@ -260,7 +318,7 @@ function nilai(row, ...keys) {
 
           <ul v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             <li
-              v-for="t in targets"
+              v-for="t in targetsHalaman"
               :key="t"
               class="flex items-center gap-2 rounded-md border-[0.5px] border-border px-2.5 py-2"
             >
@@ -276,6 +334,59 @@ function nilai(row, ...keys) {
               </div>
             </li>
           </ul>
+
+          <nav
+            v-if="targets.length"
+            class="flex flex-col items-center justify-between gap-2 border-t-[0.5px] border-border pt-3 sm:flex-row"
+            aria-label="Navigasi halaman target emiten"
+          >
+            <p class="tabular text-[11px] text-muted-foreground">{{ rentangTampil }}</p>
+
+            <div v-if="totalHalaman > 1" class="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="xs"
+                :disabled="halamanAktif === 1"
+                aria-label="Halaman sebelumnya"
+                @click="keHalaman(halamanAktif - 1)"
+              >
+                <ChevronLeft />
+                <span class="hidden sm:inline">Previous</span>
+              </Button>
+
+              <template v-for="item in nomorHalaman" :key="item.key">
+                <span
+                  v-if="item.elipsis"
+                  class="px-1 text-[11px] text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  &hellip;
+                </span>
+                <Button
+                  v-else
+                  :variant="item.nomor === halamanAktif ? 'default' : 'ghost'"
+                  size="icon-xs"
+                  class="tabular text-[11px]"
+                  :aria-label="`Halaman ${item.nomor}`"
+                  :aria-current="item.nomor === halamanAktif ? 'page' : undefined"
+                  @click="keHalaman(item.nomor)"
+                >
+                  {{ item.nomor }}
+                </Button>
+              </template>
+
+              <Button
+                variant="outline"
+                size="xs"
+                :disabled="halamanAktif === totalHalaman"
+                aria-label="Halaman berikutnya"
+                @click="keHalaman(halamanAktif + 1)"
+              >
+                <span class="hidden sm:inline">Next</span>
+                <ChevronRight />
+              </Button>
+            </div>
+          </nav>
         </div>
       </section>
 
