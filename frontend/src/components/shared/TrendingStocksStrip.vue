@@ -52,9 +52,7 @@ async function reload() {
 
   const emitenDitampilkan = auth.isAdmin
     ? SUPPORTED_TICKERS
-    : (auth.watchlistTersimpan.length 
-        ? auth.watchlistTersimpan 
-        : (auth.emitenUtama ? [auth.emitenUtama] : []))
+    : auth.watchlistTersimpan
 
   if (!emitenDitampilkan.length) {
     items.value = []

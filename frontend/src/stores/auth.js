@@ -24,10 +24,7 @@ const STORAGE_KEY = 'stockvision.auth'
 // Satu-satunya akun yang boleh membuka Admin Management.
 const ADMIN_EMAIL = 'admin@sahamscope.id'
 
-const SEED_WATCHLISTS = {
-  BBCA: ['BBCA', 'BBRI', 'BMRI'],
-  BBNI: ['BBNI', 'BJBR'],
-}
+
 
 function readPersisted() {
   try {
@@ -65,8 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
   const watchlist = computed(() => {
     const symbols = (activeWatchlist.value?.symbols || []).filter(isSupported)
     if (!symbols.length) return SUPPORTED_TICKERS
-    const utama = user.value?.defaultTicker
-    return utama && isSupported(utama) && !symbols.includes(utama) ? [utama, ...symbols] : symbols
+    return symbols
   })
 
   const watchlistTidakDidukung = computed(() =>
@@ -83,7 +79,6 @@ export const useAuthStore = defineStore('auth', () => {
     (activeWatchlist.value?.symbols || []).filter(isSupported),
   )
 
-  const emitenUtama = computed(() => user.value?.defaultTicker || watchlist.value[0] || 'BBCA')
 
   function persist() {
     if (user.value) localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: user.value }))
@@ -103,7 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
       username: raw.username ?? '',
       name: raw.name ?? raw.username ?? 'User',
       accessRole: raw.access_role ?? raw.accessRole ?? 'user',
-      defaultTicker: raw.default_ticker ?? raw.defaultTicker ?? 'BBCA',
+
       phone: raw.phone ?? localPrefs.phone ?? '',
       avatar: raw.avatar ?? raw.avatar_url ?? localPrefs.photo ?? '',
       emailNotification: raw.email_notification ?? raw.emailNotification ?? localPrefs.emailNotif ?? true,
@@ -123,7 +118,6 @@ export const useAuthStore = defineStore('auth', () => {
       isNewRegistration.value = false
     }
     
-    useMarketStore().resetTicker(user.value.defaultTicker)
     return user.value
   }
 
@@ -211,12 +205,17 @@ export const useAuthStore = defineStore('auth', () => {
     if (!activeWatchlistId.value && watchlists.value.length) {
       activeWatchlistId.value = watchlists.value[0].id
     }
+    
+    // Inisialisasi market ticker dengan emiten pertama di watchlist jika masih kosong
+    const market = useMarketStore()
+    if (!market.selectedTicker && watchlistTersimpan.value.length > 0) {
+      market.initTicker(watchlistTersimpan.value[0])
+    }
   }
 
   async function ensureWatchlist() {
     if (!user.value || watchlists.value.length) return
-    const utama = user.value.defaultTicker
-    const symbols = SEED_WATCHLISTS[utama] || [utama]
+    const symbols = ['BBCA']
     const created = await createWatchlist(user.value.id, { name: 'Watchlist Saya', symbols })
     watchlists.value = [created]
     activeWatchlistId.value = created.id
@@ -242,6 +241,12 @@ export const useAuthStore = defineStore('auth', () => {
       watchlists.value.push(created)
       activeWatchlistId.value = created.id
     }
+    
+    // Inisialisasi market ticker dengan emiten pertama yang baru disimpan jika masih kosong
+    const market = useMarketStore()
+    if (!market.selectedTicker && symbols.length > 0) {
+      market.initTicker(symbols[0])
+    }
   }
 
   /**
@@ -254,11 +259,6 @@ export const useAuthStore = defineStore('auth', () => {
     const sisa = watchlistTersimpan.value.filter((t) => t !== ticker)
     await saveWatchlist(sisa)
 
-    // Emiten utama ikut pindah kalau yang barusan dihapus adalah dirinya.
-    // Kalau tidak ada sisa, biarkan — updateProfile menolak ticker kosong.
-    if (user.value.defaultTicker === ticker && sisa.length) {
-      await setEmitenUtama(sisa[0])
-    }
 
     // Jangan tinggalkan Stream menampilkan emiten yang sudah tidak dipantau.
     const market = useMarketStore()
@@ -286,12 +286,6 @@ export const useAuthStore = defineStore('auth', () => {
     if (profileData.phone !== undefined) payload.phone = profileData.phone.trim()
     if (profileData.avatar !== undefined) payload.avatar = profileData.avatar
     if (profileData.emailNotification !== undefined) payload.email_notification = profileData.emailNotification
-    if (profileData.defaultTicker !== undefined) {
-      const ticker = profileData.defaultTicker.trim().toUpperCase()
-      if (!isSupported(ticker)) throw new Error(`Ticker ${ticker} belum didukung.`)
-      payload.default_ticker = ticker
-    }
-
     const updatedRaw = await updateUser(user.value.id, payload)
 
     const currentRaw = {
@@ -299,7 +293,6 @@ export const useAuthStore = defineStore('auth', () => {
       email: user.value.email,
       username: user.value.username,
       name: user.value.name,
-      default_ticker: user.value.defaultTicker,
       phone: user.value.phone,
       avatar: user.value.avatar,
       email_notification: user.value.emailNotification,
@@ -316,23 +309,15 @@ export const useAuthStore = defineStore('auth', () => {
       }))
     } catch (e) {}
 
-    if (payload.default_ticker) useMarketStore().resetTicker(user.value.defaultTicker)
     return user.value
   }
 
-  async function setEmitenUtama(ticker) {
-    if (!user.value) return
-    return updateProfile({ defaultTicker: ticker })
-  }
 
   async function restore() {
     isInitializing.value = true
     try {
       if (!user.value) return
 
-      // selectedTicker tidak ikut dipersistensi, jadi setelah refresh nilainya
-      // kosong dan seluruh section Stream ikut kosong. Pulihkan dari profil user.
-      useMarketStore().initTicker(user.value.defaultTicker)
 
       if (watchlists.value.length) return
       await fetchWatchlists()
@@ -349,7 +334,7 @@ export const useAuthStore = defineStore('auth', () => {
     watchlist,
     watchlistTersimpan,
     watchlistTidakDidukung,
-    emitenUtama,
+
     loading,
     isInitializing,
     isNewRegistration,
@@ -372,7 +357,7 @@ export const useAuthStore = defineStore('auth', () => {
     selectWatchlist,
     saveWatchlist,
     updateProfile,
-    setEmitenUtama,
+
     restore,
   }
 })

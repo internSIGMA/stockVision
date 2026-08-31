@@ -113,7 +113,12 @@ function tema() {
     },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     rightPriceScale: { borderColor: grid, scaleMargins: { top: 0.12, bottom: 0.12 } },
-    timeScale: { borderColor: grid, rightOffset: 2 },
+    timeScale: {
+      borderColor: grid,
+      rightOffset: 2,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
     crosshair: { mode: CrosshairMode.Normal },
   }
 }
@@ -210,6 +215,11 @@ function applyTimeframe() {
     case 'YTD':
       fromDate = new Date(lastDate.getFullYear(), 0, 1)
       break
+  }
+
+  const firstHist = new Date(titikHist.value[0].time)
+  if (fromDate < firstHist) {
+    fromDate = firstHist
   }
 
   chart.value.timeScale().setVisibleRange({

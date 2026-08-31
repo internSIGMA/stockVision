@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import {
   RefreshCw,
-  Share2,
   Sparkles,
   UserPlus,
   Wallet,
@@ -10,7 +9,6 @@ import {
 import { buildRecommendation, parseRingkasan } from '@/utils/prescriptive'
 import { summarizeIndicators } from '@/utils/technicalIndicators'
 import { formatDate, formatNumber } from '@/utils/format'
-import { useNotify } from '@/composables/useNotify'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
@@ -29,8 +27,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['recompute'])
-
-const notify = useNotify()
 
 const hasil = computed(() => buildRecommendation(props.rows))
 const indikator = computed(() => summarizeIndicators(props.rows))
@@ -68,40 +64,6 @@ function tanggalDuaBaris(nilai) {
   return { hari: teks.slice(0, pisah), tahun: teks.slice(pisah + 1) }
 }
 
-const menyalin = ref(false)
-
-/**
- * Membagikan ringkasan sebagai teks, bukan tautan: hasil analisis terikat pada
- * tanggal pipeline, jadi yang berguna dibagikan adalah isinya saat ini.
- */
-async function bagikan() {
-  const b = props.backend
-  if (!b?.llm_summary) {
-    notify.info('Belum ada ringkasan untuk dibagikan.')
-    return
-  }
-
-  const baris = [
-    `Analisis Preskriptif ${b.symbol ?? ''} — ${b.company_name ?? ''}`.trim(),
-    `Rekomendasi: ${b.recommendation ?? '—'}`,
-    props.levels
-      ? `Entry ${formatNumber(props.levels.entry)} · Target ${formatNumber(props.levels.target)} · Stop loss ${formatNumber(props.levels.stopLoss)}`
-      : null,
-    '',
-    b.llm_summary.replace(/\*/g, ''),
-  ].filter((v) => v !== null)
-
-  try {
-    menyalin.value = true
-    await navigator.clipboard.writeText(baris.join('\n'))
-    notify.success('Ringkasan disalin', 'Tinggal tempel di mana pun kamu perlu.')
-  } catch {
-    // Clipboard API diblokir di konteks non-HTTPS dan sebagian browser lama.
-    notify.error('Gagal menyalin', 'Browser menolak akses papan klip.')
-  } finally {
-    menyalin.value = false
-  }
-}
 
 /**
  * Menentukan warna teks berdasarkan rekomendasi strategi.
@@ -135,15 +97,7 @@ function warnaStrategi(teks) {
         </h2>
 
         <div class="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            :disabled="menyalin || !backend?.llm_summary"
-            class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--primary-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50"
-            @click="bagikan"
-          >
-            <Share2 class="size-3.5" aria-hidden="true" />
-            Bagikan
-          </button>
+
 
           <p class="text-[10px] text-muted-foreground">
             Data terakhir diupdate:

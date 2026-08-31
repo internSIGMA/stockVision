@@ -11,7 +11,7 @@ import { useNotify } from '@/composables/useNotify'
  * Tepat tiga emiten: cukup untuk dibandingkan di Stream, dan tidak lebih
  * supaya halamannya tetap satu keputusan singkat.
  */
-const JUMLAH_PILIH = 3
+const MIN_PILIH = 3
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -30,18 +30,17 @@ const menyimpan = ref(false)
 const terpilih = ref(new Set())
 
 const jumlah = computed(() => terpilih.value.size)
-const cukup = computed(() => jumlah.value === JUMLAH_PILIH)
-const penuh = computed(() => jumlah.value >= JUMLAH_PILIH)
+const cukup = computed(() => jumlah.value >= MIN_PILIH)
 
 const keterangan = computed(() => {
   if (cukup.value) {
     return `${jumlah.value} emiten dipilih · Siap disimpan.`
   }
 
-  const kurang = JUMLAH_PILIH - jumlah.value
+  const kurang = MIN_PILIH - jumlah.value
   return (
     `${jumlah.value} emiten dipilih · ` +
-    `Pilih ${kurang} emiten lagi — tepat ${JUMLAH_PILIH} emiten untuk melanjutkan.`
+    `Pilih minimal ${kurang} emiten lagi untuk melanjutkan.`
   )
 })
 
@@ -85,18 +84,6 @@ function toggle(ticker) {
   if (terpilih.value.has(ticker)) {
     terpilih.value.delete(ticker)
   } else {
-    /*
-     * Batas atas ditegakkan di sini, bukan dengan menonaktifkan kartunya:
-     * kartu yang mati tidak menjelaskan apa-apa, sedangkan pesan ini
-     * memberi tahu apa yang harus dilepas dulu.
-     */
-    if (penuh.value) {
-      notify.info(
-        `Maksimal ${JUMLAH_PILIH} emiten`,
-        'Lepas salah satu pilihan dulu sebelum menambah yang baru.',
-      )
-      return
-    }
 
     terpilih.value.add(ticker)
   }
@@ -111,13 +98,7 @@ async function simpan() {
   menyimpan.value = true
 
   try {
-    // Emiten utama harus salah satu yang dipantau; kalau yang lama tidak ikut
-    // terpilih, Stream akan membuka emiten yang tidak ada di watchlist.
-    const utamaLama = authStore.user?.defaultTicker
-    const utama = pilihan.includes(utamaLama) ? utamaLama : pilihan[0]
-
     await authStore.saveWatchlist(pilihan, 'Watchlist Saya')
-    await authStore.setEmitenUtama(utama)
 
     notify.success('Preferensi disimpan', `${pilihan.length} emiten kini dipantau.`)
     router.push('/stream')
@@ -144,7 +125,7 @@ async function simpan() {
           Pilih emiten yang ingin kamu pantau
         </h1>
         <p class="mt-2 text-[13px] text-muted-foreground">
-          Pilih tepat {{ JUMLAH_PILIH }} emiten. Pilihan ini bisa diubah kapan saja.
+          Pilih minimal {{ MIN_PILIH }} emiten. Pilihan ini bisa diubah kapan saja.
         </p>
       </header>
 

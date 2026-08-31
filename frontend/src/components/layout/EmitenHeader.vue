@@ -22,7 +22,6 @@ const notify = useNotify()
 
 const sibuk = ref(false)
 
-const isUtama = computed(() => market.selectedTicker === auth.emitenUtama)
 
 /**
  * Crawl manual per emiten sudah dimatikan backend (semua endpoint-nya 403).

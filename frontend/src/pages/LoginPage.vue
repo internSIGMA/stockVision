@@ -21,13 +21,19 @@ function lanjut() {
   const redirect =
     typeof route.query.redirect === 'string' ? route.query.redirect : '/stream'
 
-  // Setiap pengguna biasa melewati pemilihan emiten dulu — bukan hanya
-  // pendaftar baru. Admin tidak punya watchlist sendiri, jadi langsung masuk.
-  if (!auth.isAdmin && auth.user) {
-    router.push('/preferences')
+  // Admin tidak punya watchlist sendiri, jadi langsung masuk.
+  if (auth.isAdmin) {
+    router.push(redirect)
     return
   }
 
+  // Jika user baru (belum punya watchlist), arahkan ke onboarding untuk memilih emiten
+  if (auth.isNewRegistration) {
+    router.push('/onboarding')
+    return
+  }
+
+  // User lama langsung masuk ke beranda
   router.push(redirect)
 }
 

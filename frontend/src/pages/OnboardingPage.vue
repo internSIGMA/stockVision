@@ -65,11 +65,8 @@ async function lanjutKeStream() {
     localStorage.setItem(`onboarded_${authStore.user.id}`, 'true')
   }
 
-  // Jadikan emiten yang dipilih pertama sebagai emiten utama
   const selectedArray = Array.from(selectedTickers.value)
   if (selectedArray.length > 0) {
-    const utama = selectedArray[0]
-    await authStore.setEmitenUtama(utama)
     // Update daftar pantau dengan yang dipilih
     await authStore.saveWatchlist(selectedArray, 'Watchlist Saya')
   }

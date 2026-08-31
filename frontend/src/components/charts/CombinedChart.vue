@@ -78,7 +78,13 @@ function tema() {
     },
     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
     rightPriceScale: { borderColor: grid },
-    timeScale: { borderColor: grid, maxBarSpacing: 1e4 },
+    timeScale: {
+      borderColor: grid,
+      maxBarSpacing: 1e4,
+      rightOffset: 0,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
     crosshair: { mode: CrosshairMode.Normal },
   }
 }
@@ -252,7 +258,7 @@ function applyTimeframe() {
   }
 
   let lastPointTime = dataAktual.value[dataAktual.value.length - 1].time
-  if (dataProyeksi.value.line.length) {
+  if (showForecast.value && dataProyeksi.value.line.length) {
     lastPointTime = dataProyeksi.value.line[dataProyeksi.value.line.length - 1].time
   }
   
@@ -266,12 +272,19 @@ function applyTimeframe() {
     case '3M': fromDate.setMonth(fromDate.getMonth() - 3); break
     case '6M': fromDate.setMonth(fromDate.getMonth() - 6); break
     case '1Y': fromDate.setFullYear(fromDate.getFullYear() - 1); break
-    case 'YTD': fromDate = new Date(lastHist.getFullYear(), 0, 1); break
+    case 'YTD':
+      fromDate = new Date(lastHist.getFullYear(), 0, 1)
+      break
   }
-  
+
+  const firstHist = new Date(dataAktual.value[0].time)
+  if (fromDate < firstHist) {
+    fromDate = firstHist
+  }
+
   chart.value.timeScale().setVisibleRange({
     from: fromDate.toISOString().split('T')[0],
-    to: lastPointTime
+    to: lastPointTime,
   })
 }
 
@@ -445,44 +458,47 @@ watch(() => props.timeframe, applyTimeframe)
     </div>
     
     <!-- Toggles -->
-    <div class="flex flex-wrap items-center gap-4 border-t-[0.5px] border-border pt-4 mt-1">
-      <span class="text-xs font-medium text-muted-foreground mr-2">Tampilkan:</span>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showHist ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showHist = !showHist"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showHist ? 'bg-primary' : 'bg-muted'" />
-        Historical
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showForecast ? 'border-[var(--warning)] bg-[var(--warning)]/10 text-[var(--warning)] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showForecast = !showForecast"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showForecast ? 'bg-[var(--warning)]' : 'bg-muted'" />
-        Forecast
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showRsi ? 'border-[var(--chart-2)] bg-[var(--chart-2)]/10 text-[var(--chart-2)] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showRsi = !showRsi"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showRsi ? 'bg-[var(--chart-2)]' : 'bg-muted'" />
-        RSI (14)
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showMacd ? 'border-[var(--info)] bg-[var(--info)]/10 text-[var(--info)] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showMacd = !showMacd"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showMacd ? 'bg-[var(--info)]' : 'bg-muted'" />
-        MACD (12, 26, 9)
-      </button>
+    <div class="flex flex-col xl:flex-row xl:items-center gap-3 border-t-[0.5px] border-border pt-4 mt-2 w-full">
+      <span class="text-base font-medium text-muted-foreground shrink-0">Tampilkan:</span>
+
+      <div class="flex flex-wrap w-full items-center rounded-lg border-[0.5px] border-border bg-muted/40 p-1 shadow-inner flex-1 gap-1">
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showHist ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showHist = !showHist"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showHist ? 'bg-primary' : 'bg-muted'" />
+          Historical
+        </button>
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showForecast ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showForecast = !showForecast"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showForecast ? 'bg-[var(--warning)]' : 'bg-muted'" />
+          Forecast
+        </button>
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showRsi ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showRsi = !showRsi"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showRsi ? 'bg-[var(--chart-2)]' : 'bg-muted'" />
+          RSI (14)
+        </button>
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showMacd ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showMacd = !showMacd"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showMacd ? 'bg-[var(--info)]' : 'bg-muted'" />
+          MACD (12, 26, 9)
+        </button>
+      </div>
     </div>
   </div>
 </template>

@@ -81,7 +81,12 @@ function tema() {
     // Skala dikunci 0–100: RSI memang tidak pernah keluar rentang itu, dan
     // dengan begitu posisi arsiran zona tidak bergeser saat di-zoom.
     rightPriceScale: { borderColor: grid, scaleMargins: { top: 0.08, bottom: 0.08 } },
-    timeScale: { borderColor: grid, rightOffset: 2 },
+    timeScale: {
+      borderColor: grid,
+      rightOffset: 2,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
     crosshair: { mode: CrosshairMode.Normal },
   }
 }
@@ -178,6 +183,11 @@ function applyTimeframe() {
     case 'YTD':
       fromDate = new Date(lastDate.getFullYear(), 0, 1)
       break
+  }
+
+  const firstHist = new Date(titik.value[0].time)
+  if (fromDate < firstHist) {
+    fromDate = firstHist
   }
 
   chart.value.timeScale().setVisibleRange({

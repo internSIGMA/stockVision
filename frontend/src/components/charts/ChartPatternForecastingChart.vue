@@ -109,6 +109,9 @@ function tema() {
     timeScale: {
       borderColor: grid,
       maxBarSpacing: 1e4,
+      rightOffset: 0,
+      fixLeftEdge: true,
+      fixRightEdge: true,
     },
     crosshair: { mode: CrosshairMode.Normal },
   }
@@ -500,7 +503,7 @@ function applyTimeframe() {
   }
 
   let lastPointTime = dataAktual.value[dataAktual.value.length - 1].time
-  if (dataProyeksi.value.line.length) {
+  if (showForecast.value && dataProyeksi.value.line.length) {
     lastPointTime = dataProyeksi.value.line[dataProyeksi.value.line.length - 1].time
   }
 
@@ -529,6 +532,11 @@ function applyTimeframe() {
     case 'YTD':
       fromDate = new Date(lastHist.getFullYear(), 0, 1)
       break
+  }
+
+  const firstHist = new Date(dataAktual.value[0].time)
+  if (fromDate < firstHist) {
+    fromDate = firstHist
   }
 
   chart.value.timeScale().setVisibleRange({
@@ -816,13 +824,13 @@ watch(() => props.timeframe, applyTimeframe)
 
     <!-- 6 Layer Toggle Buttons -->
     <div class="flex flex-col xl:flex-row xl:items-center gap-3 border-t-[0.5px] border-border pt-4 mt-2 w-full">
-      <span class="text-[13px] font-medium text-muted-foreground shrink-0">Tampilkan:</span>
+      <span class="text-base font-medium text-muted-foreground shrink-0">Tampilkan:</span>
 
       <div class="flex flex-wrap w-full items-center rounded-lg border-[0.5px] border-border bg-muted/40 p-1 shadow-inner flex-1 gap-1">
         <!-- 1. Historical -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showHist ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="showHist = !showHist"
         >
@@ -833,7 +841,7 @@ watch(() => props.timeframe, applyTimeframe)
         <!-- 2. Forecast -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showForecast ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="showForecast = !showForecast"
         >
@@ -844,7 +852,7 @@ watch(() => props.timeframe, applyTimeframe)
         <!-- 3. Volume -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showVolume ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="showVolume = !showVolume"
         >
@@ -855,7 +863,7 @@ watch(() => props.timeframe, applyTimeframe)
         <!-- 4. Fibonacci -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showFibonacci ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="showFibonacci = !showFibonacci"
         >
@@ -866,7 +874,7 @@ watch(() => props.timeframe, applyTimeframe)
         <!-- 5. SMA 50/200 -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showSma ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="showSma = !showSma"
         >
@@ -877,7 +885,7 @@ watch(() => props.timeframe, applyTimeframe)
         <!-- 6. Chart Pattern -->
         <button
           type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
           :class="showGeometryLocal ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="toggleGeometry"
         >
