@@ -9,6 +9,7 @@ import {
   createChart,
 } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
+import { calculateFromDate } from '@/utils/chart'
 
 /**
  * Panel MACD bergaya TradingView: histogram empat nada, garis MACD & signal,
@@ -190,40 +191,11 @@ function applyTimeframe() {
   }
 
   const lastPointTime = titikHist.value[titikHist.value.length - 1].time
-  const lastDate = new Date(lastPointTime)
-  let fromDate = new Date(lastDate)
-
-  switch (props.timeframe) {
-    case '1D':
-      fromDate.setDate(fromDate.getDate() - 1)
-      break
-    case '5D':
-      fromDate.setDate(fromDate.getDate() - 5)
-      break
-    case '1M':
-      fromDate.setMonth(fromDate.getMonth() - 1)
-      break
-    case '3M':
-      fromDate.setMonth(fromDate.getMonth() - 3)
-      break
-    case '6M':
-      fromDate.setMonth(fromDate.getMonth() - 6)
-      break
-    case '1Y':
-      fromDate.setFullYear(fromDate.getFullYear() - 1)
-      break
-    case 'YTD':
-      fromDate = new Date(lastDate.getFullYear(), 0, 1)
-      break
-  }
-
-  const firstHist = new Date(titikHist.value[0].time)
-  if (fromDate < firstHist) {
-    fromDate = firstHist
-  }
+  const firstPointTime = titikHist.value[0].time
+  const fromStr = calculateFromDate(props.timeframe, lastPointTime, firstPointTime)
 
   chart.value.timeScale().setVisibleRange({
-    from: fromDate.toISOString().split('T')[0],
+    from: fromStr,
     to: lastPointTime,
   })
 }

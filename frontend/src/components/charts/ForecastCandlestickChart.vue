@@ -9,6 +9,7 @@ import {
   CrosshairMode,
 } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
+import { calculateFromDate } from '@/utils/chart'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
 const props = defineProps({
@@ -172,40 +173,12 @@ function applyTimeframe() {
     lastPointTime = dataProyeksi.value.line[dataProyeksi.value.line.length - 1].time
   }
 
-  const lastHist = new Date(dataAktual.value[dataAktual.value.length - 1].time)
-  let fromDate = new Date(lastHist)
-
-  switch (props.timeframe) {
-    case '1D':
-      fromDate.setDate(fromDate.getDate() - 1)
-      break
-    case '5D':
-      fromDate.setDate(fromDate.getDate() - 5)
-      break
-    case '1M':
-      fromDate.setMonth(fromDate.getMonth() - 1)
-      break
-    case '3M':
-      fromDate.setMonth(fromDate.getMonth() - 3)
-      break
-    case '6M':
-      fromDate.setMonth(fromDate.getMonth() - 6)
-      break
-    case '1Y':
-      fromDate.setFullYear(fromDate.getFullYear() - 1)
-      break
-    case 'YTD':
-      fromDate = new Date(lastHist.getFullYear(), 0, 1)
-      break
-  }
-
-  const firstHist = new Date(dataAktual.value[0].time)
-  if (fromDate < firstHist) {
-    fromDate = firstHist
-  }
+  const lastHist = dataAktual.value[dataAktual.value.length - 1].time
+  const firstHist = dataAktual.value[0].time
+  const fromStr = calculateFromDate(props.timeframe, lastHist, firstHist)
 
   chart.value.timeScale().setVisibleRange({
-    from: fromDate.toISOString().split('T')[0],
+    from: fromStr,
     to: lastPointTime,
   })
 }
