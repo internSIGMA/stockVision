@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { ColorType, CrosshairMode, LineSeries, LineStyle, createChart } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
-import { calculateFromDate } from '@/utils/chart'
+import { applyIndicatorTimeframe } from '@/utils/chart'
 
 /**
  * Panel RSI bergaya TradingView: garis RSI, zona 30–70 diarsir, dan legend
@@ -151,21 +151,7 @@ function bukaDiEkor() {
 }
 
 function applyTimeframe() {
-  if (!chart.value || !titik.value.length) return
-
-  if (props.timeframe === 'ALL') {
-    chart.value.timeScale().fitContent()
-    return
-  }
-
-  const lastPointTime = titik.value[titik.value.length - 1].time
-  const firstPointTime = titik.value[0].time
-  const fromStr = calculateFromDate(props.timeframe, lastPointTime, firstPointTime)
-
-  chart.value.timeScale().setVisibleRange({
-    from: fromStr,
-    to: lastPointTime,
-  })
+  applyIndicatorTimeframe(chart.value, props.timeframe, titik.value)
 }
 
 function render() {

@@ -11,7 +11,7 @@ import {
   CrosshairMode
 } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
-import { calculateFromDate } from '@/utils/chart'
+import { applyChartTimeframe } from '@/utils/chart'
 import { formatDate, formatNumber } from '@/utils/format'
 
 const props = defineProps({
@@ -251,26 +251,13 @@ function render() {
 }
 
 function applyTimeframe() {
-  if (!chart.value || !dataAktual.value.length) return
-  
-  if (props.timeframe === 'ALL') {
-    chart.value.timeScale().fitContent()
-    return
-  }
-
-  let lastPointTime = dataAktual.value[dataAktual.value.length - 1].time
-  if (showForecast.value && dataProyeksi.value.line.length) {
-    lastPointTime = dataProyeksi.value.line[dataProyeksi.value.line.length - 1].time
-  }
-  
-  const lastHist = dataAktual.value[dataAktual.value.length - 1].time
-  const firstHist = dataAktual.value[0].time
-  const fromStr = calculateFromDate(props.timeframe, lastHist, firstHist)
-
-  chart.value.timeScale().setVisibleRange({
-    from: fromStr,
-    to: lastPointTime,
-  })
+  applyChartTimeframe(
+    chart.value,
+    props.timeframe,
+    dataAktual.value,
+    showForecast.value,
+    dataProyeksi.value.line
+  )
 }
 
 const legendData = ref(null)

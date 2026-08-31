@@ -9,7 +9,7 @@ import {
   createChart,
 } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
-import { calculateFromDate } from '@/utils/chart'
+import { applyIndicatorTimeframe } from '@/utils/chart'
 
 /**
  * Panel MACD bergaya TradingView: histogram empat nada, garis MACD & signal,
@@ -183,21 +183,7 @@ function bukaDiEkor() {
 }
 
 function applyTimeframe() {
-  if (!chart.value || !titikHist.value.length) return
-
-  if (props.timeframe === 'ALL') {
-    chart.value.timeScale().fitContent()
-    return
-  }
-
-  const lastPointTime = titikHist.value[titikHist.value.length - 1].time
-  const firstPointTime = titikHist.value[0].time
-  const fromStr = calculateFromDate(props.timeframe, lastPointTime, firstPointTime)
-
-  chart.value.timeScale().setVisibleRange({
-    from: fromStr,
-    to: lastPointTime,
-  })
+  applyIndicatorTimeframe(chart.value, props.timeframe, titikHist.value)
 }
 
 function render() {

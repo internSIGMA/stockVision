@@ -35,3 +35,44 @@ export function calculateFromDate(timeframe, lastPointTimeStr, firstPointTimeStr
 
   return fromDate.toISOString().split('T')[0]
 }
+
+export function applyChartTimeframe(chartInstance, timeframe, dataAktual, showForecast, dataProyeksiLine) {
+  if (!chartInstance || !dataAktual?.length) return
+
+  if (timeframe === 'ALL') {
+    chartInstance.timeScale().fitContent()
+    return
+  }
+
+  let lastPointTime = dataAktual[dataAktual.length - 1].time
+  if (showForecast && dataProyeksiLine?.length) {
+    lastPointTime = dataProyeksiLine[dataProyeksiLine.length - 1].time
+  }
+
+  const lastHist = dataAktual[dataAktual.length - 1].time
+  const firstHist = dataAktual[0].time
+  const fromStr = calculateFromDate(timeframe, lastHist, firstHist)
+
+  chartInstance.timeScale().setVisibleRange({
+    from: fromStr,
+    to: lastPointTime,
+  })
+}
+
+export function applyIndicatorTimeframe(chartInstance, timeframe, dataArr) {
+  if (!chartInstance || !dataArr?.length) return
+
+  if (timeframe === 'ALL') {
+    chartInstance.timeScale().fitContent()
+    return
+  }
+
+  const lastPointTime = dataArr[dataArr.length - 1].time
+  const firstPointTime = dataArr[0].time
+  const fromStr = calculateFromDate(timeframe, lastPointTime, firstPointTime)
+
+  chartInstance.timeScale().setVisibleRange({
+    from: fromStr,
+    to: lastPointTime,
+  })
+}
