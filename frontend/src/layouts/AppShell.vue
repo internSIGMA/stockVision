@@ -12,11 +12,13 @@ const market = useMarketStore()
 // selectedTicker tidak dipersistensi, jadi setelah reload halaman nilainya null
 // walaupun sesi user masih ada. Isi ulang dari emiten utama begitu auth siap.
 watch(
-  () => auth.emitenUtama,
-  (utama) => {
-    if (utama) market.initTicker(utama)
+  () => auth.watchlistTersimpan,
+  (list) => {
+    if (list && list.length && !market.selectedTicker) {
+      market.initTicker(list[0])
+    }
   },
-  { immediate: true },
+  { immediate: true, deep: true }
 )
 </script>
 

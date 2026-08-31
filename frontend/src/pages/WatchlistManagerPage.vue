@@ -81,7 +81,7 @@ function toggleTicker(ticker) {
 
 function hapus(ticker) {
   dipilih.value = dipilih.value.filter(t => t.toUpperCase() !== ticker.toUpperCase())
-  if (auth.emitenUtama === ticker) {
+  if (market.selectedTicker === ticker) {
     market.setTicker(dipilih.value[0] ?? '')
   }
 }
@@ -100,7 +100,7 @@ async function simpan() {
     await auth.saveWatchlist(dipilih.value, inputName.value.trim())
     await auth.fetchWatchlists()
     if (!dipilih.value.includes(market.selectedTicker)) {
-      market.setTicker(dipilih.value[0] ?? auth.emitenUtama)
+      market.setTicker(dipilih.value[0] ?? 'BBCA')
     }
     notify.success('Daftar pantau tersimpan', `${inputName.value.trim()} diperbarui.`)
     emit('close') // Tutup sidebar setelah berhasil simpan
@@ -245,12 +245,7 @@ function onKeydown(e) {
               {{ ticker.charAt(0) }}
             </span>
             <span class="tabular text-[13px] font-semibold">{{ ticker }}</span>
-            <span
-              v-if="auth.emitenUtama === ticker"
-              class="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-            >
-              Utama
-            </span>
+
           </span>
           <button
             class="size-6 shrink-0 rounded text-[12px] font-bold text-muted-foreground hover:bg-destructive/15 hover:text-destructive"

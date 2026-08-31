@@ -64,7 +64,6 @@ function resetForm() {
     name: auth.user?.name || '',
     username: auth.user?.username || '',
     email: auth.user?.email || '',
-    defaultTicker: auth.emitenUtama,
   }
   foto.value = prefs.photo.value
   phone.value = prefs.phone.value
@@ -107,7 +106,6 @@ async function simpan() {
       name: form.value.name.trim(),
       username: form.value.username.trim(),
       email: form.value.email.trim().toLowerCase(),
-      default_ticker: form.value.defaultTicker,
     })
 
     // Nomor telepon, foto, dan notifikasi email tidak punya kolom di backend.
@@ -340,15 +338,6 @@ function performLogout() {
                 </div>
               </div>
 
-              <div v-if="!auth.isAdmin" class="space-y-1.5 py-3">
-                <label for="ak-saham" class="text-[13px] font-medium">Saham utama</label>
-                <select id="ak-saham" v-model="form.defaultTicker" class="ak-input tabular">
-                  <option v-for="t in SUPPORTED_TICKERS" :key="t" :value="t">{{ t }}</option>
-                </select>
-                <p class="text-[12px] text-muted-foreground">
-                  Saham yang otomatis dibuka setelah pengguna masuk.
-                </p>
-              </div>
 
               <div class="flex items-center gap-3 rounded-xl border-[0.5px] border-border p-4">
                 <div class="min-w-0 flex-1">

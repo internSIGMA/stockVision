@@ -9,6 +9,7 @@ import {
   CrosshairMode,
 } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
+import { applyChartTimeframe } from '@/utils/chart'
 import { formatCompact, formatDate, formatNumber } from '@/utils/format'
 
 const props = defineProps({
@@ -70,7 +71,13 @@ function tema() {
       borderColor: grid,
       scaleMargins: { top: 0.08, bottom: 0.22 },
     },
-    timeScale: { borderColor: grid, maxBarSpacing: 1e4 },
+    timeScale: {
+      borderColor: grid,
+      maxBarSpacing: 1e4,
+      rightOffset: 0,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
     crosshair: { mode: CrosshairMode.Normal },
   }
 }
@@ -154,49 +161,13 @@ function updateVisibility() {
 }
 
 function applyTimeframe() {
-  if (!chart.value || !dataAktual.value.length) return
-
-  if (props.timeframe === 'ALL') {
-    chart.value.timeScale().fitContent()
-    return
-  }
-
-  let lastPointTime = dataAktual.value[dataAktual.value.length - 1].time
-  if (dataProyeksi.value.line.length) {
-    lastPointTime = dataProyeksi.value.line[dataProyeksi.value.line.length - 1].time
-  }
-
-  const lastHist = new Date(dataAktual.value[dataAktual.value.length - 1].time)
-  let fromDate = new Date(lastHist)
-
-  switch (props.timeframe) {
-    case '1D':
-      fromDate.setDate(fromDate.getDate() - 1)
-      break
-    case '5D':
-      fromDate.setDate(fromDate.getDate() - 5)
-      break
-    case '1M':
-      fromDate.setMonth(fromDate.getMonth() - 1)
-      break
-    case '3M':
-      fromDate.setMonth(fromDate.getMonth() - 3)
-      break
-    case '6M':
-      fromDate.setMonth(fromDate.getMonth() - 6)
-      break
-    case '1Y':
-      fromDate.setFullYear(fromDate.getFullYear() - 1)
-      break
-    case 'YTD':
-      fromDate = new Date(lastHist.getFullYear(), 0, 1)
-      break
-  }
-
-  chart.value.timeScale().setVisibleRange({
-    from: fromDate.toISOString().split('T')[0],
-    to: lastPointTime,
-  })
+  applyChartTimeframe(
+    chart.value,
+    props.timeframe,
+    dataAktual.value,
+    showForecast.value,
+    dataProyeksi.value.line
+  )
 }
 
 // ── Hover & Legend ────────────────────────────────────────────────────────
@@ -356,36 +327,44 @@ defineExpose({ resetZoom })
     </div>
 
     <!-- Toggles Visibilitas Layer -->
-    <div class="flex flex-wrap items-center gap-3 border-t-[0.5px] border-border pt-3 mt-1">
-      <span class="text-xs font-medium text-muted-foreground mr-1">Layer:</span>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showHist ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showHist = !showHist"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showHist ? 'bg-primary' : 'bg-muted'" />
-        Historical
-      </button>
-      <button
-        v-if="points.length"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showForecast ? 'border-[var(--warning)] bg-[var(--warning)]/10 text-[var(--warning)] font-medium' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showForecast = !showForecast"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showForecast ? 'bg-[var(--warning)]' : 'bg-muted'" />
-        Forecast
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-[11px] transition-colors"
-        :class="showVolume ? 'border-border bg-muted font-medium text-foreground' : 'border-border bg-transparent text-muted-foreground hover:bg-card-hover'"
-        @click="showVolume = !showVolume"
-      >
-        <div class="h-2 w-2 rounded-full" :class="showVolume ? 'bg-foreground' : 'bg-muted'" />
-        Volume
-      </button>
+    <div class="flex flex-col xl:flex-row xl:items-center gap-3 border-t-[0.5px] border-border pt-4 mt-2 w-full">
+      <span class="text-base font-medium text-muted-foreground shrink-0">Tampilkan:</span>
+
+      <div class="flex flex-wrap w-full items-center rounded-lg border-[0.5px] border-border bg-muted/40 p-1 shadow-inner flex-1 gap-1">
+        <!-- 1. Historical -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showHist ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showHist = !showHist"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showHist ? 'bg-primary' : 'bg-muted'" />
+          Historical
+        </button>
+
+        <!-- 2. Forecast -->
+        <button
+          v-if="points.length"
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showForecast ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showForecast = !showForecast"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showForecast ? 'bg-[var(--warning)]' : 'bg-muted'" />
+          Forecast
+        </button>
+
+        <!-- 3. Volume -->
+        <button
+          type="button"
+          class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer min-w-[130px] whitespace-nowrap"
+          :class="showVolume ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          @click="showVolume = !showVolume"
+        >
+          <div class="h-2 w-2 rounded-full shrink-0" :class="showVolume ? 'bg-foreground' : 'bg-muted'" />
+          Volume
+        </button>
+      </div>
     </div>
   </div>
 </template>

@@ -389,22 +389,24 @@ const selectedTimeframe = ref('6M')
             </div>
 
             <!-- Center: Mode Switcher -->
-            <div class="flex-none flex justify-center w-full xl:w-auto">
-              <div class="inline-flex items-center rounded-lg bg-muted/50 p-1 shadow-inner border border-border/50">
+            <div class="flex-none flex justify-center w-full xl:w-auto mt-2 xl:mt-0">
+              <div class="inline-flex items-center rounded-xl bg-muted/60 p-1.5 shadow-inner border border-border/60">
                 <button
                   type="button"
-                  class="flex items-center justify-center rounded-md px-4 py-1.5 text-[12px] font-semibold transition-all duration-200 cursor-pointer w-[136px]"
-                  :class="forecastMode === 'ML' ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
+                  class="flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer min-w-[160px]"
+                  :class="forecastMode === 'ML' ? 'bg-background text-foreground shadow-md ring-1 ring-border/60 scale-[1.02]' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
                   @click="forecastMode = 'ML'"
                 >
+                  <div class="h-2 w-2 rounded-full shrink-0" :class="forecastMode === 'ML' ? 'bg-primary shadow-[0_0_8px_var(--color-primary)]' : 'bg-muted-foreground/30'" />
                   Machine Learning
                 </button>
                 <button
                   type="button"
-                  class="flex items-center justify-center rounded-md px-4 py-1.5 text-[12px] font-semibold transition-all duration-200 cursor-pointer w-[136px]"
-                  :class="forecastMode === 'PATTERN' ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
+                  class="flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer min-w-[160px]"
+                  :class="forecastMode === 'PATTERN' ? 'bg-background text-foreground shadow-md ring-1 ring-border/60 scale-[1.02]' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'"
                   @click="forecastMode = 'PATTERN'"
                 >
+                  <div class="h-2 w-2 rounded-full shrink-0" :class="forecastMode === 'PATTERN' ? 'bg-[var(--warning)] shadow-[0_0_8px_var(--color-warning)]' : 'bg-muted-foreground/30'" />
                   Chart Pattern
                 </button>
               </div>

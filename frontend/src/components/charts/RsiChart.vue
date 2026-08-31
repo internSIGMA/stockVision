@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { ColorType, CrosshairMode, LineSeries, LineStyle, createChart } from 'lightweight-charts'
 import { useTheme } from '@/composables/useTheme'
+import { applyIndicatorTimeframe } from '@/utils/chart'
 
 /**
  * Panel RSI bergaya TradingView: garis RSI, zona 30–70 diarsir, dan legend
@@ -81,7 +82,12 @@ function tema() {
     // Skala dikunci 0–100: RSI memang tidak pernah keluar rentang itu, dan
     // dengan begitu posisi arsiran zona tidak bergeser saat di-zoom.
     rightPriceScale: { borderColor: grid, scaleMargins: { top: 0.08, bottom: 0.08 } },
-    timeScale: { borderColor: grid, rightOffset: 2 },
+    timeScale: {
+      borderColor: grid,
+      rightOffset: 2,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
     crosshair: { mode: CrosshairMode.Normal },
   }
 }
@@ -145,45 +151,7 @@ function bukaDiEkor() {
 }
 
 function applyTimeframe() {
-  if (!chart.value || !titik.value.length) return
-
-  if (props.timeframe === 'ALL') {
-    chart.value.timeScale().fitContent()
-    return
-  }
-
-  const lastPointTime = titik.value[titik.value.length - 1].time
-  const lastDate = new Date(lastPointTime)
-  let fromDate = new Date(lastDate)
-
-  switch (props.timeframe) {
-    case '1D':
-      fromDate.setDate(fromDate.getDate() - 1)
-      break
-    case '5D':
-      fromDate.setDate(fromDate.getDate() - 5)
-      break
-    case '1M':
-      fromDate.setMonth(fromDate.getMonth() - 1)
-      break
-    case '3M':
-      fromDate.setMonth(fromDate.getMonth() - 3)
-      break
-    case '6M':
-      fromDate.setMonth(fromDate.getMonth() - 6)
-      break
-    case '1Y':
-      fromDate.setFullYear(fromDate.getFullYear() - 1)
-      break
-    case 'YTD':
-      fromDate = new Date(lastDate.getFullYear(), 0, 1)
-      break
-  }
-
-  chart.value.timeScale().setVisibleRange({
-    from: fromDate.toISOString().split('T')[0],
-    to: lastPointTime,
-  })
+  applyIndicatorTimeframe(chart.value, props.timeframe, titik.value)
 }
 
 function render() {

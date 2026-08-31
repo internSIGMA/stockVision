@@ -41,12 +41,18 @@ const masalah = computed(() => {
 })
 
 function lanjut() {
-  // Setiap pengguna biasa melewati pemilihan emiten dulu — bukan hanya
-  // pendaftar baru. Admin tidak punya watchlist sendiri, jadi langsung masuk.
-  if (!auth.isAdmin && auth.user) {
-    router.push('/preferences')
+  if (auth.isAdmin) {
+    router.push('/stream')
     return
   }
+
+  // Jika user baru (belum punya watchlist), arahkan ke onboarding untuk memilih emiten
+  if (auth.isNewRegistration) {
+    router.push('/onboarding')
+    return
+  }
+
+  // Jika kebetulan daftar ulang menggunakan akun lama, langsung masuk ke beranda
   router.push('/stream')
 }
 
