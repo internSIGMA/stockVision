@@ -5,6 +5,7 @@ import {
   Sparkles,
   UserPlus,
   Wallet,
+  Info,
 } from '@lucide/vue'
 import { buildRecommendation, parseRingkasan } from '@/utils/prescriptive'
 import { summarizeIndicators } from '@/utils/technicalIndicators'
@@ -243,9 +244,25 @@ function warnaStrategi(teks) {
         v-if="!loading && hasil && levels"
         class="flex flex-col border-t-[0.5px] border-border pt-4"
       >
-        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Level Trading
-        </p>
+        <div class="mb-3 flex items-center gap-2 relative group w-max">
+          <p class="text-[12px] font-bold uppercase tracking-[0.08em] text-foreground">
+            Level Trading
+          </p>
+          <span class="cursor-help text-muted-foreground transition-colors group-hover:text-foreground">
+            <Info class="size-4" aria-hidden="true" />
+          </span>
+
+          <!-- Custom Tooltip -->
+          <div class="pointer-events-none absolute bottom-full left-0 mb-2 hidden w-72 rounded-md border-[0.5px] border-border bg-card p-3 shadow-md group-hover:block z-20">
+            <p class="text-[11px] font-semibold text-foreground mb-1.5">Rumus yang digunakan:</p>
+            <ul class="text-[11px] text-muted-foreground list-disc pl-3.5 flex flex-col gap-1">
+              <li><strong>Entry:</strong> Breakout resistance atau harga terkini.</li>
+              <li><strong>Target:</strong> Target kenaikan (Take Profit) proyeksi.</li>
+              <li><strong>Stop Loss:</strong> Batas toleransi kerugian (Support).</li>
+              <li><strong>Risk/Reward:</strong> |% Target| / |% Stop Loss|.</li>
+            </ul>
+          </div>
+        </div>
 
         <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <div class="rounded-lg border-[0.5px] border-border bg-card p-3">

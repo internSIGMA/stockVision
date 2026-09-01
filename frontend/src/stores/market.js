@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useStorage } from '@vueuse/core'
 
 /**
  * Emiten yang sedang dilihat. Disimpan terpisah dari auth supaya berganti
@@ -9,7 +10,7 @@ import { defineStore } from 'pinia'
  */
 export const useMarketStore = defineStore('market', {
   state: () => ({
-    selectedTicker: null,
+    selectedTicker: useStorage('stockvision.market.ticker', null),
   }),
   actions: {
     setTicker(ticker) {
