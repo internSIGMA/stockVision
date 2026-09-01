@@ -265,8 +265,11 @@ defineExpose({ resetZoom, setRange })
         <dd class="text-right text-foreground">{{ harga(bar.low) }}</dd>
 
         <dt class="text-muted-foreground">Close</dt>
-        <dd class="text-right font-medium" :class="kelasArah">
-          {{ harga(bar.close) }}
+        <dd class="flex flex-col items-end text-right font-medium" :class="kelasArah">
+          <span>{{ harga(bar.close) }}</span>
+          <span class="text-[9px] font-normal opacity-80" :class="kelasArah">
+            {{ bar.close >= bar.open ? 'Bullish' : 'Bearish' }}
+          </span>
         </dd>
       </dl>
     </div>

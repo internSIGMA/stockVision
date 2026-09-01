@@ -377,7 +377,7 @@ onBeforeUnmount(() => {
   display: inline-block;
 
   color: var(--foreground);
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   line-height: 1;
 

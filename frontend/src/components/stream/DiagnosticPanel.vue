@@ -1,10 +1,22 @@
 <script setup>
 import { computed } from 'vue'
-import { Activity } from '@lucide/vue'
+import { Activity, Info } from '@lucide/vue'
 import { parseRingkasan } from '@/utils/prescriptive'
 import { formatCompact, formatDate, formatNumber, formatPercent, trendClass } from '@/utils/format'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+
+function getMetricExplanation(nama) {
+  const n = String(nama).toLowerCase()
+  if (n.includes('rsi')) return 'RSI (Relative Strength Index): Mengukur kecepatan dan perubahan pergerakan harga. < 30 = Oversold (Jenuh Jual), > 70 = Overbought (Jenuh Beli).'
+  if (n.includes('macd')) return 'MACD (Moving Average Convergence Divergence): Menunjukkan hubungan antara dua moving average dari harga. Di atas sinyal = Tren naik.'
+  if (n.includes('stochastic')) return 'Stochastic Oscillator: Membandingkan harga penutupan dengan rentang harganya selama periode tertentu.'
+  if (n.includes('volatilitas') || n.includes('volatility')) return 'Volatilitas: Mengukur seberapa besar fluktuasi harga saham. Semakin tinggi, semakin berisiko namun berpotensi profit besar.'
+  if (n.includes('volume')) return 'Volume: Total lembar saham yang diperdagangkan. Volume tinggi mengonfirmasi kekuatan tren.'
+  if (n.includes('momentum')) return 'Momentum: Tingkat percepatan harga saham. Momentum positif menandakan tren naik yang kuat.'
+  if (n.includes('trend')) return 'Trend: Arah pergerakan harga secara keseluruhan (Naik/Bullish, Turun/Bearish, Datar/Sideways).'
+  return `Penjelasan untuk metrik ${nama}`
+}
 
 const props = defineProps({
   /** Baris diagnostic_results untuk emiten aktif — dari useDiagnostic. */
@@ -149,7 +161,18 @@ function warnaMetrik(metrik) {
 
             <dl class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
               <div v-for="m in t.metrik" :key="m.nama" class="flex items-baseline gap-1.5">
-                <dt class="text-[10px] text-muted-foreground">{{ m.nama }}</dt>
+                <dt class="relative flex items-center gap-1 text-[11px] text-muted-foreground group">
+                  {{ m.nama }}
+                  <span class="cursor-help transition-colors group-hover:text-foreground">
+                    <Info class="size-3" aria-hidden="true" />
+                  </span>
+                  <!-- Custom Tooltip -->
+                  <div class="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden w-48 rounded-md border-[0.5px] border-border bg-card p-2 shadow-md group-hover:block z-20">
+                    <p class="text-[10px] leading-relaxed text-foreground font-normal normal-case tracking-normal">
+                      {{ getMetricExplanation(m.nama) }}
+                    </p>
+                  </div>
+                </dt>
                 <dd class="tabular text-[12px] font-semibold" :class="warnaMetrik(m)">
                   {{ tampilkan(m) }}
                 </dd>

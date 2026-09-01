@@ -1270,3 +1270,120 @@ sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to serve
 2026-08-27 02:38:38,629 | INFO | Bootstrap | [Bootstrap] stock_forecasting sudah berisi 14 baris data.
 2026-08-27 02:38:38,630 | INFO | Bootstrap | [Bootstrap] Daily Forecast Cron aktif (berjalan setiap hari pukul 02:00 WIB).
 2026-08-27 02:38:38,631 | INFO | Bootstrap | [Bootstrap] Inisialisasi background selesai. Seluruh sistem siap!
+2026-09-01 19:32:46,511 | INFO | Bootstrap | [Bootstrap] Memulai inisialisasi otomatis StockVision di background...
+2026-09-01 19:32:46,520 | INFO | werkzeug | [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.18.0.4:8080
+2026-09-01 19:32:46,521 | INFO | werkzeug | [33mPress CTRL+C to quit[0m
+2026-09-01 19:32:49,528 | INFO | Bootstrap | [Bootstrap] trading_calendar sudah berisi 365 hari trading.
+2026-09-01 19:32:49,544 | INFO | Bootstrap | [Bootstrap] idx_company_list sudah berisi 941 emiten.
+2026-09-01 19:32:49,615 | INFO | Bootstrap | [Bootstrap] ohlc_forecasting sudah memiliki 676864 baris data.
+2026-09-01 19:32:49,630 | INFO | Bootstrap | [Bootstrap] insider_activity sudah berisi 69 baris data.
+2026-09-01 19:32:49,645 | INFO | Bootstrap | [Bootstrap] stock_forecasting sudah berisi 78 baris data.
+2026-09-01 19:32:49,647 | INFO | Bootstrap | [Bootstrap] Daily Forecast Cron aktif (berjalan setiap hari pukul 02:00 WIB).
+2026-09-01 19:32:49,648 | INFO | Bootstrap | [Bootstrap] Inisialisasi background selesai. Seluruh sistem siap!
+2026-09-01 19:34:30,105 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/tickers HTTP/1.1" 200 -
+2026-09-01 19:34:30,129 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /users/28/watchlists HTTP/1.1" 200 -
+2026-09-01 19:34:30,206 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=BBRI HTTP/1.1" 200 -
+2026-09-01 19:34:30,211 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=TLKM HTTP/1.1" 200 -
+2026-09-01 19:34:30,221 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=BJBR HTTP/1.1" 200 -
+2026-09-01 19:34:30,229 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=BBNI HTTP/1.1" 200 -
+2026-09-01 19:34:30,232 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=BBCA HTTP/1.1" 200 -
+2026-09-01 19:34:30,241 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:30,290 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=ASII HTTP/1.1" 200 -
+2026-09-01 19:34:30,313 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=ANTM HTTP/1.1" 200 -
+2026-09-01 19:34:30,314 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:30] "GET /api/data/ohlc?symbol=GOTO HTTP/1.1" 200 -
+2026-09-01 19:34:40,706 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=BBRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,707 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=TLKM HTTP/1.1" 200 -
+2026-09-01 19:34:40,713 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=WINE HTTP/1.1" 200 -
+2026-09-01 19:34:40,736 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,740 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ASII HTTP/1.1" 200 -
+2026-09-01 19:34:40,740 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=GOTO HTTP/1.1" 200 -
+2026-09-01 19:34:40,795 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ABBA HTTP/1.1" 200 -
+2026-09-01 19:34:40,819 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ALII HTTP/1.1" 200 -
+2026-09-01 19:34:40,819 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ADHI HTTP/1.1" 200 -
+2026-09-01 19:34:40,822 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ADES HTTP/1.1" 200 -
+2026-09-01 19:34:40,823 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ARMY HTTP/1.1" 200 -
+2026-09-01 19:34:40,832 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=ATAP HTTP/1.1" 200 -
+2026-09-01 19:34:40,865 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/majorholder?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,898 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=BAPA HTTP/1.1" 200 -
+2026-09-01 19:34:40,901 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/stock-info?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,927 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/technical?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,939 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/prescriptive/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,973 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/broker-activity?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:40,992 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:40] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:41,004 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:41] "GET /api/diagnostic/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:41,027 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:41] "GET /api/data/forecast?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:34:43,177 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:34:43] "GET /api/chart-pattern/forecast?symbol=BMRI&timeframe=1d HTTP/1.1" 200 -
+2026-09-01 19:46:57,737 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/tickers HTTP/1.1" 200 -
+2026-09-01 19:46:57,764 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /users/28/watchlists HTTP/1.1" 200 -
+2026-09-01 19:46:57,907 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=TLKM HTTP/1.1" 200 -
+2026-09-01 19:46:57,922 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=GOTO HTTP/1.1" 200 -
+2026-09-01 19:46:57,927 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=ASII HTTP/1.1" 200 -
+2026-09-01 19:46:57,942 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:57,943 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=BBRI HTTP/1.1" 200 -
+2026-09-01 19:46:57,943 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=WINE HTTP/1.1" 200 -
+2026-09-01 19:46:57,976 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=ADHI HTTP/1.1" 200 -
+2026-09-01 19:46:57,980 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=ALII HTTP/1.1" 200 -
+2026-09-01 19:46:57,982 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:57] "GET /api/data/ohlc?symbol=ARMY HTTP/1.1" 200 -
+2026-09-01 19:46:58,004 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/ohlc?symbol=ADES HTTP/1.1" 200 -
+2026-09-01 19:46:58,011 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/ohlc?symbol=ABBA HTTP/1.1" 200 -
+2026-09-01 19:46:58,028 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/ohlc?symbol=BAPA HTTP/1.1" 200 -
+2026-09-01 19:46:58,077 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/broker-activity?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,078 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/ohlc?symbol=ATAP HTTP/1.1" 200 -
+2026-09-01 19:46:58,108 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/majorholder?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,139 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/stock-info?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,160 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/technical?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,186 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/prescriptive/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,187 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/diagnostic/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,213 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:58,223 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:58] "GET /api/data/forecast?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:46:59,292 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:46:59] "GET /api/chart-pattern/forecast?symbol=BMRI&timeframe=1d HTTP/1.1" 200 -
+2026-09-01 19:47:23,397 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/tickers HTTP/1.1" 200 -
+2026-09-01 19:47:23,430 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /users/28/watchlists HTTP/1.1" 200 -
+2026-09-01 19:47:23,562 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=BBRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,572 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=WINE HTTP/1.1" 200 -
+2026-09-01 19:47:23,575 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,580 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ADHI HTTP/1.1" 200 -
+2026-09-01 19:47:23,583 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ASII HTTP/1.1" 200 -
+2026-09-01 19:47:23,589 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=TLKM HTTP/1.1" 200 -
+2026-09-01 19:47:23,669 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=GOTO HTTP/1.1" 200 -
+2026-09-01 19:47:23,674 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ALII HTTP/1.1" 200 -
+2026-09-01 19:47:23,717 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ABBA HTTP/1.1" 200 -
+2026-09-01 19:47:23,724 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ADES HTTP/1.1" 200 -
+2026-09-01 19:47:23,729 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ARMY HTTP/1.1" 200 -
+2026-09-01 19:47:23,730 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=ATAP HTTP/1.1" 200 -
+2026-09-01 19:47:23,760 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=BAPA HTTP/1.1" 200 -
+2026-09-01 19:47:23,778 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/stock-info?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,781 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/majorholder?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,784 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/broker-activity?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,820 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/technical?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,822 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/prescriptive/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,857 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,870 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/data/forecast?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:23,877 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:23] "GET /api/diagnostic/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:24,649 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:24] "GET /api/chart-pattern/forecast?symbol=BMRI&timeframe=1d HTTP/1.1" 200 -
+2026-09-01 19:47:40,018 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/tickers HTTP/1.1" 200 -
+2026-09-01 19:47:40,041 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /users/28/watchlists HTTP/1.1" 200 -
+2026-09-01 19:47:40,143 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=TLKM HTTP/1.1" 200 -
+2026-09-01 19:47:40,167 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,179 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=BBRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,179 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ASII HTTP/1.1" 200 -
+2026-09-01 19:47:40,184 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=WINE HTTP/1.1" 200 -
+2026-09-01 19:47:40,184 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ADHI HTTP/1.1" 200 -
+2026-09-01 19:47:40,226 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=GOTO HTTP/1.1" 200 -
+2026-09-01 19:47:40,229 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ALII HTTP/1.1" 200 -
+2026-09-01 19:47:40,243 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ADES HTTP/1.1" 200 -
+2026-09-01 19:47:40,254 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ABBA HTTP/1.1" 200 -
+2026-09-01 19:47:40,255 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ARMY HTTP/1.1" 200 -
+2026-09-01 19:47:40,265 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=ATAP HTTP/1.1" 200 -
+2026-09-01 19:47:40,297 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/majorholder?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,310 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=BAPA HTTP/1.1" 200 -
+2026-09-01 19:47:40,311 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/broker-activity?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,313 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/stock-info?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,353 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/technical?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,361 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/prescriptive/results?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,386 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/ohlc?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,393 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/data/forecast?symbol=BMRI HTTP/1.1" 200 -
+2026-09-01 19:47:40,394 | INFO | werkzeug | 172.18.0.1 - - [01/Sep/2026 19:47:40] "GET /api/diagnostic/results?symbol=BMRI HTTP/1.1" 200 -

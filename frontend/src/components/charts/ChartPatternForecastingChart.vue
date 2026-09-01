@@ -675,21 +675,22 @@ watch(() => props.timeframe, applyTimeframe)
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono">
         <!-- Candlestick OHLC Values -->
         <div v-if="legendData?.aktual && showHist" class="flex items-center">
-          <span class="font-bold mr-1 text-muted-foreground">O</span>
+          <span class="font-bold mr-1 text-muted-foreground">Open</span>
           <span class="mr-2.5 text-foreground">{{ formatNumber(legendData.aktual.open) }}</span>
-          <span class="font-bold mr-1 text-muted-foreground">H</span>
+          <span class="font-bold mr-1 text-muted-foreground">High</span>
           <span class="mr-2.5 text-foreground">{{ formatNumber(legendData.aktual.high) }}</span>
-          <span class="font-bold mr-1 text-muted-foreground">L</span>
+          <span class="font-bold mr-1 text-muted-foreground">Low</span>
           <span class="mr-2.5 text-foreground">{{ formatNumber(legendData.aktual.low) }}</span>
-          <span class="font-bold mr-1 text-muted-foreground">C</span>
-          <span class="mr-2.5 font-bold" :class="legendData.aktual.close >= legendData.aktual.open ? 'text-[var(--up)]' : 'text-[var(--down)]'">
+          <span class="font-bold mr-1 text-muted-foreground">Close</span>
+          <span class="mr-2.5 font-bold flex items-center gap-1" :class="legendData.aktual.close >= legendData.aktual.open ? 'text-[var(--up)]' : 'text-[var(--down)]'">
             {{ formatNumber(legendData.aktual.close) }}
+            <span class="text-[10px] font-normal">({{ legendData.aktual.close >= legendData.aktual.open ? 'Bullish' : 'Bearish' }})</span>
           </span>
         </div>
 
         <!-- Volume Value -->
         <div v-if="legendData?.volume != null && showVolume" class="flex items-center text-muted-foreground">
-          <span class="font-bold mr-1 text-foreground">Vol</span>
+          <span class="font-bold mr-1 text-foreground">Volume</span>
           <span class="tabular text-foreground">{{ formatCompact(legendData.volume) }}</span>
         </div>
 

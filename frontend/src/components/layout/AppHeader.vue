@@ -105,7 +105,7 @@ function performLogout() {
     <!-- Logo dan nama aplikasi -->
     <RouterLink
       to="/stream"
-      class="shrink-0 text-[14px] font-semibold text-foreground transition-colors hover:text-primary"
+      class="shrink-0 text-[16px] font-semibold text-foreground transition-colors hover:text-primary"
     >
       ◆ StockVision
     </RouterLink>
@@ -119,12 +119,12 @@ function performLogout() {
         v-for="tab in visibleTabs"
         :key="tab.to"
         :to="tab.to"
-        class="flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[14px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        class="flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-[15px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
         active-class="!border-primary !text-primary"
       >
         <component
           :is="tab.icon"
-          class="size-3.5"
+          class="size-4"
           aria-hidden="true"
         />
 

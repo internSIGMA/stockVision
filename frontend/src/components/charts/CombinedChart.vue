@@ -398,10 +398,14 @@ watch(() => props.timeframe, applyTimeframe)
     <!-- Legenda (Horizontal Bar) -->
     <div class="flex flex-wrap items-center gap-x-6 gap-y-1 min-h-[24px]">
       <div v-if="legendData?.aktual && showHist" class="text-[12px] font-mono flex items-center">
-        <span class="font-bold mr-1.5 text-foreground">O</span><span class="mr-3">{{ formatNumber(legendData.aktual.open) }}</span>
-        <span class="font-bold mr-1.5 text-foreground">H</span><span class="mr-3">{{ formatNumber(legendData.aktual.high) }}</span>
-        <span class="font-bold mr-1.5 text-foreground">L</span><span class="mr-3">{{ formatNumber(legendData.aktual.low) }}</span>
-        <span class="font-bold mr-1.5 text-foreground">C</span><span>{{ formatNumber(legendData.aktual.close) }}</span>
+        <span class="font-bold mr-1.5 text-foreground">Open</span><span class="mr-3">{{ formatNumber(legendData.aktual.open) }}</span>
+        <span class="font-bold mr-1.5 text-foreground">High</span><span class="mr-3">{{ formatNumber(legendData.aktual.high) }}</span>
+        <span class="font-bold mr-1.5 text-foreground">Low</span><span class="mr-3">{{ formatNumber(legendData.aktual.low) }}</span>
+        <span class="font-bold mr-1.5 text-foreground">Close</span>
+        <span class="flex items-center gap-1 font-bold" :class="legendData.aktual.close >= legendData.aktual.open ? 'text-[var(--up)]' : 'text-[var(--down)]'">
+          {{ formatNumber(legendData.aktual.close) }}
+          <span class="text-[10px] font-normal">({{ legendData.aktual.close >= legendData.aktual.open ? 'Bullish' : 'Bearish' }})</span>
+        </span>
       </div>
       
       <div v-if="legendData?.forecast && showForecast" class="text-[12px] font-mono text-[var(--warning)] flex items-center">

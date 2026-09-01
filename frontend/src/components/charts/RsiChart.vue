@@ -215,7 +215,7 @@ watch(isDark, () => {
 watch(() => props.timeframe, applyTimeframe)
 
 function resetZoom() {
-  applyTimeframe()
+  chart.value?.timeScale().fitContent()
   requestAnimationFrame(hitungZona)
 }
 
